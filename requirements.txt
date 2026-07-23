@@ -1,0 +1,9 @@
+# 실행에 필요한 최소 의존성 (config 파서는 자체 구현이라 PyYAML 불필요)
+numpy>=1.24
+
+# RL 학습(scripts/train_rl_ddqn.py)에만 필요. 데이터 수집(scripts/run_rl_logging.py)은 numpy만으로 충분.
+torch>=2.0
+
+# 사후분석/그림 생성에만 필요(학습 run 자체에는 불필요).
+pandas>=2.0
+matplotlib>=3.7

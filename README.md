@@ -4,12 +4,16 @@
 
 - **[REPORT.md](REPORT.md)** — 최신 데이터(P-Stack / PFO / P-CENT held-out 성능) + RL 구현 계획.
 - **[DATA.md](DATA.md)** — 코드(`code/`)·데이터(`data/`) 안내.
+- **[SIM.md](SIM.md)** — 시뮬레이터(`src/`)·최종 컨트롤러 설정·실행법.
 
 ## 구성
-- `code/` — RL 구현(env·sac·inverse probe·eval). *sim(Numerical-Sim) 의존.*
+- `src/` — **시뮬레이터 + 최종 컨트롤러**(plant·coupling·P-Stack/PFO/P-CENT·config).
+- `work/` — 러너(`run_claude_style_five_controller.py`).
+- `code/` — RL 구현(env·sac·inverse probe·eval). `src/`를 import.
 - `data/holdout/` — held-out baseline run_logs(평가 참조).
 - `data/pcent_teacher/` — P-CENT 궤적(inverse-optimization 목표).
 - `data/bc/` — BC 데이터(state→budget).
+- `requirements.txt` — numpy(필수)·torch(RL)·pandas·matplotlib(분석).
 
 ## 요약
 - **문제**: freeway+urban 결합망 TTT 최소화. 리더(budget+가격) → follower(배분 실행) 계층.

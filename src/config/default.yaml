@@ -1,0 +1,368 @@
+simulation:
+  T_total: 7200
+  T_f: 10
+  T_u: 5
+  control_interval: 180
+  random_seed: 42
+  unit_time: seconds
+  unit_flow: veh/h
+  unit_speed: km/h
+  unit_density: veh/km/lane
+  derived_time_ratios:
+    T_f_h: 0.002777777777777778
+    T_u_h: 0.001388888888888889
+    control_interval_h: 0.05
+    K_cu: 36
+    K_cf: 18
+    K_fu: 2
+network:
+  freeway_links:
+  - FW_W
+  - FW_E
+  freeway_segments_per_link: 8
+  freeway_segment_length_km: 0.5
+  freeway_lanes: 2
+  v_free: 100.0
+  rho_crit: 33.5
+  # 2026-07-19 문헌 물리 복원(사용자 채택): jam density = Kotsialos(1999)/VdB(2007) 표준값.
+  # 구 95.02는 6/24 hysteresis 작업의 순환 캘리브레이션(고장난 터미널 경계 위 관측 적합) —
+  # 2e9d084에 은닉돼 있었음. 후진파 54→24km/h(실측 대역), 저장용량 2배 복원.
+  rho_max: 180.0
+  freeway_capacity_veh_h: 4000.0
+  ramps:
+  - R_D_W
+  - R_F_W
+  - R_D_E
+  - R_F_E
+  ramp_to_freeway:
+    R_D_W: FW_W
+    R_F_W: FW_W
+    R_D_E: FW_E
+    R_F_E: FW_E
+  ramp_capacity_veh_h:
+    R_D_W: 1500.0
+    R_F_W: 1500.0
+    R_D_E: 1500.0
+    R_F_E: 1500.0
+  # 다이아몬드 인터체인지 재배치(2026-07-13 사용자 승인): merge+off 동거(구 seg4) 해소 —
+  # D(off seg2/on seg3), F(off seg4/on seg5). 각 인터체인지 내 exit가 entrance 상류(무 weaving),
+  # 마지막 merge(5) 뒤 tail 2세그 확보. off_ramp_segment_index(2/4)는 불변.
+  ramp_merge_segment_index:
+    R_D_W: 3
+    R_F_W: 5
+    R_D_E: 3
+    R_F_E: 5
+  ramp_queue_max_veh: 180.0
+  signals:
+  - A
+  - B
+  - C
+  - D
+  - F
+  uncontrolled_nodes:
+  - E
+  urban_links:
+  - A_B
+  - B_C
+  - A_D
+  - B_E
+  - C_F
+  - D_E
+  - E_F
+  cycle_length: 120.0
+  lost_time: 8.0
+  green_min: 20.0
+  green_max: 92.0
+  boundary_in_links:
+  - in_A_top
+  - in_A_left
+  - in_B_top
+  - in_C_top
+  - in_C_right
+  - in_D_left
+  - in_F_right
+  boundary_out_links:
+  - out_A_top
+  - out_A_left
+  - out_B_top
+  - out_C_top
+  - out_C_right
+  - out_D_left
+  - out_F_right
+  boundary_queue_max_veh: 240.0
+  # boundary_out(출구) 링크당 시스템 이탈 유량 상한[veh/h] — 모델 밖 하류 도로 용량(A″-1).
+  # 유한값이면 출구가 binding해 off-ramp 홍수가 urban을 포화시킬 수 있고, VSL이 유입을
+  # 끊으면 urban이 회복되는 채널이 열린다. 0 이하이면 자유 sink(무제한, 하위호환).
+  boundary_out_capacity_veh_h: 1600.0
+  movement_capacity_veh_h: 1400.0
+  # urban_movements / turning_ratios / on·off_ramp_to_movement는 grid_node_legs
+  # 토폴로지에서 자동 유도된다(src/models/grid_topology.py, grid_routing_proposal §3).
+  # turning_ratios 기본값 = 직진우대(직진 0.5, 나머지 균등, U-turn 0). 필요 시 여기서 override.
+  grid_link_storage_veh: 220.0
+  urban_link_storage_veh:
+    A_top_out: 220.0
+    A_left_out: 220.0
+    B_top_out: 220.0
+    C_top_out: 220.0
+    C_right_out: 220.0
+    D_left_out: 220.0
+    F_right_out: 220.0
+    A_to_B: 220.0
+    B_to_A: 220.0
+    B_to_C: 220.0
+    C_to_B: 220.0
+    A_to_D: 220.0
+    D_to_A: 220.0
+    B_to_E: 220.0
+    E_to_B: 220.0
+    C_to_F: 220.0
+    F_to_C: 220.0
+    D_to_E: 220.0
+    E_to_D: 220.0
+    E_to_F: 220.0
+    F_to_E: 220.0
+    D_R_W: 180.0
+    F_R_W: 180.0
+    D_R_E: 180.0
+    F_R_E: 180.0
+    OR_D_W_storage: 60.0
+    OR_F_W_storage: 60.0
+    OR_D_E_storage: 60.0
+    OR_F_E_storage: 60.0
+  off_ramps:
+  - OR_D_W
+  - OR_F_W
+  - OR_D_E
+  - OR_F_E
+  off_ramp_from_freeway:
+    OR_D_W: FW_W
+    OR_F_W: FW_W
+    OR_D_E: FW_E
+    OR_F_E: FW_E
+  off_ramp_segment_index:
+    OR_D_W: 2
+    OR_F_W: 4
+    OR_D_E: 2
+    OR_F_E: 4
+  off_ramp_storage_link:
+    OR_D_W: OR_D_W_storage
+    OR_F_W: OR_F_W_storage
+    OR_D_E: OR_D_E_storage
+    OR_F_E: OR_F_E_storage
+  off_ramp_split_ratio:
+    OR_D_W: 0.2
+    OR_F_W: 0.2
+    OR_D_E: 0.2
+    OR_F_E: 0.2
+  v_min: 5.0
+  alpha_vsl: 0.0
+  metanet_tau_h: 0.005
+  metanet_tau_sec: 18.0
+  metanet_nu_km2_h: 65.0
+  metanet_kappa_veh_km_lane: 40.0
+  metanet_a_m: 1.867
+  # capacity drop (Arora & Kattan modified METANET, eq 9): 혼잡 regime anticipation ν_cong + toggle.
+  # 기본 off라 기존 결과 불변. step 2에서 ν_cong 튜닝으로 drop 크기 보정.
+  metanet_nu_cong_km2_h: 250.0
+  # 2026-07-19 OFF(사용자 채택): ρ180+올바른 경계 위에서 ν-split은 배출강하 0.1~0.7%뿐(죽은
+  # 기전 실측, ν∈{80..250} 전부) — 구모델서는 경계 아티팩트 증폭기였음. ν_cong 값은 잔존(무효).
+  capacity_drop_anticipation: false
+  metanet_rho_eps: 0.001
+  urban_Q_sat_veh_h: 1000.0
+  urban_avg_vehicle_length_m: 6.0
+  urban_avg_speed_km_h: 50.0
+  green_min_fraction: 0.2
+  green_max_fraction: 0.8
+freeway_offramp_capacity_drop:
+  enabled: true
+  # 2026-06-30: VSL-mod default. off-ramp spillback을 Wu eq22 수준(full 1 lane)으로 강화 →
+  # VSL이 의미를 갖는 plant. (이전 0.35는 약해 VSL이 무력했음. off_ramp_split 0.06→0.4·storage
+  # 120→60과 함께 urban-freeway coupling 강화.)
+  lane_reduction: 1.0
+  gamma: 0.5
+  b: 2.0
+mpc:
+  horizon_steps: 3
+  leader_search_mode: continuous
+  leader_candidate_count: 49
+  leader_refinement_candidate_count: 25
+  leader_global_refresh_sec: 1800.0
+  leader_local_np_radius_veh: 40.0
+  leader_local_nuf_radius_veh_h: 1500.0
+  # global step 예산: step-0 budget 곡선에서 max_evals=10이 25와 동일 setpoint(N_P=488)·objective를
+  # 내고 시간은 -56%(484s→214s). 6은 부족(상한 saturate). 작아진 탐색공간 덕에 10으로 충분(2026-06-22).
+  leader_continuous_max_evals: 10
+  leader_continuous_seed_count: 7
+  leader_continuous_prefilter_samples: 31
+  leader_continuous_prefilter_top_k: 7
+  # 비-global(local) 스텝 전용 축소 예산: full 탐색은 leader_global_refresh_sec마다만,
+  # 그 외 스텝은 previous 인근 sensitivity 상위 소수만 평가해 비용 절감(2026-06-22).
+  leader_continuous_local_max_evals: 3
+  leader_continuous_local_seed_count: 3
+  leader_continuous_local_prefilter_samples: 12
+  leader_continuous_local_prefilter_top_k: 3
+  leader_continuous_hard_precheck: true
+  leader_continuous_precheck_spillback_tolerance_veh: 0.0
+  leader_continuous_parallel_multistart: true
+  leader_continuous_use_sensitivity_directions: true
+  leader_continuous_local_iterations: 4
+  leader_continuous_initial_step_fraction: 0.35
+  leader_continuous_shrink_factor: 0.5
+  leader_continuous_min_np_step_veh: 40.0
+  leader_continuous_min_nuf_step_veh_h: 125.0
+  follower_solver_mode: two_block
+  max_nash_iter: 10
+  nash_obj_tol: 0.001
+  nash_control_tol: 0.001
+  nash_relaxation_alpha: 0.8
+  distributed_coupling_tol: 0.001
+  control_horizon_steps: 3
+  urban_freeway_tts_weight_alpha: 1.0
+  optimizer_maxiter: 40
+  optimizer_n_starts: 5
+  # 논문 P-CENT=grid(SLSQP 제외 결정 2026-07-18). scipy 유무와 무관 재현 위해 고정(구 slsqp는 scipy 부재 시 grid로 silent fallback).
+  centralized_solver_mode: structured_grid
+  centralized_slsqp_ftol: 0.001
+  relaxed_quantized_controls: false
+  relaxed_green_quantum_sec: 1.0
+  relaxed_vsl_quantum_km_h: 10.0
+  relaxed_rounding_mode: floor
+  relaxed_wu_vsl_include_neutral: true
+  grid_global_refresh_sec: 1800.0
+  # follower grid 평가는 순수 파이썬 dict 루프(GIL-bound)라 thread는 무효(serial=24.7s vs thread=25.1s).
+  # SERIAL 고정(2026-07-21, 사용자 지시): 모든 컨트롤러를 단일코어 동일환경서 비교(공정성).
+  # 실측 확인 — 최근 w60u 매트릭스 전 런은 이미 serial로 실행됐고(진단 parallel_backend_serial=1.0,
+  # 벽시계도 직렬과 일치) 병렬 발동 이력 없음. 이 고정은 동작 비트동일이며 config를 현실과 일치시킴.
+  # (과거 process 벤치 근거는 별개 무대: 229s vs leader=process 362s vs serial 569s — 참고 보존.)
+  grid_parallel_backend: serial
+  # 워커 수는 풀 closed-loop 매트릭스 런의 메모리가 상한을 정한다(각 워커=풀 Python 프로세스).
+  # 12는 일회성 decide엔 ~20% 빨랐으나 다중 컨트롤러 풀런에서 MemoryError → 8이 안정 상한(2026-06-22).
+  grid_parallel_max_workers: 8
+  grid_parallel_min_items: 2
+  grid_parallel_chunk_size: 8
+  grid_reuse_process_pool: true
+  stackelberg_prefilter_top_k: 4
+  stackelberg_prefilter_local_top_k: 4
+  stackelberg_fallback_full_refresh_sec: 1800.0
+  stackelberg_fallback_use_cached_pfo: true
+  stackelberg_enable_fallback: true
+  stackelberg_enable_pfo_incumbent: true
+  # guard의 leader vs PFO 비교를 rollout-TTT로(2026-06-25). false면 기존 penalized-objective.
+  stackelberg_fallback_guard_use_rollout_ttt: true
+  stackelberg_leader_parallel_backend: serial
+  stackelberg_leader_parallel_max_workers: 4
+  stackelberg_inner_backend_when_outer_process: thread
+  stackelberg_reuse_process_pool: true
+  stackelberg_allocation_mode: direct
+  wu_faithful_np_predictor_mode: legacy
+  wu_faithful_np_coordination_mode: cap
+  wu_faithful_nuf_coordination_mode: equality
+  wu_np_storage_guard: false
+  wu_np_arrival_mode: horizon
+  wu_np_phase_substep: false
+leader:
+  objective_mode: follower_ttt
+  w_P: 1.0
+  w_F: 1.0
+  w_L: 0.0
+  # boundary_in queue는 최종 Total TTT에 포함되므로 leader_total_objective에도 TTS 항으로 더한다.
+  w_boundary_in: 0.0
+  # MFD/storage guard mode. all_urban_halfcap prices every urban-side
+  # movement queue and non-off-ramp urban link occupancy above 50% storage.
+  mfd_penalty_mode: all_urban_halfcap
+  mfd_storage_threshold_ratio: 0.5
+  mfd_storage_weight: 1.0
+  mfd_boundary_queue_capacity_veh: 220.0
+  N_P_star_range:
+  - -3500.0
+  - 3500.0
+  N_UF_star_range:
+  - 0.0
+  - 6000.0
+  # Step E 재calibration(2026-06-17): off-ramp storage 재귀속 후의
+  # protected_accumulation_veh 정의(보호영역 내부 storage + internal/boundary_out/off_ramp
+  # movement queue, off-ramp storage 제외)를 사용했다.
+  # command:
+  #   python -B -m src.experiments.calibrate_setpoints --config src/config/default.yaml
+  #   --scenario peak_demand --baseline fixed_signal_fixed_speed
+  #   --urban-scales 0.5,0.75,1.0,1.25,1.5,2.0,2.5,3.0 --T-total 7200
+  #   --output outputs/step_e_n_p_crit_recalibration_2026_06_17
+  # MFD argmax: production 33868.583 veh/h @ N_P=509.449 veh
+  # (urban_scale=3.0, t=720 s). 이전 556.081은 off-ramp storage 재귀속 전 값이라 폐기.
+  # 2026-06-30 재보정(off_ramp_split 0.2 plant): MFD argmax production 41524.179 veh/h @ N_P=1142.058 veh.
+  #   command: calibrate_setpoints --scenario peak_demand --urban-scales 0.5..4.0 --T-total 3600
+  #   옛 509는 split 0.06 plant 값. split 0.2서 보호영역 누적이 더 커(off-ramp 유입↑) 임계 상향.
+  #   leader·hierarchical·centralized의 perimeter 기준을 동시에 정정(P-Stack N_P 진동 해결).
+  N_P_crit_veh: 1142.058
+  N_P_candidate_lower_factor: 0.40
+  N_P_candidate_upper_factor: 1.35
+  N_P_star_unit: veh
+  N_UF_star_unit: veh_per_hour
+  # cycle 위상 plant에서 N_P가 cycle 주기로 진동해 feedback/추적 창을 더 길게 둔다.
+  N_P_feedback_horizon_h: 1.5
+  N_P_feedback_flow_limit_veh_h: 800.0
+  N_UF_feasible_margin: 0.95
+  # Step D: non-convergence penalty는 진단으로만 보고하고 leader_total_objective에는 더하지 않는다.
+  non_convergence_penalty: 500.0
+  non_convergence_objective_residual_scale: 1.0
+  non_convergence_control_residual_scale: 1.0
+  state_accumulation_exclude_boundary_legs: true
+  use_effective_lanes_for_density_penalty: true
+  metering_congestion_weight: 0.45
+  metering_queue_weight: 4.0
+  vsl_activation_density_ratio: 0.95
+  metering_activation_density_ratio: 0.95
+  # fix 1: 저혼잡 N_UF* 하한 강제 비율. 0.0=강제없음(leader가 낮은 자연 방출 선택 가능, low_demand 회귀 해소). 구버전=0.75.
+  uncongested_nuf_floor_frac: 0.0
+freeway_follower:
+  eps_F: 100.0
+  # VSL 메뉴 재보정(2026-07-20, Wang v_free=115, 사용자 확정): 구 활성 옵션(50~100) 보존
+  # + 115를 no-VSL 앵커로 추가(vsl_active 판정 max−0.5 기준이라 NC/무VSL 거동 불변).
+  # 첫 활성 칸 115→100 간격 15 — seg13 VSL_BOX ≥15 필요(잡 env에서 15로 상향).
+  vsl_set:
+  - 115
+  - 100
+  - 90
+  - 80
+  - 70
+  - 60
+  - 50
+  max_vsl_step: 20.0
+  ramp_queue_penalty: 10.0
+  density_penalty: 10.0
+  metering_smoothness_weight: 0.1
+  vsl_smoothness_weight: 0.1
+  horizon_beam_width: 2
+  horizon_ramp_candidate_limit: 3
+  horizon_vsl_candidate_limit_per_link: 3
+  vsl_sequence_search: true
+  vsl_sequence_horizon_steps: 4
+  vsl_sequence_candidate_limit: 12
+  ramp_metering_rate_min: 0.2
+  ramp_metering_rate_max: 1.0
+  vsl_min_km_h: 60.0
+  vsl_max_km_h: 106.0
+urban_follower:
+  eps_U: 100.0
+  eps_g: 5.0
+  max_offset_step: 15.0
+  boundary_balance_weight: 10.0
+  offset_smoothness_weight: 0.1
+  green_smoothness_weight: 0.1
+  receiving_space_rule: proportional
+  allocation_pso_particles: 36
+  allocation_pso_iterations: 48
+  allocation_green_band_sec: 5.0
+evaluation:
+  main_metric: total_ttt
+  main_metric_direction: lower_is_better
+  min_improvement_pct: 8.0
+  eps: 1.0e-09
+  eps_balance: 0.03
+  boundary_degenerate_saturation_fraction: 0.95
+  boundary_degenerate_ratio: 0.5
+  boundary_controllable_min_fraction: 0.25
+auto_tuning:
+  enabled: true
+  max_iterations: 5
+  preserve_all_runs: true
