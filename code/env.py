@@ -125,7 +125,9 @@ class RLLeaderEnv:
         reward = -step_ttt                  # dense; return = -(episodic TTT)
         done = self.step_idx >= self.n_steps
         info = {"step_ttt": step_ttt, "cum_ttt": float(self.sim.total_ttt),
-                "N_P": float(n_p), "N_UF": float(n_uf)}
+                "N_P": float(n_p), "N_UF": float(n_uf),
+                # subsystem 귀속(메커니즘 분석용) — 이득이 urban/freeway 어디서 오는지
+                "urban_ttt": float(log.urban_ttt), "freeway_ttt": float(log.freeway_ttt)}
         return self._observe(), reward, done, info
 
     # ---------- BC 수집용 ----------
