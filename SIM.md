@@ -1,6 +1,6 @@
 # 시뮬레이터 & 최종 컨트롤러
 
-freeway+urban 결합 교통 시뮬레이터와 최종 컨트롤러 구현. RL env(`code/env.py`)가 이 `src/`를 import한다.
+freeway+urban 결합 교통 시뮬레이터와 최종 컨트롤러 구현. RL env(`rl_leader/env.py`)가 이 `src/`를 import한다.
 
 ## 구성
 ```
@@ -44,7 +44,7 @@ python work/run_claude_style_five_controller.py \
 
 RL env는 리더 탐색을 우회하고 budget을 직접 주입:
 ```python
-from code.env import RLLeaderEnv   # code/를 sys.path에 추가
+from rl_leader.env import RLLeaderEnv   # 레포 루트를 sys.path에 추가(스크립트가 자동 처리)
 env = RLLeaderEnv(scenario_name="sweet_190_skew15_w60")
 ```
 
@@ -52,4 +52,4 @@ env = RLLeaderEnv(scenario_name="sweet_190_skew15_w60")
 학습 셀 `sweet_{155,170}_w60`, `sweet_170_{skew15,incident}_w60`, `sweet_190_w60`.
 held-out(test) `sweet_190_incident_w60`, `sweet_190_skew15_w60`.
 
-> ⚠️ config 파서는 자체 구현(PyYAML 불필요). 관측/보상 등 상세는 `code/env.py`·`src/rl/` 참조.
+> ⚠️ config 파서는 자체 구현(PyYAML 불필요). 관측/보상 등 상세는 `rl_leader/env.py`·`src/rl/` 참조.

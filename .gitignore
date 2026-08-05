@@ -1,8 +1,19 @@
 __pycache__/
 *.pyc
-*.pt
-!checkpoints/*.pt
 outputs/
 logs/
 *.log
 .DS_Store
+
+# 체크포인트는 기본 제외하고 필요한 것만 화이트리스트한다.
+# 실험 변형(actor_sh_*, actor_ov*, actor_hf*, actor_fx*, actor_iql_p*, actor_onpol_* …)은
+# 데이터와 HANDOFF §13-D의 명령으로 재현 가능하므로 넣지 않는다.
+*.pt
+!checkpoints/actor_hg600_s0.pt
+!checkpoints/actor_hg600_s1.pt
+!checkpoints/actor_hg600_s2.pt
+!checkpoints/actor_iql_s0.pt
+!checkpoints/actor_iql_s1.pt
+!checkpoints/actor_iql_s2.pt
+!checkpoints/actor_iql.pt
+!checkpoints/actor_bc.pt
