@@ -158,6 +158,9 @@ class WuFaithfulFollower:
         self.signal_marginal_price: Optional[Dict[str, float]] = None
         self.signal_marginal_price_ref: Dict[str, float] = {}
         self.signal_marginal_price_weight: float = 1.0
+        # Optional PSD-potential diagonal curvature. Costs use
+        # 0.5*q*(lever-reference)^2; the mixed term reuses the existing cross map.
+        self.signal_quadratic_price: Optional[Dict[str, float]] = None
         # B2.1 trust region(2026-07-05 진단): 가격이 유효한 범위를 유한차분 이웃으로 제한.
         # 폭주(sweet_155 C 56→92)의 기전은 g_ext = g_i − d_local(두 큰 수의 차)이 측정
         # 이웃(±δ) 밖으로 선형 외삽되며 국소 곡률 변화에 월권하는 것 — step36 직독에서
@@ -177,6 +180,7 @@ class WuFaithfulFollower:
         self.metering_marginal_price: Optional[Dict[str, float]] = None
         self.metering_marginal_price_ref: Dict[str, float] = {}
         self.metering_marginal_price_weight: float = 1.0
+        self.metering_quadratic_price: Optional[Dict[str, float]] = None
         self.metering_budget_penalty_weight: float = float(cfg.simulation.T_c_h)
         # B3TR trust region(2026-07-05 §7과 동일 원리): 가격 유효 범위를 측정 이웃으로 제한.
         # metering은 후보 격자(0.1~0.3·cap)가 커서 반경을 **cap 분율**로 정의한다 —
@@ -202,6 +206,7 @@ class WuFaithfulFollower:
         self.vsl_marginal_price: Optional[Dict[str, float]] = None
         self.vsl_marginal_price_ref: Dict[str, float] = {}
         self.vsl_marginal_price_weight: float = 1.0
+        self.vsl_quadratic_price: Optional[Dict[str, float]] = None
         # ---------- F3(2026-07-06): offset 가격 채널 ----------
         # offset은 selfish 최적화가 corridor를 해치는 순수 조정 레버(2026-06-29 판정으로
         # 자율 offset OFF, "leader-coordinated 레버로 보존"). F3 = 그 보존된 계획의 실행:
@@ -213,6 +218,7 @@ class WuFaithfulFollower:
         self.offset_marginal_price_ref: Dict[str, float] = {}
         self.offset_marginal_price_weight: float = 1.0
         self.offset_marginal_price_trust_sec: Optional[float] = None
+        self.offset_quadratic_price: Optional[Dict[str, float]] = None
         # ---------- JOINT(2026-07-09): bilinear cross-term 가격 ----------
         # per-lever 선형가격이 못 담는 lever쌍 교차곡률 ∂²(TTT+V)/∂a∂b를 leader가
         # h_ext = h_global − h_local(4-corner 스텐실, own_TTS 몫 차감)로 하달. follower는
@@ -247,6 +253,13 @@ class WuFaithfulFollower:
         self.segment_agents: bool = False
         self._segment_agent_models: Dict[str, list] = {}
         self._seg13_diag: Dict[str, float] = {}
+        # Opt-in evidence capture for full-horizon RL diagnostics. Normal runs keep
+        # this disabled so candidate evaluation cost and solver behavior are unchanged.
+        self.diagnostic_trace_enabled: bool = False
+        self.last_candidate_trace: Dict[str, object] = {}
+        # RL coordination can opt into candidates at the exact priced VSL segments.
+        # Legacy PFO/P-Stack candidate ownership remains unchanged by default.
+        self.priced_vsl_segment_candidates_enabled: bool = False
         # SPLIT-PRICE v1/v2 재현(13p): v2(기본)=incumbent(leader=None)는 meter 가격-레벨
         # 배제(가격은 예산 내 배분만 — 7p 플래그십 규약). v1=True면 incumbent도
         # g_meter/h로 레벨 조절(7p에서 레짐 플래핑 병리를 낸 구성) — env SEG13_V1=1.
@@ -881,6 +894,11 @@ class WuFaithfulFollower:
                 if g_ext is not None:
                     ref = float(self.signal_marginal_price_ref.get(signal, prev_p1))
                     cost += self.signal_marginal_price_weight * float(g_ext) * (float(p1) - ref)
+            if self.signal_quadratic_price is not None:
+                curvature = self.signal_quadratic_price.get(signal)
+                if curvature is not None:
+                    ref = float(self.signal_marginal_price_ref.get(signal, prev_p1))
+                    cost += 0.5 * float(curvature) * (float(p1) - ref) ** 2
             # nin_i(green)은 리더 setpoint와 비교 가능한 net-inflow(듀얼·진단 공통).
             nin = self._agent_net_inflow_veh(signal, p1, state, fa, horizon_h)
             if self.np_price_enabled and dual_mode:
@@ -1531,6 +1549,7 @@ class WuFaithfulFollower:
             g_green = float(self.signal_marginal_price.get(signal, 0.0))
             green_ref = float(self.signal_marginal_price_ref.get(signal, prev_p1))
             green_trust = self.signal_marginal_price_trust_sec
+        q_green = float((self.signal_quadratic_price or {}).get(signal, 0.0))
         g_off = None
         off_ref = 0.0
         off_trust = None
@@ -1538,6 +1557,7 @@ class WuFaithfulFollower:
             g_off = float(self.offset_marginal_price.get(signal, 0.0))
             off_ref = float(self.offset_marginal_price_ref.get(signal, 0.0)) % cycle
             off_trust = self.offset_marginal_price_trust_sec
+        q_off = float((self.offset_quadratic_price or {}).get(signal, 0.0))
         h_cross = None
         if (
             self.green_offset_cross_price is not None
@@ -1582,6 +1602,7 @@ class WuFaithfulFollower:
             )
             if g_green is not None:
                 green_lin += self.signal_marginal_price_weight * g_green * (p1 - green_ref)
+            green_lin += 0.5 * q_green * (p1 - green_ref) ** 2
             if self.np_price_enabled and dual_mode:
                 green_lin += lambda_p * nin
             for offset in offset_cands:
@@ -1594,6 +1615,7 @@ class WuFaithfulFollower:
                 cost += green_lin
                 if g_off is not None:
                     cost += self.offset_marginal_price_weight * g_off * _circ_delta(offset, off_ref)
+                cost += 0.5 * q_off * _circ_delta(offset, off_ref) ** 2
                 if h_cross is not None:
                     cost += (
                         self.green_offset_cross_weight * h_cross
@@ -1632,6 +1654,16 @@ class WuFaithfulFollower:
         model = self._local_models[signal]
         if model.has_ramps:
             if not self.ramp_offset_enabled:
+                if self.diagnostic_trace_enabled:
+                    self.last_candidate_trace.setdefault("offset", {})[signal] = {
+                        "skipped_reason": "ramp_offset_disabled",
+                        "price_present": bool(
+                            self.offset_marginal_price is not None
+                            and signal in self.offset_marginal_price
+                        ),
+                        "selected_offset": 0.0,
+                        "candidates": [],
+                    }
                 return 0.0, 0
             return self._solve_offset_local_ramp(
                 signal, green_p1, state, coupling, arr_movement,
@@ -1679,6 +1711,7 @@ class WuFaithfulFollower:
         g_off = (
             float(self.offset_marginal_price.get(signal, 0.0)) if price_active else 0.0
         )
+        q_off = float((self.offset_quadratic_price or {}).get(signal, 0.0))
         ref_off = (
             float(self.offset_marginal_price_ref.get(signal, 0.0)) % cycle
             if price_active else 0.0
@@ -1690,21 +1723,59 @@ class WuFaithfulFollower:
 
         best_off, best_obj = 0.0, float("inf")
         evals = 0
+        candidate_trace = []
         for frac in self.offset_fractions:
             offset = (frac * cycle) % cycle
-            if trust is not None and abs(_circ_delta(offset)) > float(trust) + 1.0e-9:
+            delta = _circ_delta(offset)
+            if trust is not None and abs(delta) > float(trust) + 1.0e-9:
+                if self.diagnostic_trace_enabled:
+                    candidate_trace.append({
+                        "offset": float(offset),
+                        "delta": float(delta),
+                        "eligible": False,
+                        "rejected_reason": "trust_region",
+                    })
                 continue  # 가격이 측정된 이웃 밖(월권 방지) — trust는 그리드 1칸으로 설정됨.
             gf_by_substep = self._offset_green_fractions(
                 signal, green_p1, offset, substeps, start_idx,
             )
-            obj = rollout_local_tts_phased(
+            base_cost = rollout_local_tts_phased(
                 model, q0, arr_by_substep, gf_by_substep, s_eff0, substeps, dt_h,
             )
+            linear_cost = (
+                self.offset_marginal_price_weight * g_off * delta
+                if price_active else 0.0
+            )
+            quadratic_cost = 0.5 * q_off * delta ** 2
+            obj = base_cost
             if price_active:
-                obj += self.offset_marginal_price_weight * g_off * _circ_delta(offset)
+                obj += linear_cost
+            obj += quadratic_cost
+            if self.diagnostic_trace_enabled:
+                candidate_trace.append({
+                    "offset": float(offset),
+                    "delta": float(delta),
+                    "eligible": True,
+                    "base_cost": float(base_cost),
+                    "linear_cost": float(linear_cost),
+                    "quadratic_cost": float(quadratic_cost),
+                    "total_cost": float(obj),
+                })
             evals += 1
             if obj < best_obj - 1.0e-9:
                 best_obj, best_off = obj, float(offset)
+        if self.diagnostic_trace_enabled:
+            self.last_candidate_trace.setdefault("offset", {})[signal] = {
+                "skipped_reason": "",
+                "price_present": bool(price_active),
+                "linear_price": float(g_off),
+                "quadratic_price": float(q_off),
+                "reference": float(ref_off),
+                "trust_radius": float(trust) if trust is not None else None,
+                "selected_offset": float(best_off),
+                "selected_cost": float(best_obj),
+                "candidates": candidate_trace,
+            }
         return best_off, evals
 
     def _solve_offset_local_ramp(
@@ -1790,6 +1861,7 @@ class WuFaithfulFollower:
             and signal in self.offset_marginal_price
         )
         g_off = float(self.offset_marginal_price.get(signal, 0.0)) if price_active else 0.0
+        q_off = float((self.offset_quadratic_price or {}).get(signal, 0.0))
         ref_off = (
             float(self.offset_marginal_price_ref.get(signal, 0.0)) % cycle
             if price_active else 0.0
@@ -1801,14 +1873,23 @@ class WuFaithfulFollower:
 
         best_off, best_obj = 0.0, float("inf")
         evals = 0
+        candidate_trace = []
         for frac in self.offset_fractions:
             offset = (frac * cycle) % cycle
-            if trust is not None and abs(_circ_delta(offset)) > float(trust) + 1.0e-9:
+            delta = _circ_delta(offset)
+            if trust is not None and abs(delta) > float(trust) + 1.0e-9:
+                if self.diagnostic_trace_enabled:
+                    candidate_trace.append({
+                        "offset": float(offset),
+                        "delta": float(delta),
+                        "eligible": False,
+                        "rejected_reason": "trust_region",
+                    })
                 continue
             gf_by_substep = self._offset_green_fractions(
                 signal, green_p1, offset, substeps, start_idx,
             )
-            obj = rollout_local_tts_ramp_aware(
+            base_cost = rollout_local_tts_ramp_aware(
                 model, q0, arr_mv, s_eff0,
                 offramp_inflow, offramp_occ0, ramp_queue0, reservoir_drain,
                 freeway_congestion, self.ramp_metering_weight,
@@ -1816,11 +1897,40 @@ class WuFaithfulFollower:
                 arr_by_substep=arr_by_substep,
                 gf_by_substep=gf_by_substep,
             )
+            linear_cost = (
+                self.offset_marginal_price_weight * g_off * delta
+                if price_active else 0.0
+            )
+            quadratic_cost = 0.5 * q_off * delta ** 2
+            obj = base_cost
             if price_active:
-                obj += self.offset_marginal_price_weight * g_off * _circ_delta(offset)
+                obj += linear_cost
+            obj += quadratic_cost
+            if self.diagnostic_trace_enabled:
+                candidate_trace.append({
+                    "offset": float(offset),
+                    "delta": float(delta),
+                    "eligible": True,
+                    "base_cost": float(base_cost),
+                    "linear_cost": float(linear_cost),
+                    "quadratic_cost": float(quadratic_cost),
+                    "total_cost": float(obj),
+                })
             evals += 1
             if obj < best_obj - 1.0e-9:
                 best_obj, best_off = obj, float(offset)
+        if self.diagnostic_trace_enabled:
+            self.last_candidate_trace.setdefault("offset", {})[signal] = {
+                "skipped_reason": "",
+                "price_present": bool(price_active),
+                "linear_price": float(g_off),
+                "quadratic_price": float(q_off),
+                "reference": float(ref_off),
+                "trust_radius": float(trust) if trust is not None else None,
+                "selected_offset": float(best_off),
+                "selected_cost": float(best_obj),
+                "candidates": candidate_trace,
+            }
         return best_off, evals
 
     # ---------- freeway agent: 진짜 per-link 국소 METANET rollout (핵심 신규) ----------
@@ -1933,16 +2043,53 @@ class WuFaithfulFollower:
                 seen.add(key)
                 sequences.append(normalized)
 
+        vsl_set = sorted(float(v) for v in ff.vsl_set)
+        max_step = max(0.0, float(ff.max_vsl_step))
+
+        def add_priced_segment_candidates() -> None:
+            if not self.priced_vsl_segment_candidates_enabled or not vsl_set:
+                return
+            priced_keys = set((self.vsl_marginal_price or {}).keys())
+            priced_keys.update((self.vsl_quadratic_price or {}).keys())
+            previous_vec = [
+                float(segment_vsl(previous, link, index, self.cfg))
+                for index in range(n_seg)
+            ]
+            for key in sorted(priced_keys):
+                prefix = f"{link}__seg"
+                if not key.startswith(prefix):
+                    continue
+                index = int(key[len(prefix):])
+                if index < 0 or index >= n_seg:
+                    continue
+                reference = previous_vec[index]
+                feasible = [
+                    value for value in vsl_set
+                    if abs(value - reference) <= max_step + 1.0e-9
+                ]
+                if not feasible:
+                    continue
+                selected = {min(feasible, key=lambda value: abs(value - reference))}
+                lower = [value for value in feasible if value < reference - 1.0e-9]
+                upper = [value for value in feasible if value > reference + 1.0e-9]
+                if lower:
+                    selected.add(max(lower))
+                if upper:
+                    selected.add(min(upper))
+                for value in sorted(selected):
+                    candidate = list(previous_vec)
+                    candidate[index] = float(value)
+                    add_sequence([candidate])
+
         if not ff.vsl_sequence_search:
             for vec in base_candidates:
                 add_sequence([[float(v) for v in vec]])
+            add_priced_segment_candidates()
             return sequences
 
-        vsl_set = sorted(float(v) for v in ff.vsl_set)
         if not vsl_set:
             return sequences
         vsl_max = max(vsl_set)
-        max_step = max(0.0, float(ff.max_vsl_step))
         sequence_steps = max(1, min(horizon, int(ff.vsl_sequence_horizon_steps)))
         net = self.cfg.network
         bottleneck_idx = {
@@ -1964,6 +2111,7 @@ class WuFaithfulFollower:
 
         for vec in base_candidates:
             add_sequence([sanitize_base_vector([float(v) for v in vec])])
+        add_priced_segment_candidates()
         limit = max(len(sequences), int(ff.vsl_sequence_candidate_limit))
 
         def segment_sequences(index: int) -> list[list[float]]:
@@ -2292,6 +2440,13 @@ class WuFaithfulFollower:
                         cost += self.vsl_marginal_price_weight * float(g_vsl) * (
                             float(value) - ref
                         )
+            if self.vsl_quadratic_price:
+                for i, value in enumerate(first_vec):
+                    key = f"{link}__seg{i}"
+                    curvature = self.vsl_quadratic_price.get(key)
+                    if curvature is not None and i < len(prev_vec):
+                        ref = float(self.vsl_marginal_price_ref.get(key, float(prev_vec[i])))
+                        cost += 0.5 * float(curvature) * (float(value) - ref) ** 2
             # JOINT vsl×metering cross항(설정 시에만): 이 link 소유 ramp의 metering(previous에
             # 고정)과 후보 link-binding VSL(min seg)의 교차. primal joint은 이미 metering
             # best-response로 포착되나, cross 가격이 externality 곡률을 반영한다.
@@ -2651,6 +2806,11 @@ class WuFaithfulFollower:
                             cost += self.vsl_marginal_price_weight * float(g_vsl) * (
                                 float(v_cand) - ref_v
                             )
+                    if self.vsl_quadratic_price:
+                        curvature_v = self.vsl_quadratic_price.get(key)
+                        if curvature_v is not None:
+                            ref_v = float(self.vsl_marginal_price_ref.get(key, prev_v))
+                            cost += 0.5 * float(curvature_v) * (float(v_cand) - ref_v) ** 2
                     if own_ramp is not None and m_cand is not None and (
                         leader_present or self.seg13_meter_price_standing
                     ):
@@ -2664,6 +2824,13 @@ class WuFaithfulFollower:
                                     self.metering_marginal_price_weight
                                     * float(g_m) * (float(m_cand) - m_ref)
                                 )
+                        if self.metering_quadratic_price:
+                            curvature_m = self.metering_quadratic_price.get(own_ramp)
+                            if curvature_m is not None:
+                                m_ref = float(self.metering_marginal_price_ref.get(
+                                    own_ramp, float(m_cand),
+                                ))
+                                cost += 0.5 * float(curvature_m) * (float(m_cand) - m_ref) ** 2
                         if self.vsl_meter_cross_price:
                             h_c = self.vsl_meter_cross_price.get(own_ramp)
                             if h_c is not None:
@@ -3023,7 +3190,10 @@ class WuFaithfulFollower:
         )
 
         def _price_metering_cost(meter: Mapping[str, float]) -> float:
-            if self.metering_marginal_price is None or not owned_ramps:
+            if (
+                self.metering_marginal_price is None
+                and self.metering_quadratic_price is None
+            ) or not owned_ramps:
                 return 0.0
             # SPLIT-PRICE 정합 v2(2026-07-09): split 모드에선 가격이 '총량'을 정하는
             # 경로를 컨트롤러 어디에도 두지 않는다 — leader=None(incumbent/PFO probe)
@@ -3034,17 +3204,16 @@ class WuFaithfulFollower:
                 return 0.0
             total_price = 0.0
             for ramp in owned_ramps:
-                g_ext = self.metering_marginal_price.get(ramp)
-                if g_ext is None:
-                    continue
                 ref = float(self.metering_marginal_price_ref.get(
                     ramp, float(snapshot.ramp_metering.get(ramp, caps[ramp]))
                 ))
-                total_price += (
-                    self.metering_marginal_price_weight
-                    * float(g_ext)
-                    * (float(meter.get(ramp, ref)) - ref)
-                )
+                delta = float(meter.get(ramp, ref)) - ref
+                g_ext = (self.metering_marginal_price or {}).get(ramp)
+                if g_ext is not None:
+                    total_price += self.metering_marginal_price_weight * float(g_ext) * delta
+                curvature = (self.metering_quadratic_price or {}).get(ramp)
+                if curvature is not None:
+                    total_price += 0.5 * float(curvature) * delta ** 2
             if priced_metering:
                 total_meter = sum(float(meter.get(r, 0.0)) for r in owned_ramps)
                 if nuf_mode_priced == "dual":
@@ -4411,6 +4580,8 @@ class WuFaithfulFollower:
             if previous_control is not None
             else ControlAction.uncontrolled(self.cfg)
         )
+        if self.diagnostic_trace_enabled:
+            self.last_candidate_trace = {"offset": {}, "vsl": {}}
         control, iteration, converged, residual, evals = self._solve_followers(
             state, first_demand, previous, leader, forecast,
         )

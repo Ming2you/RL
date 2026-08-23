@@ -13,9 +13,6 @@ import sys
 import time
 from pathlib import Path
 
-if r"C:/torchlib" not in sys.path:
-    sys.path.insert(0, r"C:/torchlib")
-
 import numpy as np
 import torch
 
@@ -41,7 +38,7 @@ def baselines(tag):
 
 
 def rollout(actor, scen, max_sec):
-    env = RLLeaderEnv(scenario_name=scen)
+    env = RLLeaderEnv(scenario_name=scen, action_mode="legacy_budget")
     obs = env.reset()
     warm = float(env.sim.total_ttt)
     t0 = time.time()

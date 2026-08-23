@@ -5,9 +5,6 @@
 from __future__ import annotations
 import sys
 from pathlib import Path
-if r"C:/torchlib" not in sys.path:
-    sys.path.insert(0, r"C:/torchlib")
-
 import numpy as np
 import torch
 import torch.nn as nn

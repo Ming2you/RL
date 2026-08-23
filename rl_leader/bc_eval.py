@@ -29,7 +29,7 @@ def load_policy(path):
 
 
 def rollout_policy(scenario, policy):
-    env = RLLeaderEnv(scenario_name=scenario)
+    env = RLLeaderEnv(scenario_name=scenario, action_mode="legacy_budget")
     obs = env.reset()
     done = False
     while not done:
@@ -39,7 +39,7 @@ def rollout_policy(scenario, policy):
 
 def rollout_optimizer(scenario):
     from src.controllers.stackelberg_wu_metered import StackelbergWuMeteredController
-    env = RLLeaderEnv(scenario_name=scenario)
+    env = RLLeaderEnv(scenario_name=scenario, action_mode="legacy_budget")
     teacher = StackelbergWuMeteredController(env.cfg)
     env.reset()
     done = False

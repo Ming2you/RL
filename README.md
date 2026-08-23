@@ -33,9 +33,24 @@ vs P-Stack **−88.0 / −125.8**(둘 다 승) · vs PFO 승 · **vs P-CENT는 �
 ```
 src/                시뮬레이터 + 최종 컨트롤러(P-Stack/PFO/P-CENT)
 work/               러너
-code/               RL 구현(env·iql·collect_parallel·eval_guarded·analyze_mechanism …)
+rl_leader/          RL 구현(env·IQL·full-action 수집·평가)
 data/rl_dataset/    offline RL 학습 데이터 27,706 샘플
 data/holdout/       held-out baseline run_log(평가 기준선)
 data/pcent_teacher/ P-CENT 궤적
 checkpoints/        actor_iql.pt(★우승), actor_bc.pt
 ```
+
+## Full-Action RL 경로
+
+Python 3.10-3.12 환경에서 `pip install -r requirements.txt` 후 저장소 루트에서 실행합니다.
+코드는 특정 사용자 경로나 별도 Torch 설치 경로를 `sys.path`에 주입하지 않습니다.
+
+```bash
+python -m rl_leader.env
+python -m rl_leader.collect_full_action --episodes 28 --out data/full_action_v2/worker_100.npz
+python -m rl_leader.iql --data "data/full_action_v2/*.npz" --steps 40000 --seed 0 --out checkpoints/actor_full_iql_s0.pt
+python -m rl_leader.eval_full_action "checkpoints/actor_full_iql_s*.pt"
+```
+
+새 checkpoint에는 observation/action schema, 학습 설정, seed, action support가 함께 저장되며,
+schema가 다른 환경에서는 평가가 즉시 중단됩니다.

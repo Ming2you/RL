@@ -6,9 +6,6 @@ NC baseline = _wang whole-sim total. optimizer baseline = collect log 최종 cum
 from __future__ import annotations
 import sys, re
 from pathlib import Path
-if r"C:/torchlib" not in sys.path:
-    sys.path.insert(0, r"C:/torchlib")
-
 import numpy as np
 import torch
 
@@ -31,7 +28,7 @@ def opt_ttt(cell):
 
 
 def rollout(actor, scenario):
-    env = RLLeaderEnv(scenario_name=scenario)
+    env = RLLeaderEnv(scenario_name=scenario, action_mode="legacy_budget")
     obs = env.reset(); done = False
     while not done:
         obs, r, done, info = env.step(actor.act(obs, deterministic=True))

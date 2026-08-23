@@ -93,6 +93,45 @@ class TestF1CopyIntegrity(unittest.TestCase):
                 msg="spill hinge must be inert on an empty network",
             )
 
+    def test_vsl_diagnostic_trace_records_candidate_costs(self):
+        cfg = _build_cfg()
+        state = TrafficState.initial(cfg)
+        demand = DemandProfile(
+            cfg,
+            ScenarioConfig("probe", urban_scale=1.0, freeway_scale=1.0, ramp_scale=1.0),
+        ).horizon(0.0, 1)[0]
+        previous = ControlAction.fixed(cfg)
+        follower = F1WuFaithfulFollower(cfg)
+        follower.diagnostic_trace_enabled = True
+        follower.priced_vsl_segment_candidates_enabled = True
+        follower.last_candidate_trace = {"offset": {}, "vsl": {}}
+        link = cfg.network.freeway_links[0]
+        key = f"{link}__seg3"
+        follower.vsl_marginal_price = {key: 1.0}
+        follower.vsl_marginal_price_ref = {key: 100.0}
+        follower.vsl_marginal_price_trust_kmh = cfg.freeway_follower.max_vsl_step
+        coupling = follower._wu._coupling(
+            state, ControlAction.uncontrolled(cfg), demand,
+        )
+        follower._solve_freeway_agent_local(link, state, coupling, demand, previous)
+        invocation = follower.last_candidate_trace["vsl"][link][-1]
+        self.assertIn(key, invocation["price_keys"])
+        self.assertGreater(invocation["raw_candidate_count"], 0)
+        self.assertGreater(len(invocation["candidates"]), 0)
+        self.assertIn("base_cost", invocation["candidates"][0])
+        self.assertIn("linear_cost", invocation["candidates"][0])
+        segment_values = {
+            candidate["first_vsl"][3] for candidate in invocation["candidates"]
+        }
+        price_costs = [
+            candidate["linear_cost"]
+            + candidate["quadratic_cost"]
+            + candidate["cross_cost"]
+            for candidate in invocation["candidates"]
+        ]
+        self.assertGreater(len(segment_values), 1)
+        self.assertGreater(max(price_costs) - min(price_costs), 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

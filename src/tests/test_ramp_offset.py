@@ -89,6 +89,23 @@ class TestRampOffset(unittest.TestCase):
         self.assertLess(off, cfg.network.cycle_length)
         self.assertGreater(evals, 0)
 
+    def test_diagnostic_trace_records_priced_ramp_offset_gate(self):
+        cfg = _build_cfg()
+        follower = WuFaithfulFollower(cfg)
+        follower.diagnostic_trace_enabled = True
+        ramp_signals = [
+            signal for signal in cfg.network.signals
+            if follower._local_models[signal].has_ramps
+        ]
+        follower.offset_marginal_price = {signal: 0.1 for signal in ramp_signals}
+        follower.offset_marginal_price_ref = {signal: 0.0 for signal in ramp_signals}
+        _solve(follower, cfg)
+        for signal in ramp_signals:
+            trace = follower.last_candidate_trace["offset"][signal]
+            self.assertEqual(trace["skipped_reason"], "ramp_offset_disabled")
+            self.assertTrue(trace["price_present"])
+            self.assertEqual(trace["candidates"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -422,6 +422,9 @@ class F1WuFaithfulFollower(WuFaithfulFollower):
         vsl_sequences = self._freeway_vsl_sequence_candidates(
             link, n_seg, previous, candidates, horizon,
         )
+        raw_candidate_count = len(vsl_sequences)
+        trust_kept_count = None
+        trust_fallback_used = False
         # JOINT h_local probe: vsl를 단일 값으로 고정 채점(고정 (meter,vsl) own-TTS).
         if vsl_override is not None:
             fixed_vec = [float(v) for v in vsl_override][:n_seg]
@@ -442,8 +445,11 @@ class F1WuFaithfulFollower(WuFaithfulFollower):
                         break
                 if ok:
                     kept.append(seq)
+            trust_kept_count = len(kept)
             if kept:
                 vsl_sequences = kept
+            else:
+                trust_fallback_used = True
 
         rhos0 = list(state.freeway_density.get(link, []))
         speeds0 = list(state.freeway_speed.get(link, []))
@@ -476,6 +482,7 @@ class F1WuFaithfulFollower(WuFaithfulFollower):
         best_vec, best_obj = list(prev_vec), float("inf")
         best_offramp_flow: Dict[str, float] = {o: 0.0 for o in model.owned_offramps}
         evals = 0
+        candidate_trace = [] if self.diagnostic_trace_enabled else None
         for sequence in vsl_sequences:
             candidate_control = ControlAction(
                 ramp_metering=dict(previous.ramp_metering),
@@ -568,6 +575,7 @@ class F1WuFaithfulFollower(WuFaithfulFollower):
                     )
                     if excess > 0.0:
                         cost += w_rho * excess * seg_veh * dt_h
+            base_cost = float(cost)
             smooth = sum(abs(first_vec[i] - prev_vec[i]) for i in range(min(n_seg, len(first_vec))))
             for prev_step, next_step in zip(sequence, sequence[1:]):
                 smooth += sum(
@@ -575,18 +583,34 @@ class F1WuFaithfulFollower(WuFaithfulFollower):
                     for i in range(min(len(prev_step), len(next_step), n_seg))
                 )
             # PRICE-TR: VSL 가격 활성이면 smoothness 마찰 0(trust가 보폭 제약, base와 동일).
+            smoothness_cost = 0.0
             if not (self.price_smoothness_disabled and self.vsl_marginal_price):
-                cost += smooth_w * smooth
+                smoothness_cost = smooth_w * smooth
+                cost += smoothness_cost
+            linear_cost = 0.0
             if self.vsl_marginal_price:
                 for i, value in enumerate(first_vec):
                     key = f"{link}__seg{i}"
                     g_vsl = self.vsl_marginal_price.get(key)
                     if g_vsl is not None and i < len(prev_vec):
                         ref = float(self.vsl_marginal_price_ref.get(key, float(prev_vec[i])))
-                        cost += self.vsl_marginal_price_weight * float(g_vsl) * (
+                        term = self.vsl_marginal_price_weight * float(g_vsl) * (
                             float(value) - ref
                         )
+                        linear_cost += term
+                        cost += term
+            quadratic_cost = 0.0
+            if self.vsl_quadratic_price:
+                for i, value in enumerate(first_vec):
+                    key = f"{link}__seg{i}"
+                    curvature = self.vsl_quadratic_price.get(key)
+                    if curvature is not None and i < len(prev_vec):
+                        ref = float(self.vsl_marginal_price_ref.get(key, float(prev_vec[i])))
+                        term = 0.5 * float(curvature) * (float(value) - ref) ** 2
+                        quadratic_cost += term
+                        cost += term
             # JOINT vsl×metering cross항(설정 시에만) — base와 동일 규약(link-binding VSL×ramp meter).
+            cross_cost = 0.0
             if self.vsl_meter_cross_price:
                 vsl_bind = float(min(first_vec)) if first_vec else vsl_max
                 for ramp in model.owned_ramps:
@@ -595,9 +619,21 @@ class F1WuFaithfulFollower(WuFaithfulFollower):
                         continue
                     m_ref, v_ref = self.vsl_meter_cross_ref.get(ramp, (0.0, vsl_bind))
                     m_now = float(previous.ramp_metering.get(ramp, float(m_ref)))
-                    cost += self.vsl_meter_cross_weight * float(h_c) * (
+                    term = self.vsl_meter_cross_weight * float(h_c) * (
                         (m_now - float(m_ref)) * (vsl_bind - float(v_ref))
                     )
+                    cross_cost += term
+                    cost += term
+            if candidate_trace is not None:
+                candidate_trace.append({
+                    "first_vsl": [float(value) for value in first_vec],
+                    "base_cost": base_cost,
+                    "smoothness_cost": float(smoothness_cost),
+                    "linear_cost": float(linear_cost),
+                    "quadratic_cost": float(quadratic_cost),
+                    "cross_cost": float(cross_cost),
+                    "total_cost": float(cost),
+                })
             evals += 1
             if cost < best_obj:
                 best_obj, best_vec = cost, list(first_vec)
@@ -613,6 +649,39 @@ class F1WuFaithfulFollower(WuFaithfulFollower):
             self._wu._last_offramp_flow[link] = 0.0
         vsl_dict: Dict[str, float] = {f"{link}__seg{i}": float(v) for i, v in enumerate(best_vec)}
         vsl_dict[link] = float(min(best_vec)) if best_vec else vsl_max
+        if candidate_trace is not None:
+            self.last_candidate_trace.setdefault("vsl", {}).setdefault(link, []).append({
+                "state_density": [float(value) for value in rhos0],
+                "state_speed": [float(value) for value in speeds0],
+                "previous_vsl": [float(value) for value in prev_vec],
+                "metering": {
+                    ramp: float(previous.ramp_metering.get(ramp, 0.0))
+                    for ramp in model.owned_ramps
+                },
+                "price_keys": sorted((self.vsl_marginal_price or {}).keys()),
+                "price": {
+                    key: float(value) for key, value in (self.vsl_marginal_price or {}).items()
+                    if key.startswith(f"{link}__")
+                },
+                "reference": {
+                    key: float(value) for key, value in self.vsl_marginal_price_ref.items()
+                    if key.startswith(f"{link}__")
+                },
+                "quadratic_price": {
+                    key: float(value) for key, value in (self.vsl_quadratic_price or {}).items()
+                    if key.startswith(f"{link}__")
+                },
+                "trust_radius": (
+                    float(self.vsl_marginal_price_trust_kmh)
+                    if self.vsl_marginal_price_trust_kmh is not None else None
+                ),
+                "raw_candidate_count": int(raw_candidate_count),
+                "trust_kept_count": trust_kept_count,
+                "trust_fallback_used": bool(trust_fallback_used),
+                "selected_vsl": [float(value) for value in best_vec],
+                "selected_cost": float(best_obj),
+                "candidates": candidate_trace,
+            })
         return vsl_dict, best_obj, evals
 
 

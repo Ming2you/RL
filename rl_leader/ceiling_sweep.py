@@ -15,7 +15,7 @@ from rl_leader.env import RLLeaderEnv
 
 
 def rollout_fixed(scen: str, n_p: float, n_uf: float):
-    env = RLLeaderEnv(scenario_name=scen)
+    env = RLLeaderEnv(scenario_name=scen, action_mode="legacy_budget")
     env.reset()
     warm = float(env.sim.total_ttt)             # warmup(0..4) 누적
     a = env.budget_to_action(n_p, n_uf)         # 고정 액션

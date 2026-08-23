@@ -1,7 +1,7 @@
 # held-out 일반화 평가(Phase 4, 2026-07-22) — RL 정책 vs NC/PFO/P-Stack/P-CENT, windowed TTT
 """연속분포로 학습한 RL leader를 학습에 없던 190+stressor(190-incident/190-skew)에서 평가.
 지표 = windowed TTT(warmup 5스텝 제외) = cum_total_ttt[last] − cum_total_ttt[step==WARM-1].
-baseline은 outputs/_wang3/ho_{ctrl}_{tag}/{CTRL}/run_log.csv에서 동일 방식으로 계산.
+baseline은 data/holdout/ho_{ctrl}_{tag}.csv에서 동일 방식으로 계산.
 RL은 RLLeaderEnv 롤아웃(deterministic) 후 (final − warmup) total_ttt.
 
 usage: python rl_leader/eval_holdout.py <actor.pt> [tag]
@@ -9,9 +9,6 @@ usage: python rl_leader/eval_holdout.py <actor.pt> [tag]
 from __future__ import annotations
 import sys, csv
 from pathlib import Path
-if r"C:/torchlib" not in sys.path:
-    sys.path.insert(0, r"C:/torchlib")
-
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,7 +50,7 @@ def windowed_from_csv(path: Path):
 
 
 def rollout_windowed(actor, scenario):
-    env = RLLeaderEnv(scenario_name=scenario)
+    env = RLLeaderEnv(scenario_name=scenario, action_mode="legacy_budget")
     env.reset()
     warm_ttt = float(env.sim.total_ttt)   # warmup(0..WARM-1) 누적
     done = False
@@ -71,7 +68,7 @@ def main(policy_path, tag):
     for disp, scen, htag in HOLDOUT:
         base_vals = {}
         for label, pref, ctrl in BASE:
-            p = ROOT / "outputs" / "_wang3" / f"{pref}_{htag}" / ctrl / "run_log.csv"
+            p = ROOT / "data" / "holdout" / f"{pref}_{htag}.csv"
             base_vals[label] = windowed_from_csv(p)
         try:
             rl = rollout_windowed(actor, scen)

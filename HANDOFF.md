@@ -167,7 +167,7 @@ python code/analyze_mechanism.py --trace-dir traces --tag s0
 ```
 src/            시뮬레이터 + 최종 컨트롤러(plant·coupling·P-Stack/PFO/P-CENT·config)
 work/           러너 run_claude_style_five_controller.py
-code/           RL 구현 (env·iql·collect_parallel·eval_guarded·analyze_mechanism …)
+rl_leader/      RL 구현 (env·iql·collect_parallel·eval_guarded·analyze_mechanism …)
 data/rl_dataset/  offline RL 학습 데이터 27,706 샘플(14 npz)
 data/holdout/     held-out baseline run_log 8개(평가 기준선)
 data/pcent_teacher/  P-CENT 궤적(inverse-optimization 목표)
@@ -178,8 +178,8 @@ checkpoints/    actor_iql.pt(★우승), actor_bc.pt(참고)
 ```bash
 pip install -r requirements.txt   # numpy 필수, torch(RL), pandas·matplotlib(분석)
 ```
-- **주의(Windows)**: torch를 기본 경로에 설치하면 긴 경로(260자) 에러가 난다. 이 프로젝트는 `pip install --target C:/torchlib torch --index-url https://download.pytorch.org/whl/cpu`로 우회했고, `code/nets.py`·`iql.py`가 `sys.path`에 `C:/torchlib`을 추가한다. **다른 환경이면 그 부트스트랩 줄을 지우면 된다.**
-- `code/*.py`는 `ROOT`를 `parents[1]`로 잡아 `src/`를 import한다. 레포 루트에서 실행할 것.
+- Torch를 포함한 의존성은 활성화한 venv에 설치한다. 소스 코드는 특정 머신의 Torch 경로를 `sys.path`에 추가하지 않는다.
+- `rl_leader/*.py`는 `ROOT`를 `parents[1]`로 잡아 `src/`를 import한다. 레포 루트에서 실행할 것.
 
 ### 7.3 컨트롤러 재현 (baseline 재생성이 필요할 때)
 공통 물리 env:

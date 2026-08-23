@@ -7,9 +7,6 @@ usage: python rl_leader/sac.py [--bc actor_bc.pt] [--scenario ...] [--steps N] [
 from __future__ import annotations
 import sys, argparse, time
 from pathlib import Path
-if r"C:/torchlib" not in sys.path:
-    sys.path.insert(0, r"C:/torchlib")
-
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -42,13 +39,13 @@ def train(args):
     if args.continuous:
         def new_env():
             scen = make_random_scenario(rng, args.holdout_demand)
-            return RLLeaderEnv(scenario_dict=scen, T_total=args.T)
+            return RLLeaderEnv(scenario_dict=scen, T_total=args.T, action_mode="legacy_budget")
         env = new_env(); cur = "random"; envs = None
         print(f"continuous SAC: demand~U[1.55,2.40], stressor∈{{none,skew,incident}}, "
               f"holdout_demand={args.holdout_demand}", flush=True)
     else:
         scenarios = [s.strip() for s in args.scenarios.split(",") if s.strip()]
-        envs = {s: RLLeaderEnv(scenario_name=s, T_total=args.T) for s in scenarios}
+        envs = {s: RLLeaderEnv(scenario_name=s, T_total=args.T, action_mode="legacy_budget") for s in scenarios}
         cur = scenarios[0]; env = envs[cur]
         print(f"multi-scenario SAC: {scenarios}", flush=True)
     od, ad = env.obs_dim, env.action_dim

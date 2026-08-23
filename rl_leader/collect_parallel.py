@@ -81,7 +81,7 @@ def main():
         scen = make_random_scenario(rng)
         mode = pick_mode(rng)
         try:
-            env = RLLeaderEnv(scenario_dict=scen, T_total=a.T)
+            env = RLLeaderEnv(scenario_dict=scen, T_total=a.T, action_mode="legacy_budget")
         except Exception as e:
             print(f"[ep{ep}] env 생성 실패: {e}", flush=True)
             continue
