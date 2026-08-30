@@ -1,7 +1,7 @@
-# Response-Aware Nonlinear IQL 구현 기준서
+# Response-Aware Nonlinear IQL Short-Paper 구현 기준서
 
 **상태 기준일:** 2026-08-30
-**목적:** 지금까지 구축한 실험 기반을 보존하면서, 논문 초안에서 제안한 비선형 coordination leader를 실제 코드와 실험으로 연결한다.
+**목적:** 지금까지 구축한 실험 기반을 보존하면서, `170 incident` 대표 시나리오에서 논문 초안의 비선형 coordination leader를 구현하고 short paper에 필요한 핵심 가설을 검증한다.
 
 ## 1. 한 줄 결론
 
@@ -29,6 +29,19 @@
 - **Claim B:** follower-response surrogate와 distilled anchor가 P-Stack leader solve를 충분히 대체한다.
 
 Claim B는 Claim A가 통과한 뒤의 별도 단계다.
+
+### 2.3 Short-paper 실험 범위
+
+이번 제출에서는 `sweet_170_incident_w60` 하나를 주 시나리오로 사용한다. 이 시나리오는 정상 혼잡, incident onset, peak, recovery를 포함하므로 green, offset, metering, VSL과 cross-control coordination을 한 실험 안에서 관찰하기 적합하다.
+
+단, 한 시나리오는 한 번의 deterministic run을 뜻하지 않는다.
+
+- congestion growth, incident onset, peak, early recovery, late recovery에서 여러 frozen event를 표집한다.
+- frozen event 단위로 train/calibration/test를 분리한다.
+- final full-run은 최소 3개의 matched stochastic seeds 또는 demand/incident perturbation으로 반복한다.
+- 같은 seed에서는 모든 controller가 동일한 demand와 incident realization을 사용한다.
+
+이번 논문의 주장은 **대표 incident scenario에서의 feasibility와 mechanism 검증**으로 제한한다. 5개 시나리오 일반화, surrogate top-K, direct leader replacement는 후속 연구 범위로 둔다.
 
 ## 3. 지금까지 완료한 것
 
@@ -201,24 +214,24 @@ r_t = - incremental_TTT_t
 
 ### Phase 2. nonlinear oracle headroom audit
 
-Dense data를 모으기 전에 170/190의 frozen state 10~20개에서 sparse candidate를 전수 follower solve한다.
+Dense data를 모으기 전에 `170 incident`의 대표 frozen state 8개에서 sparse candidate를 전수 follower solve한다. 상태는 incident onset 전후, peak, recovery를 포함한다.
 
 1. common state와 follower memory에서 모든 candidate를 실행한다.
 2. response-equivalence로 deduplicate한다.
 3. unique response만 H3/H12/drain으로 승격한다.
 4. linear-only와 nonlinear catalog의 oracle best gain을 비교한다.
 
-**중단 조건:** nonlinear 후보가 새로운 response class를 거의 만들지 않거나 strict tail oracle best가 linear-only/P-Stack보다 개선되지 않으면 RL 학습 전에 follower objective와 candidate field를 다시 설계한다.
+**중단 조건:** nonlinear 후보가 linear-only에 없는 response class를 만들지 못하거나 strict tail oracle best가 linear-only/P-Stack보다 개선되지 않으면 전체 데이터 수집과 RL 학습을 시작하지 않는다. follower objective와 candidate field를 먼저 다시 설계한다.
 
 ### Phase 3. iterative simulator-assisted batch 구축
 
-1. 5개 scenario에서 congestion growth, peak, early recovery, late recovery를 event-group 단위로 freeze한다.
+1. `170 incident`에서 congestion growth, incident onset, peak, early recovery, late recovery를 event-group 단위로 freeze한다.
 2. scenario별 episode 전체를 무작정 늘리지 않고 coordination-eligible event를 우선 표집한다.
 3. 후보 생성 -> actual response -> response dedup -> paired continuation label 순으로 처리한다.
 4. event-group 단위로 train/calibration/test split하고 같은 frozen state의 candidate가 split을 넘지 않게 한다.
 5. batch를 완전히 freeze한 뒤에만 offline training을 수행한다.
 
-권장 1차 gate는 train 50 event groups, calibration 20, untouched test 20이며 positive event가 각 split에 존재해야 한다. 단순 row 수가 아니라 unique event와 unique response 수를 보고한다.
+Short-paper 1차 목표는 coordination-eligible event group `20~30`개다. 기본 split은 event-group 기준 `60/20/20`이며 positive event가 calibration과 untouched test에도 존재해야 한다. row 수뿐 아니라 unique event, unique response, phase별 coverage를 함께 보고한다. 20개 미만이면 결과를 pilot으로만 취급하고, 같은 시나리오의 추가 demand/incident perturbation에서 event를 보충한다.
 
 ### Phase 4. anchored option dataset
 
@@ -274,12 +287,13 @@ Accuracy나 평균 MSE보다 아래 지표를 우선한다.
 
 ### Phase 7. full-run 평가
 
-1. 170과 190에서 one-shot intervention + P-Stack cooldown을 먼저 평가한다.
-2. 통과하면 5개 scenario, 최소 3 seeds로 확장한다.
-3. 모든 비교는 matched demand/incident seed와 동일 simulator revision을 쓴다.
-4. TTT 전체, freeway/urban TTT, terminal inventory, follower infeasibility, intervention count를 함께 보고한다.
+1. `170 incident`에서 one-shot intervention + P-Stack cooldown을 평가한다.
+2. 최소 3개의 matched seed 또는 사전에 고정한 demand/incident perturbation으로 반복한다.
+3. 모든 비교는 동일 simulator revision과 controller-independent random realization을 쓴다.
+4. P-Stack, linear selector, linear+quadratic, linear+quadratic+cross-control을 비교한다.
+5. TTT 전체, freeway/urban TTT, terminal inventory, follower infeasibility, intervention count를 함께 보고한다.
 
-**승격 조건:** 5개 scenario 모두에서 P-Stack 대비 non-inferior이고 aggregate paired TTT가 개선되며, selected intervention의 strict-tail false positive가 0이다. 한 scenario라도 반복 열세면 데이터만 추가하기 전에 실패한 response class와 horizon을 attribution한다.
+**승격 조건:** 모든 matched run에서 P-Stack 대비 non-inferior이고 aggregate paired TTT가 개선되며, selected intervention의 strict-tail false positive가 0이다. 반복 run 중 하나라도 material하게 열세면 데이터를 바로 추가하지 않고 실패한 response class, traffic phase, label horizon을 attribution한다.
 
 ### Phase 8. 실제 leader replacement
 
@@ -294,34 +308,41 @@ Accuracy나 평균 MSE보다 아래 지표를 우선한다.
 - `surrogate-top-k`: 예측 후 top-K actual solve, 계산 절감
 - `direct/distilled-anchor`: P-Stack leader solve 없이 실행, 최종 replacement
 
-## 8. 필수 ablation
+## 8. Short-paper 비교 및 ablation
+
+본문의 필수 비교는 네 가지로 제한한다.
 
 1. P-Stack
-2. current linear owner-block oracle
-3. linear-only anchored option IQL
-4. linear + quadratic
-5. linear + quadratic + cross-control
-6. response dedup 제거
-7. H3 label만 사용
-8. H12/drain label 사용
-9. LCB abstention 제거
-10. current logistic/ridge selector
-11. pairwise ranker
-12. IQL, CQL, TD3+BC를 동일 finite candidate support에서 비교
+2. linear-only response-aware selector
+3. linear + quadratic selector
+4. linear + quadratic + cross-control selector
 
-알고리즘 비교에서 candidate set, state, split, label horizon을 바꾸지 않는다. 그래야 성능 차이를 알고리즘 차이로 해석할 수 있다.
+추가 계산 여유가 있으면 response dedup 제거와 LCB abstention 제거를 mechanism ablation으로 수행한다. Current logistic/ridge selector, pairwise ranker, CQL, TD3+BC의 전체 비교는 appendix 또는 후속 연구로 미룬다. 알고리즘 비교를 추가할 때는 candidate set, state, split, label horizon을 바꾸지 않는다.
 
 ## 9. 즉시 실행 순서
 
 1. 현재 dense v3 freeze의 terminal artifact와 coverage를 다시 감사한다. CPU-heavy job은 자동 재개하지 않는다.
 2. nonlinear action schema와 zero-residual P-Stack parity test를 구현한다.
-3. 170/190 frozen state 소수에서 nonlinear headroom audit을 실행한다.
-4. strict tail positive와 unique response 증가가 확인될 때만 5개 scenario batch 수집을 시작한다.
+3. `170 incident` frozen state 8개에서 nonlinear headroom audit을 실행한다.
+4. strict tail positive와 linear-only에 없는 unique response가 확인될 때만 20~30 event batch를 수집한다.
 5. anchored option dataset builder와 response-aware IQL critic을 구현한다.
 6. event-group calibration으로 LCB gate를 고정한다.
-7. one-shot full-run을 통과한 뒤 repeated option과 surrogate/distillation로 넘어간다.
+7. `170 incident` matched full-run 3회를 실행하고 네 controller variant를 비교한다.
+8. 5개 시나리오, repeated option, surrogate/distillation은 short-paper 제출 이후로 넘긴다.
 
 이 순서는 24시간 데이터를 먼저 모으고 방향을 나중에 판단하는 문제를 피한다. 각 단계는 짧은 oracle/headroom gate를 통과해야 다음 계산 예산을 사용한다.
+
+### 예상 소요 시간
+
+| 작업 | 예상 wall-clock |
+|---|---:|
+| nonlinear schema와 parity test | 0.5~1일 |
+| frozen event 8개 headroom audit | 6~12시간 |
+| 20~30 event의 장기 label 생성 | 12~36시간 |
+| IQL ensemble 학습과 calibration | 2~6시간 |
+| matched full-run 및 필수 ablation | 12~24시간 |
+
+빠르면 약 2일, 보수적으로 3~4일을 1차 판정 예산으로 잡는다. 대부분의 시간은 neural-network update가 아니라 follower MPC와 장기 counterfactual rollout에 사용된다.
 
 ## 10. 완료 정의
 
@@ -333,8 +354,11 @@ Accuracy나 평균 MSE보다 아래 지표를 우선한다.
 - 학습 단위가 raw action이 아니라 replayable response-equivalence class다.
 - long-horizon label, option reward, deployment continuation이 같은 estimand를 사용한다.
 - event-group holdout에서 false-positive 0의 calibrated fallback gate가 있다.
-- 5개 scenario matched full-run에서 P-Stack 대비 non-inferiority 및 aggregate improvement를 확인한다.
-- oracle-response, surrogate-top-K, direct replacement 결과를 구분해 보고한다.
+- `170 incident`의 최소 3개 matched full-run에서 P-Stack 대비 non-inferiority 및 aggregate improvement를 확인한다.
+- terminal queue/occupancy, follower infeasibility, intervention count를 함께 보고해 TTT 개선의 부작용이 없음을 확인한다.
+- 논문에서 single-scenario feasibility와 cross-scenario generalization의 범위를 명확히 구분한다.
+
+5개 시나리오 일반화와 oracle-response, surrogate-top-K, direct replacement 비교는 short-paper 이후의 완료 조건이다.
 
 ## 11. 기존 파일의 역할
 
