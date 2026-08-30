@@ -5,6 +5,10 @@
 > ## 👉 이어서 작업하려면 **[HANDOFF.md](HANDOFF.md)** 부터 읽으세요.
 > 현재 도달점·확립된 사실·실패한 접근·즉시 이어서 할 일·새 컴퓨터 세팅·함정이 전부 정리돼 있습니다.
 
+> **새 구현 기준:** 논문 초안의 비선형·follower-response-aware 방향은
+> **[RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md](RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md)** 를 따릅니다.
+> 아래 초기 held-out 결과는 연구 이력이며, 현재 방법의 최종 성능 주장으로 사용하지 않습니다.
+
 ## 현재 결과 — offline IQL이 held-out 2셀에서 P-Stack 격파
 
 | windowed TTT | NC | PFO | P-Stack | **IQL(RL)** | P-CENT |
