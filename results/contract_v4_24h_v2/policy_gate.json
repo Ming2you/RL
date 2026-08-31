@@ -1,0 +1,19 @@
+{
+  "format_version": "five_cell_policy_gate_v1",
+  "passed": false,
+  "criteria": {
+    "mean_ttt_vs_pstack_min_percent": -1.0,
+    "incident_190_recovery_vs_pstack_min_percent": -2.0,
+    "support_out_fraction_max": 0.1,
+    "all_complete": true,
+    "all_valid": true
+  },
+  "failures": [
+    "sweet_170_incident_w60 mean TTT is -7.751% versus P-Stack",
+    "sweet_170_skew15_w60 mean TTT is -15.332% versus P-Stack",
+    "sweet_170_w60 mean TTT is -19.783% versus P-Stack",
+    "sweet_190_w60 mean TTT is -18.528% versus P-Stack",
+    "sweet_170_incident_w60 recovery TTT is -12.445% versus P-Stack",
+    "sweet_190_w60 recovery TTT is -24.454% versus P-Stack"
+  ]
+}

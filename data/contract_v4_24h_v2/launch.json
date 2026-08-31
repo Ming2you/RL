@@ -1,0 +1,24 @@
+﻿{
+    "format_version":  "contract_v4_collection_launch_v1",
+    "started_at":  "2026-08-22T16:13:40.2937424+09:00",
+    "deadline":  "2026-08-23T16:13:40.2937424+09:00",
+    "duration_sec":  86400,
+    "collection_sec":  85800,
+    "worker_count":  8,
+    "modes":  [
+                  "optimizer_anchor,optimizer_local,loose_anchor,loose_local",
+                  "optimizer_local,loose_anchor,loose_local,epsilon_mixture",
+                  "optimizer_anchor,loose_anchor,optimizer_local,epsilon_mixture",
+                  "optimizer_local,loose_local,linear,quadratic"
+              ],
+    "pids":  [
+                 28872,
+                 28172,
+                 10444,
+                 24804,
+                 24768,
+                 3252,
+                 33848,
+                 13448
+             ]
+}

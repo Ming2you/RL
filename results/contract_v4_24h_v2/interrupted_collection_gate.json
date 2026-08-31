@@ -1,0 +1,9 @@
+{
+  "format_version": "coordination_v4_dataset_gate_v1",
+  "action_schema_version": "coordination_action_v4",
+  "observation_schema_version": "coordination_observation_v4",
+  "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+  "passed": true,
+  "failures": [],
+  "audit": "results\\contract_v4_24h_v2\\interrupted_collection_audit.json"
+}

@@ -1,0 +1,2063 @@
+{
+  "runs": [
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s0\\actor_contract_v4_24h_v2_s0__sweet_155_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 0,
+      "scenario": "sweet_155_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 2975.1762490043866,
+      "throughput_veh": 31332.428693089365,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 1819.5186524942706
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1155.657596510116
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.0021333333333333334,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 0.6970939350509436,
+          "rho_ge_0_95_steps": 0,
+          "unique_when_rho_ge_0_95": []
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 1.0514773083561948,
+          "rho_ge_0_95_steps": 15,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 0.8712103439103307,
+          "rho_ge_0_95_steps": 0,
+          "unique_when_rho_ge_0_95": []
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.2180006353072232,
+          "rho_ge_0_95_steps": 20,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s0\\actor_contract_v4_24h_v2_s0__sweet_170_incident_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 0,
+      "scenario": "sweet_170_incident_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 6008.806250096038,
+      "throughput_veh": 33039.859471490876,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 3436.8250125204077
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 2571.9812375756314
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.012444444444444444,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.179442398245055,
+          "rho_ge_0_95_steps": 18,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.264323686643499,
+          "rho_ge_0_95_steps": 24,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 4.554918333667869,
+          "rho_ge_0_95_steps": 25,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.3384383289878454,
+          "rho_ge_0_95_steps": 27,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s0\\actor_contract_v4_24h_v2_s0__sweet_170_skew15_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 0,
+      "scenario": "sweet_170_skew15_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 4618.538211387865,
+      "throughput_veh": 33020.271883145,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 2774.7207806382744
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1843.8174307495901
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.1527111111111111,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0,
+            30.0,
+            60.0,
+            75.0,
+            90.0
+          ],
+          "changes": 7,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0,
+            15.0,
+            75.0
+          ],
+          "changes": 7,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            90.0,
+            100.0,
+            115.0
+          ],
+          "changes": 8,
+          "rho_ratio_max": 2.9995478440584766,
+          "rho_ge_0_95_steps": 17,
+          "unique_when_rho_ge_0_95": [
+            90.0,
+            100.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            90.0,
+            100.0,
+            115.0
+          ],
+          "changes": 4,
+          "rho_ratio_max": 2.3065097506599486,
+          "rho_ge_0_95_steps": 23,
+          "unique_when_rho_ge_0_95": [
+            90.0,
+            100.0,
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            70.0,
+            80.0,
+            90.0,
+            100.0,
+            115.0
+          ],
+          "changes": 10,
+          "rho_ratio_max": 3.068134722243602,
+          "rho_ge_0_95_steps": 22,
+          "unique_when_rho_ge_0_95": [
+            70.0,
+            80.0,
+            90.0,
+            100.0,
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            80.0,
+            90.0,
+            100.0,
+            115.0
+          ],
+          "changes": 10,
+          "rho_ratio_max": 2.1366936016931883,
+          "rho_ge_0_95_steps": 25,
+          "unique_when_rho_ge_0_95": [
+            80.0,
+            90.0,
+            100.0,
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s0\\actor_contract_v4_24h_v2_s0__sweet_170_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 0,
+      "scenario": "sweet_170_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 4532.9993004122925,
+      "throughput_veh": 33036.4702193143,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 2774.625385015942
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1758.3739153963509
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.02897777777777778,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.089539388671293,
+          "rho_ge_0_95_steps": 19,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.3560240257139085,
+          "rho_ge_0_95_steps": 23,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.206957969036915,
+          "rho_ge_0_95_steps": 22,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.333793476047857,
+          "rho_ge_0_95_steps": 28,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s0\\actor_contract_v4_24h_v2_s0__sweet_190_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 0,
+      "scenario": "sweet_190_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 6859.879834322205,
+      "throughput_veh": 35311.041546742636,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 3928.795711717886
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 2931.084122604319
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.0019555555555555554,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0,
+            75.0
+          ],
+          "changes": 4,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0,
+            75.0,
+            90.0
+          ],
+          "changes": 3,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.2229636021256467,
+          "rho_ge_0_95_steps": 27,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.1793719201238266,
+          "rho_ge_0_95_steps": 28,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.2623875936943616,
+          "rho_ge_0_95_steps": 29,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.2044456624225983,
+          "rho_ge_0_95_steps": 31,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s1\\actor_contract_v4_24h_v2_s1__sweet_155_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 1,
+      "scenario": "sweet_155_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 3048.2269372815113,
+      "throughput_veh": 31332.340919770868,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 1846.7788638946308
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1201.4480733868804
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.060088888888888886,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 0.7002312925879298,
+          "rho_ge_0_95_steps": 0,
+          "unique_when_rho_ge_0_95": []
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 1.0755721316343416,
+          "rho_ge_0_95_steps": 16,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.1017297469923437,
+          "rho_ge_0_95_steps": 7,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.197174776803902,
+          "rho_ge_0_95_steps": 19,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s1\\actor_contract_v4_24h_v2_s1__sweet_170_incident_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 1,
+      "scenario": "sweet_170_incident_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 5934.469598793646,
+      "throughput_veh": 33034.85816306871,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 3408.9303605631826
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 2525.539238230463
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.021333333333333333,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.1815537399582676,
+          "rho_ge_0_95_steps": 17,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            100.0,
+            115.0
+          ],
+          "changes": 2,
+          "rho_ratio_max": 2.2697636431695365,
+          "rho_ge_0_95_steps": 25,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            90.0,
+            100.0,
+            115.0
+          ],
+          "changes": 2,
+          "rho_ratio_max": 4.823058366791189,
+          "rho_ge_0_95_steps": 24,
+          "unique_when_rho_ge_0_95": [
+            90.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 4.029460961988012,
+          "rho_ge_0_95_steps": 26,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s1\\actor_contract_v4_24h_v2_s1__sweet_170_skew15_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 1,
+      "scenario": "sweet_170_skew15_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 4609.291210148685,
+      "throughput_veh": 33035.24015952951,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 2792.7765086324944
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1816.5147015161913
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.013155555555555556,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0,
+            60.0
+          ],
+          "changes": 2,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0,
+            15.0,
+            75.0
+          ],
+          "changes": 3,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.1618277823348198,
+          "rho_ge_0_95_steps": 16,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            100.0,
+            115.0
+          ],
+          "changes": 1,
+          "rho_ratio_max": 2.2073280710829875,
+          "rho_ge_0_95_steps": 23,
+          "unique_when_rho_ge_0_95": [
+            100.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            100.0,
+            115.0
+          ],
+          "changes": 2,
+          "rho_ratio_max": 2.882428438361065,
+          "rho_ge_0_95_steps": 23,
+          "unique_when_rho_ge_0_95": [
+            100.0,
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            100.0,
+            115.0
+          ],
+          "changes": 1,
+          "rho_ratio_max": 2.301349044354788,
+          "rho_ge_0_95_steps": 27,
+          "unique_when_rho_ge_0_95": [
+            100.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s1\\actor_contract_v4_24h_v2_s1__sweet_170_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 1,
+      "scenario": "sweet_170_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 4618.610057652456,
+      "throughput_veh": 33038.99802129752,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 2818.5205955062634
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1800.0894621461932
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.05315555555555555,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0,
+            75.0
+          ],
+          "changes": 2,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.147666513334094,
+          "rho_ge_0_95_steps": 19,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.231069780874126,
+          "rho_ge_0_95_steps": 24,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.194051144762098,
+          "rho_ge_0_95_steps": 24,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.3056056385792143,
+          "rho_ge_0_95_steps": 27,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s1\\actor_contract_v4_24h_v2_s1__sweet_190_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 1,
+      "scenario": "sweet_190_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 6791.208162972327,
+      "throughput_veh": 35311.28207425675,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 3909.3898920218703
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 2881.818270950457
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.07733333333333334,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0,
+            15.0,
+            75.0
+          ],
+          "changes": 27,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0,
+            15.0,
+            105.0
+          ],
+          "changes": 27,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.241538935041832,
+          "rho_ge_0_95_steps": 24,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.1921529390457066,
+          "rho_ge_0_95_steps": 29,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.2477032830627457,
+          "rho_ge_0_95_steps": 28,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.2172114421750218,
+          "rho_ge_0_95_steps": 30,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s2\\actor_contract_v4_24h_v2_s2__sweet_155_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 2,
+      "scenario": "sweet_155_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 2951.671307784473,
+      "throughput_veh": 31332.430855174884,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 1805.837943437661
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1145.833364346812
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.004266666666666667,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 0.6958633151945849,
+          "rho_ge_0_95_steps": 0,
+          "unique_when_rho_ge_0_95": []
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 1.0712954851703416,
+          "rho_ge_0_95_steps": 17,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 0.7585058330058636,
+          "rho_ge_0_95_steps": 0,
+          "unique_when_rho_ge_0_95": []
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 1.5003867012041505,
+          "rho_ge_0_95_steps": 19,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s2\\actor_contract_v4_24h_v2_s2__sweet_170_incident_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 2,
+      "scenario": "sweet_170_incident_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 5985.295622026047,
+      "throughput_veh": 33038.942732454205,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 3410.482926301732
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 2574.8126957243144
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.08888888888888889,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.002753911144883,
+          "rho_ge_0_95_steps": 19,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.349873096905975,
+          "rho_ge_0_95_steps": 25,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 4.823095828882674,
+          "rho_ge_0_95_steps": 26,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 4.024330645494684,
+          "rho_ge_0_95_steps": 25,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s2\\actor_contract_v4_24h_v2_s2__sweet_170_skew15_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 2,
+      "scenario": "sweet_170_skew15_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 4578.001462789275,
+      "throughput_veh": 33036.35259700056,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 2784.2042839066517
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1793.7971788826235
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.007466666666666667,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.0219512175387573,
+          "rho_ge_0_95_steps": 17,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.344637934790709,
+          "rho_ge_0_95_steps": 23,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.014243822530727,
+          "rho_ge_0_95_steps": 21,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.189260683724751,
+          "rho_ge_0_95_steps": 26,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s2\\actor_contract_v4_24h_v2_s2__sweet_170_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 2,
+      "scenario": "sweet_170_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 4538.140935208327,
+      "throughput_veh": 33038.583636051546,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 2778.0738678599864
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 1760.067067348343
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.016888888888888887,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0
+          ],
+          "changes": 0,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.134080398245792,
+          "rho_ge_0_95_steps": 17,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.3656607913873398,
+          "rho_ge_0_95_steps": 24,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.1147267936294663,
+          "rho_ge_0_95_steps": 22,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.1178663566426725,
+          "rho_ge_0_95_steps": 27,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    },
+    {
+      "trace": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\results\\contract_v4_24h_v2\\traces_s2\\actor_contract_v4_24h_v2_s2__sweet_190_w60__RL-FULL.jsonl",
+      "checkpoint": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt",
+      "response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "checkpoint_response_contract": "rl_pstack_b13_full_segment_vsl_certificate_v3",
+      "seed": 2,
+      "scenario": "sweet_190_w60",
+      "steps": 75,
+      "final_time_sec": 14400.0,
+      "total_ttt": 6740.865150458249,
+      "throughput_veh": 35325.11343301153,
+      "phase": {
+        "peak": {
+          "steps": 24,
+          "ttt": 3896.5658355952983
+        },
+        "recovery": {
+          "steps": 51,
+          "ttt": 2844.299314862951
+        }
+      },
+      "validity_pass": true,
+      "support_out_fraction": 0.02311111111111111,
+      "adapter": {
+        "max_linear_abs_error": 0.0,
+        "max_quadratic_abs_error": 0.0
+      },
+      "offset_response": {
+        "D": {
+          "unique": [
+            0.0,
+            15.0,
+            90.0,
+            105.0
+          ],
+          "changes": 41,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        },
+        "F": {
+          "unique": [
+            0.0,
+            30.0,
+            105.0
+          ],
+          "changes": 41,
+          "candidate_skip_reasons": {
+            "missing_trace": 75
+          }
+        }
+      },
+      "vsl_response": {
+        "R_D_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.2380524422352805,
+          "rho_ge_0_95_steps": 27,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_W": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.2201000385446323,
+          "rho_ge_0_95_steps": 29,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_D_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 3.2386477531587126,
+          "rho_ge_0_95_steps": 31,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        },
+        "R_F_E": {
+          "unique": [
+            115.0
+          ],
+          "changes": 0,
+          "rho_ratio_max": 2.2122489388006192,
+          "rho_ge_0_95_steps": 33,
+          "unique_when_rho_ge_0_95": [
+            115.0
+          ]
+        }
+      },
+      "vsl_candidates": {
+        "invocations": 0,
+        "trust_fallback_fraction": 0.0,
+        "raw_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "kept_candidate_count": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "base_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "smoothness_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "price_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "total_cost_spread": {
+          "mean": 0.0,
+          "max": 0.0
+        },
+        "priced_segment_variation_fraction": {
+          "FW_W__seg3": 0.0,
+          "FW_W__seg5": 0.0,
+          "FW_E__seg3": 0.0,
+          "FW_E__seg5": 0.0
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "sweet_155_w60": {
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "runs": 3,
+      "total_ttt_mean": 2991.6914980234565,
+      "total_ttt_std": 41.112143254872706,
+      "total_ttt_min": 2951.671307784473,
+      "total_ttt_max": 3048.2269372815113,
+      "peak_ttt_mean": 1824.0451532755208,
+      "recovery_ttt_mean": 1167.6463447479362,
+      "throughput_veh_mean": 31332.400156011707,
+      "throughput_veh_std": 0.04189564674978346,
+      "validity_all_pass": true,
+      "support_out_fraction_mean": 0.022162962962962964,
+      "baseline_improvement_percent": {}
+    },
+    "sweet_170_incident_w60": {
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "runs": 3,
+      "total_ttt_mean": 5976.190490305243,
+      "total_ttt_std": 31.023238595749916,
+      "total_ttt_min": 5934.469598793646,
+      "total_ttt_max": 6008.806250096038,
+      "peak_ttt_mean": 3418.746099795107,
+      "recovery_ttt_mean": 2557.444390510136,
+      "throughput_veh_mean": 33037.886789004595,
+      "throughput_veh_std": 2.174018385383822,
+      "validity_all_pass": true,
+      "support_out_fraction_mean": 0.04088888888888889,
+      "baseline_improvement_percent": {}
+    },
+    "sweet_170_skew15_w60": {
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "runs": 3,
+      "total_ttt_mean": 4601.943628108608,
+      "total_ttt_std": 17.345455084124378,
+      "total_ttt_min": 4578.001462789275,
+      "total_ttt_max": 4618.538211387865,
+      "peak_ttt_mean": 2783.900524392473,
+      "recovery_ttt_mean": 1818.043103716135,
+      "throughput_veh_mean": 33030.62154655835,
+      "throughput_veh_std": 7.332395191163437,
+      "validity_all_pass": true,
+      "support_out_fraction_mean": 0.05777777777777778,
+      "baseline_improvement_percent": {}
+    },
+    "sweet_170_w60": {
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "runs": 3,
+      "total_ttt_mean": 4563.250097757692,
+      "total_ttt_std": 39.2016408819525,
+      "total_ttt_min": 4532.9993004122925,
+      "total_ttt_max": 4618.610057652456,
+      "peak_ttt_mean": 2790.4066161273972,
+      "recovery_ttt_mean": 1772.8434816302959,
+      "throughput_veh_mean": 33038.01729222113,
+      "throughput_veh_std": 1.1069491759740846,
+      "validity_all_pass": true,
+      "support_out_fraction_mean": 0.03300740740740741,
+      "baseline_improvement_percent": {}
+    },
+    "sweet_190_w60": {
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "runs": 3,
+      "total_ttt_mean": 6797.317715917594,
+      "total_ttt_std": 48.7792218176455,
+      "total_ttt_min": 6740.865150458249,
+      "total_ttt_max": 6859.879834322205,
+      "peak_ttt_mean": 3911.583813111685,
+      "recovery_ttt_mean": 2885.733902805909,
+      "throughput_veh_mean": 35315.81235133697,
+      "throughput_veh_std": 6.577590927225344,
+      "validity_all_pass": true,
+      "support_out_fraction_mean": 0.034133333333333335,
+      "baseline_improvement_percent": {}
+    }
+  },
+  "baselines": {},
+  "baseline_skip_steps": 5
+}

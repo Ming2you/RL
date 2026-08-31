@@ -1,0 +1,846 @@
+{
+  "format_version": "pstack_baseline_contract_attribution_v1",
+  "scenarios": [
+    {
+      "d_f_offset_move_count": 0,
+      "d_f_offset_nonzero": {
+        "active": 0,
+        "active_fraction": 0.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 102
+          }
+        },
+        "opportunities": 150
+      },
+      "merge_vsl_below_115": {
+        "active": 260,
+        "active_fraction": 0.8666666666666667,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.5833333333333334,
+            "nonzero": 56,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "merge_vsl_price": {
+        "active": 281,
+        "active_fraction": 0.9493243243243243,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.8369565217391305,
+            "nonzero": 77,
+            "total": 92
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 296
+      },
+      "metering_price": {
+        "active": 296,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 92,
+            "total": 92
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 296
+      },
+      "nonmerge_vsl_below_115": {
+        "active": 700,
+        "active_fraction": 0.7777777777777778,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.3055555555555556,
+            "nonzero": 88,
+            "total": 288
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 612,
+            "total": 612
+          }
+        },
+        "opportunities": 900
+      },
+      "nonmerge_vsl_price": {
+        "active": 856,
+        "active_fraction": 0.963963963963964,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.8840579710144928,
+            "nonzero": 244,
+            "total": 276
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 612,
+            "total": 612
+          }
+        },
+        "opportunities": 888
+      },
+      "offset_price": {
+        "active": 296,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 92,
+            "total": 92
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 296
+      },
+      "offset_price_owners": [
+        "A",
+        "B",
+        "C",
+        "enabled"
+      ],
+      "policy_steps": 75,
+      "scenario": "sweet_155_w60",
+      "signal_price": {
+        "active": 370,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 115,
+            "total": 115
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 255,
+            "total": 255
+          }
+        },
+        "opportunities": 370
+      },
+      "source": {
+        "control_timeseries": "results/five_cell_baselines/pstack_sweet_155_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/control_timeseries.csv",
+        "decision_diagnostics": "results/five_cell_baselines/pstack_sweet_155_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/decision_diagnostics.csv"
+      },
+      "supervisor_pfo": {
+        "active": 1,
+        "active_fraction": 0.013333333333333334,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.041666666666666664,
+            "nonzero": 1,
+            "total": 24
+          },
+          "recovery": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 51
+          }
+        },
+        "opportunities": 75
+      }
+    },
+    {
+      "d_f_offset_move_count": 0,
+      "d_f_offset_nonzero": {
+        "active": 0,
+        "active_fraction": 0.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 102
+          }
+        },
+        "opportunities": 150
+      },
+      "merge_vsl_below_115": {
+        "active": 286,
+        "active_fraction": 0.9533333333333334,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.8541666666666666,
+            "nonzero": 82,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "merge_vsl_price": {
+        "active": 230,
+        "active_fraction": 0.9274193548387096,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.625,
+            "nonzero": 30,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 200,
+            "total": 200
+          }
+        },
+        "opportunities": 248
+      },
+      "metering_price": {
+        "active": 248,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 48,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 200,
+            "total": 200
+          }
+        },
+        "opportunities": 248
+      },
+      "nonmerge_vsl_below_115": {
+        "active": 852,
+        "active_fraction": 0.9466666666666667,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.8333333333333334,
+            "nonzero": 240,
+            "total": 288
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 612,
+            "total": 612
+          }
+        },
+        "opportunities": 900
+      },
+      "nonmerge_vsl_price": {
+        "active": 710,
+        "active_fraction": 0.9543010752688172,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.7638888888888888,
+            "nonzero": 110,
+            "total": 144
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 600,
+            "total": 600
+          }
+        },
+        "opportunities": 744
+      },
+      "offset_price": {
+        "active": 248,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 48,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 200,
+            "total": 200
+          }
+        },
+        "opportunities": 248
+      },
+      "offset_price_owners": [
+        "A",
+        "B",
+        "C",
+        "enabled"
+      ],
+      "policy_steps": 75,
+      "scenario": "sweet_170_w60",
+      "signal_price": {
+        "active": 310,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 60,
+            "total": 60
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 250,
+            "total": 250
+          }
+        },
+        "opportunities": 310
+      },
+      "source": {
+        "control_timeseries": "results/five_cell_baselines/pstack_sweet_170_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/control_timeseries.csv",
+        "decision_diagnostics": "results/five_cell_baselines/pstack_sweet_170_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/decision_diagnostics.csv"
+      },
+      "supervisor_pfo": {
+        "active": 13,
+        "active_fraction": 0.18840579710144928,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.5454545454545454,
+            "nonzero": 12,
+            "total": 22
+          },
+          "recovery": {
+            "active_fraction": 0.02127659574468085,
+            "nonzero": 1,
+            "total": 47
+          }
+        },
+        "opportunities": 69
+      }
+    },
+    {
+      "d_f_offset_move_count": 0,
+      "d_f_offset_nonzero": {
+        "active": 0,
+        "active_fraction": 0.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 102
+          }
+        },
+        "opportunities": 150
+      },
+      "merge_vsl_below_115": {
+        "active": 288,
+        "active_fraction": 0.96,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.875,
+            "nonzero": 84,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "merge_vsl_price": {
+        "active": 233,
+        "active_fraction": 0.7766666666666666,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.3333333333333333,
+            "nonzero": 32,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 0.9852941176470589,
+            "nonzero": 201,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "metering_price": {
+        "active": 300,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 96,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "nonmerge_vsl_below_115": {
+        "active": 677,
+        "active_fraction": 0.7522222222222222,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.5798611111111112,
+            "nonzero": 167,
+            "total": 288
+          },
+          "recovery": {
+            "active_fraction": 0.8333333333333334,
+            "nonzero": 510,
+            "total": 612
+          }
+        },
+        "opportunities": 900
+      },
+      "nonmerge_vsl_price": {
+        "active": 773,
+        "active_fraction": 0.8588888888888889,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.5590277777777778,
+            "nonzero": 161,
+            "total": 288
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 612,
+            "total": 612
+          }
+        },
+        "opportunities": 900
+      },
+      "offset_price": {
+        "active": 300,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 96,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "offset_price_owners": [
+        "A",
+        "B",
+        "C",
+        "enabled"
+      ],
+      "policy_steps": 75,
+      "scenario": "sweet_170_incident_w60",
+      "signal_price": {
+        "active": 375,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 120,
+            "total": 120
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 255,
+            "total": 255
+          }
+        },
+        "opportunities": 375
+      },
+      "source": {
+        "control_timeseries": "results/five_cell_baselines/pstack_sweet_170_incident_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/control_timeseries.csv",
+        "decision_diagnostics": "results/five_cell_baselines/pstack_sweet_170_incident_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/decision_diagnostics.csv"
+      },
+      "supervisor_pfo": {
+        "active": 0,
+        "active_fraction": 0.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 0
+          },
+          "recovery": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 42
+          }
+        },
+        "opportunities": 42
+      }
+    },
+    {
+      "d_f_offset_move_count": 6,
+      "d_f_offset_nonzero": {
+        "active": 4,
+        "active_fraction": 0.02666666666666667,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 0.0392156862745098,
+            "nonzero": 4,
+            "total": 102
+          }
+        },
+        "opportunities": 150
+      },
+      "merge_vsl_below_115": {
+        "active": 286,
+        "active_fraction": 0.9533333333333334,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.8541666666666666,
+            "nonzero": 82,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "merge_vsl_price": {
+        "active": 237,
+        "active_fraction": 0.8345070422535211,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.4523809523809524,
+            "nonzero": 38,
+            "total": 84
+          },
+          "recovery": {
+            "active_fraction": 0.995,
+            "nonzero": 199,
+            "total": 200
+          }
+        },
+        "opportunities": 284
+      },
+      "metering_price": {
+        "active": 284,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 84,
+            "total": 84
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 200,
+            "total": 200
+          }
+        },
+        "opportunities": 284
+      },
+      "nonmerge_vsl_below_115": {
+        "active": 855,
+        "active_fraction": 0.95,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.84375,
+            "nonzero": 243,
+            "total": 288
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 612,
+            "total": 612
+          }
+        },
+        "opportunities": 900
+      },
+      "nonmerge_vsl_price": {
+        "active": 778,
+        "active_fraction": 0.9131455399061033,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.7063492063492064,
+            "nonzero": 178,
+            "total": 252
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 600,
+            "total": 600
+          }
+        },
+        "opportunities": 852
+      },
+      "offset_price": {
+        "active": 284,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 84,
+            "total": 84
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 200,
+            "total": 200
+          }
+        },
+        "opportunities": 284
+      },
+      "offset_price_owners": [
+        "A",
+        "B",
+        "C",
+        "enabled"
+      ],
+      "policy_steps": 75,
+      "scenario": "sweet_170_skew15_w60",
+      "signal_price": {
+        "active": 355,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 105,
+            "total": 105
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 250,
+            "total": 250
+          }
+        },
+        "opportunities": 355
+      },
+      "source": {
+        "control_timeseries": "results/five_cell_baselines/pstack_sweet_170_skew15_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/control_timeseries.csv",
+        "decision_diagnostics": "results/five_cell_baselines/pstack_sweet_170_skew15_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/decision_diagnostics.csv"
+      },
+      "supervisor_pfo": {
+        "active": 4,
+        "active_fraction": 0.07407407407407407,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.3333333333333333,
+            "nonzero": 3,
+            "total": 9
+          },
+          "recovery": {
+            "active_fraction": 0.022222222222222223,
+            "nonzero": 1,
+            "total": 45
+          }
+        },
+        "opportunities": 54
+      }
+    },
+    {
+      "d_f_offset_move_count": 0,
+      "d_f_offset_nonzero": {
+        "active": 0,
+        "active_fraction": 0.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 48
+          },
+          "recovery": {
+            "active_fraction": 0.0,
+            "nonzero": 0,
+            "total": 102
+          }
+        },
+        "opportunities": 150
+      },
+      "merge_vsl_below_115": {
+        "active": 286,
+        "active_fraction": 0.9533333333333334,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.8541666666666666,
+            "nonzero": 82,
+            "total": 96
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 204,
+            "total": 204
+          }
+        },
+        "opportunities": 300
+      },
+      "merge_vsl_price": {
+        "active": 221,
+        "active_fraction": 0.8007246376811594,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.3684210526315789,
+            "nonzero": 28,
+            "total": 76
+          },
+          "recovery": {
+            "active_fraction": 0.965,
+            "nonzero": 193,
+            "total": 200
+          }
+        },
+        "opportunities": 276
+      },
+      "metering_price": {
+        "active": 276,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 76,
+            "total": 76
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 200,
+            "total": 200
+          }
+        },
+        "opportunities": 276
+      },
+      "nonmerge_vsl_below_115": {
+        "active": 843,
+        "active_fraction": 0.9366666666666666,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.8020833333333334,
+            "nonzero": 231,
+            "total": 288
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 612,
+            "total": 612
+          }
+        },
+        "opportunities": 900
+      },
+      "nonmerge_vsl_price": {
+        "active": 753,
+        "active_fraction": 0.9094202898550725,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.6710526315789473,
+            "nonzero": 153,
+            "total": 228
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 600,
+            "total": 600
+          }
+        },
+        "opportunities": 828
+      },
+      "offset_price": {
+        "active": 276,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 76,
+            "total": 76
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 200,
+            "total": 200
+          }
+        },
+        "opportunities": 276
+      },
+      "offset_price_owners": [
+        "A",
+        "B",
+        "C",
+        "enabled"
+      ],
+      "policy_steps": 75,
+      "scenario": "sweet_190_w60",
+      "signal_price": {
+        "active": 345,
+        "active_fraction": 1.0,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 1.0,
+            "nonzero": 95,
+            "total": 95
+          },
+          "recovery": {
+            "active_fraction": 1.0,
+            "nonzero": 250,
+            "total": 250
+          }
+        },
+        "opportunities": 345
+      },
+      "source": {
+        "control_timeseries": "results/five_cell_baselines/pstack_sweet_190_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/control_timeseries.csv",
+        "decision_diagnostics": "results/five_cell_baselines/pstack_sweet_190_w60/P-STACK-WU-FAITHFUL-ALLPRICE-JOINT/decision_diagnostics.csv"
+      },
+      "supervisor_pfo": {
+        "active": 6,
+        "active_fraction": 0.09230769230769231,
+        "by_phase": {
+          "peak": {
+            "active_fraction": 0.25,
+            "nonzero": 5,
+            "total": 20
+          },
+          "recovery": {
+            "active_fraction": 0.022222222222222223,
+            "nonzero": 1,
+            "total": 45
+          }
+        },
+        "opportunities": 65
+      }
+    }
+  ],
+  "warmup_policy_step": 5
+}

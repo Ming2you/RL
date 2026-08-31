@@ -1,0 +1,351 @@
+{
+  "checkpoints": [
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt",
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt",
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt"
+  ],
+  "observations": 25125,
+  "recommended_exploration_blocks": [
+    {
+      "family": "vsl",
+      "owner": "FW_W__seg7",
+      "disagreement_score": 0.01439636293798685,
+      "support_out_fraction": 0.09385074626865672,
+      "mean_abs_action": 0.03959597647190094,
+      "policy_action_std": [
+        0.08981231600046158,
+        0.13488167524337769
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_W__seg6",
+      "disagreement_score": 0.014795714057981968,
+      "support_out_fraction": 0.08716417910447762,
+      "mean_abs_action": 0.03978651762008667,
+      "policy_action_std": [
+        0.08468455076217651,
+        0.13739649951457977
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_E__seg7",
+      "disagreement_score": 0.01535213552415371,
+      "support_out_fraction": 0.07834825870646767,
+      "mean_abs_action": 0.04017262905836105,
+      "policy_action_std": [
+        0.0853436142206192,
+        0.1400127112865448
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_W__seg0",
+      "disagreement_score": 0.01718994230031967,
+      "support_out_fraction": 0.06825870646766169,
+      "mean_abs_action": 0.053474124521017075,
+      "policy_action_std": [
+        0.10857828706502914,
+        0.1395999938249588
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_E__seg0",
+      "disagreement_score": 0.01589231751859188,
+      "support_out_fraction": 0.06332338308457712,
+      "mean_abs_action": 0.04934567213058472,
+      "policy_action_std": [
+        0.10584548860788345,
+        0.13630124926567078
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_W__seg4",
+      "disagreement_score": 0.014591592364013195,
+      "support_out_fraction": 0.05596019900497513,
+      "mean_abs_action": 0.039949748665094376,
+      "policy_action_std": [
+        0.08129654079675674,
+        0.14074717462062836
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_E__seg2",
+      "disagreement_score": 0.014914069324731827,
+      "support_out_fraction": 0.053412935323383086,
+      "mean_abs_action": 0.04242894425988197,
+      "policy_action_std": [
+        0.08853981643915176,
+        0.13655802607536316
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_E__seg1",
+      "disagreement_score": 0.016055449843406677,
+      "support_out_fraction": 0.05237810945273632,
+      "mean_abs_action": 0.04743322357535362,
+      "policy_action_std": [
+        0.0997181162238121,
+        0.13627661764621735
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "freeway",
+      "owner": "R_D_E",
+      "disagreement_score": 0.01596476510167122,
+      "support_out_fraction": 0.05088955223880597,
+      "mean_abs_action": 0.041269924491643906,
+      "policy_action_std": [
+        0.12335076183080673,
+        0.09298669546842575,
+        0.1349201202392578,
+        0.04945755749940872,
+        0.1349371373653412
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_E__seg6",
+      "disagreement_score": 0.014753549359738827,
+      "support_out_fraction": 0.04923383084577115,
+      "mean_abs_action": 0.03978705778717995,
+      "policy_action_std": [
+        0.08389163017272949,
+        0.1385553628206253
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_W__seg1",
+      "disagreement_score": 0.016178766265511513,
+      "support_out_fraction": 0.04805970149253731,
+      "mean_abs_action": 0.048652179539203644,
+      "policy_action_std": [
+        0.10224325209856033,
+        0.13824480772018433
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "freeway",
+      "owner": "R_F_E",
+      "disagreement_score": 0.016266746446490288,
+      "support_out_fraction": 0.04751442786069652,
+      "mean_abs_action": 0.04390870779752731,
+      "policy_action_std": [
+        0.15545746684074402,
+        0.0968615934252739,
+        0.13492648303508759,
+        0.04815586283802986,
+        0.13609115779399872
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "freeway",
+      "owner": "R_F_W",
+      "disagreement_score": 0.015974147245287895,
+      "support_out_fraction": 0.04706069651741294,
+      "mean_abs_action": 0.04232090339064598,
+      "policy_action_std": [
+        0.1503753811120987,
+        0.09713427722454071,
+        0.1387505978345871,
+        0.046944454312324524,
+        0.13105802237987518
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_W__seg2",
+      "disagreement_score": 0.01593155786395073,
+      "support_out_fraction": 0.04640796019900498,
+      "mean_abs_action": 0.045961249619722366,
+      "policy_action_std": [
+        0.09795453399419785,
+        0.1385994255542755
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "freeway",
+      "owner": "R_D_W",
+      "disagreement_score": 0.015804987400770187,
+      "support_out_fraction": 0.044195024875621894,
+      "mean_abs_action": 0.041114017367362976,
+      "policy_action_std": [
+        0.12166816741228104,
+        0.0937524065375328,
+        0.1376754492521286,
+        0.04754653200507164,
+        0.13680164515972137
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "urban",
+      "owner": "A",
+      "disagreement_score": 0.014573915861546993,
+      "support_out_fraction": 0.038622885572139304,
+      "mean_abs_action": 0.03585067018866539,
+      "policy_action_std": [
+        0.08691339939832687,
+        0.08898051083087921,
+        0.13815544545650482,
+        0.04500249773263931,
+        0.1443558633327484
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "vsl",
+      "owner": "FW_E__seg4",
+      "disagreement_score": 0.014798721298575401,
+      "support_out_fraction": 0.033233830845771146,
+      "mean_abs_action": 0.04023056477308273,
+      "policy_action_std": [
+        0.08629477769136429,
+        0.13526003062725067
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "urban",
+      "owner": "C",
+      "disagreement_score": 0.014558391645550728,
+      "support_out_fraction": 0.03217512437810945,
+      "mean_abs_action": 0.03613807633519173,
+      "policy_action_std": [
+        0.08932828903198242,
+        0.09035015106201172,
+        0.13775569200515747,
+        0.04599905386567116,
+        0.14164546132087708
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "urban",
+      "owner": "D",
+      "disagreement_score": 0.01487870141863823,
+      "support_out_fraction": 0.024708457711442786,
+      "mean_abs_action": 0.03578175604343414,
+      "policy_action_std": [
+        0.08774776756763458,
+        0.08937497437000275,
+        0.13792702555656433,
+        0.04260964319109917,
+        0.1377633959054947
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "urban",
+      "owner": "F",
+      "disagreement_score": 0.014634516090154648,
+      "support_out_fraction": 0.023928358208955225,
+      "mean_abs_action": 0.03583233058452606,
+      "policy_action_std": [
+        0.08915340900421143,
+        0.08764533698558807,
+        0.1379794180393219,
+        0.04311131685972214,
+        0.14459067583084106
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "urban",
+      "owner": "B",
+      "disagreement_score": 0.015498118475079536,
+      "support_out_fraction": 0.02039402985074627,
+      "mean_abs_action": 0.03685704991221428,
+      "policy_action_std": [
+        0.08941669017076492,
+        0.08807442337274551,
+        0.13798220455646515,
+        0.04495466873049736,
+        0.14151133596897125
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "certificate",
+      "owner": "R_F_E",
+      "disagreement_score": 0.02058260887861252,
+      "support_out_fraction": 0.0,
+      "mean_abs_action": 0.9503812193870544,
+      "policy_action_std": [
+        0.8672052621841431
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "certificate",
+      "owner": "R_D_E",
+      "disagreement_score": 0.020467067137360573,
+      "support_out_fraction": 0.0,
+      "mean_abs_action": 0.9511971473693848,
+      "policy_action_std": [
+        0.8669975399971008
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "certificate",
+      "owner": "R_F_W",
+      "disagreement_score": 0.019762707874178886,
+      "support_out_fraction": 0.0,
+      "mean_abs_action": 0.9530841112136841,
+      "policy_action_std": [
+        0.8704134225845337
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    },
+    {
+      "family": "certificate",
+      "owner": "R_D_W",
+      "disagreement_score": 0.018975472077727318,
+      "support_out_fraction": 0.0,
+      "mean_abs_action": 0.9539393782615662,
+      "policy_action_std": [
+        0.8727061748504639
+      ],
+      "dead_policy_dimension_fraction": 0.0
+    }
+  ],
+  "per_seed_support_out_fraction": {
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt": 0.045936716417910445,
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt": 0.07251529021558872,
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt": 0.07692789386401326
+  },
+  "per_seed_control_support_out_fraction": {
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt": 0.04698425679820078,
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt": 0.07426320452531861,
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt": 0.07892210181966879
+  },
+  "per_seed_dead_policy_dimension_fraction": {
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s0.pt": 0.0,
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s1.pt": 0.0,
+    "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\checkpoints\\actor_contract_v4_24h_v2_s2.pt": 0.0
+  },
+  "global_seed_action_disagreement": 0.01593886874616146,
+  "global_support_out_fraction": 0.042364815920398015,
+  "global_dead_policy_dimension_fraction": 0.0
+}
