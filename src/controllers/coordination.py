@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field, replace
 from typing import Dict, Mapping, Protocol, Sequence
 
@@ -9,9 +11,11 @@ from src.models.demand import DemandStep
 from src.models.state import ControlAction, ExperimentConfig, TrafficState, segment_vsl
 
 
-ACTION_SCHEMA_VERSION = "coordination_action_v4"
+ACTION_SCHEMA_VERSION = "coordination_action_v6_exact_native_potential"
 OBSERVATION_SCHEMA_VERSION = "coordination_observation_v4"
-RL_RESPONSE_CONTRACT_VERSION = "rl_pstack_b13_full_segment_vsl_certificate_v3"
+RL_RESPONSE_CONTRACT_VERSION = "rl_pstack_b13_exact_native_potential_v5"
+ANCHORED_RESIDUAL_CONTRACT_VERSION = "native_coordination_delta_v2"
+ANCHOR_ENVELOPE_VERSION = "native_coordination_envelope_v2"
 
 
 @dataclass(frozen=True)
@@ -62,6 +66,8 @@ class PotentialBlock:
     linear: tuple[float, float] = (0.0, 0.0)
     cholesky: tuple[float, float, float] = (0.0, 0.0, 0.0)
     lever_keys: tuple[str, str] = ("", "")
+    physical_linear: tuple[float, float] | None = None
+    physical_hessian: tuple[float, float, float] | None = None
 
     def hessian(self) -> np.ndarray:
         l11, l21, l22 = self.cholesky
@@ -94,6 +100,8 @@ class ScalarPotentialBlock:
     linear: float = 0.0
     cholesky: float = 0.0
     lever_key: str = "vsl"
+    physical_linear: float | None = None
+    physical_curvature: float | None = None
 
     def curvature(self) -> float:
         return float(self.cholesky * self.cholesky)
@@ -110,6 +118,15 @@ class ScalarPotentialBlock:
 
 
 @dataclass(frozen=True)
+class FollowerPotentialRuntime:
+    ramp_offset_enabled: bool = True
+    priced_vsl_segment_candidates_enabled: bool = True
+    joint_green_offset_enabled: bool = True
+    metering_trust_fraction: float | None = None
+    vsl_trust_kmh: float | None = None
+
+
+@dataclass(frozen=True)
 class CoordinationAction:
     N_P_star: float
     N_UF_star: float
@@ -120,6 +137,9 @@ class CoordinationAction:
     raw_budget: tuple[float, float] | None = None
     vsl_blocks: tuple[ScalarPotentialBlock, ...] = ()
     metering_release_certified: tuple[bool, ...] | None = None
+    selected_branch: str = "unspecified"
+    follower_runtime: FollowerPotentialRuntime | None = None
+    native_budget_exact: bool = False
 
     def with_budget(self, n_p: float, n_uf: float) -> "CoordinationAction":
         return replace(self, N_P_star=float(n_p), N_UF_star=float(n_uf))
@@ -341,6 +361,480 @@ class CoordinationActionSchema:
             values.extend(1.0 if value else -1.0 for value in certificates)
         return np.clip(np.asarray(values, dtype=np.float32), -1.0, 1.0)
 
+    def decode_anchored_residual(
+        self,
+        residual_action: Sequence[float],
+        anchor: CoordinationAction,
+        mask: CoordinationMask | None = None,
+    ) -> CoordinationAction:
+        """Apply normalized deltas without reconstructing the native anchor."""
+        residual = np.clip(
+            np.asarray(residual_action, dtype=float).reshape(-1), -1.0, 1.0
+        )
+        if residual.size != self.dimension:
+            raise ValueError(
+                f"expected action dimension {self.dimension}, got {residual.size}"
+            )
+        if anchor.schema_version != ACTION_SCHEMA_VERSION:
+            raise ValueError(
+                "anchored residual requires the current action schema: "
+                f"expected {ACTION_SCHEMA_VERSION}, got {anchor.schema_version}"
+            )
+        active_mask = mask or anchor.mask
+        n_p_lo, n_p_hi = map(float, self.cfg.leader.N_P_star_range)
+        n_uf_lo, n_uf_hi = map(float, self.cfg.leader.N_UF_star_range)
+        n_p_delta = 0.5 * residual[0] * (n_p_hi - n_p_lo)
+        n_uf_delta = 0.5 * residual[1] * (n_uf_hi - n_uf_lo)
+        n_p = float(np.clip(float(anchor.N_P_star) + n_p_delta, n_p_lo, n_p_hi))
+        n_uf = float(np.clip(float(anchor.N_UF_star) + n_uf_delta, n_uf_lo, n_uf_hi))
+        raw_n_p, raw_n_uf = anchor.raw_budget or (
+            float(anchor.N_P_star), float(anchor.N_UF_star)
+        )
+        raw_budget = (
+            float(raw_n_p + n_p_delta),
+            float(raw_n_uf + n_uf_delta),
+        )
+        if not active_mask.budget:
+            n_p = float(anchor.N_P_star)
+            n_uf = float(anchor.N_UF_star)
+            raw_budget = anchor.raw_budget
+        native_budget_exact = bool(
+            anchor.native_budget_exact
+            and (
+                not active_mask.budget
+                or (residual[0] == 0.0 and residual[1] == 0.0)
+            )
+        )
+
+        def updated_block(block: PotentialBlock, delta: np.ndarray) -> PotentialBlock:
+            trust = np.maximum(np.asarray(block.trust_radius, dtype=float), 1.0e-9)
+            linear = tuple(
+                float(value + change * self.linear_scale)
+                for value, change in zip(block.linear, delta[:2])
+            )
+            l11, l21, l22 = block.cholesky
+            cholesky = (
+                float(max(l11 + delta[2] * self.cholesky_scale, 0.0)),
+                float(l21 + delta[3] * self.cholesky_scale),
+                float(max(l22 + delta[4] * self.cholesky_scale, 0.0)),
+            )
+            physical_linear = block.physical_linear
+            if np.any(delta[:2] != 0.0):
+                base = (
+                    np.asarray(physical_linear, dtype=float)
+                    if physical_linear is not None
+                    else np.asarray(block.linear, dtype=float) / trust
+                )
+                physical_linear = tuple(map(
+                    float,
+                    base + delta[:2] * self.linear_scale / trust,
+                ))
+            physical_hessian = block.physical_hessian
+            if np.any(delta[2:] != 0.0):
+                lower = np.asarray([
+                    [cholesky[0], 0.0],
+                    [cholesky[1], cholesky[2]],
+                ], dtype=float)
+                normalized_hessian = lower @ lower.T
+                physical_hessian = (
+                    float(normalized_hessian[0, 0] / (trust[0] * trust[0])),
+                    float(normalized_hessian[0, 1] / (trust[0] * trust[1])),
+                    float(normalized_hessian[1, 1] / (trust[1] * trust[1])),
+                )
+            return replace(
+                block,
+                linear=linear,
+                cholesky=cholesky,
+                physical_linear=physical_linear,
+                physical_hessian=physical_hessian,
+            )
+
+        idx = 2
+        vsl_price_perturbed = False
+        urban_by_owner = {block.owner: block for block in anchor.urban_blocks}
+        urban = []
+        for owner in self.signals:
+            block = urban_by_owner.get(owner)
+            if block is None:
+                raise ValueError(f"anchor is missing urban block {owner!r}")
+            delta = residual[idx:idx + 5]
+            idx += 5
+            urban.append(updated_block(block, delta))
+
+        freeway_by_owner = {block.owner: block for block in anchor.freeway_blocks}
+        freeway = []
+        for owner in self.ramps:
+            block = freeway_by_owner.get(owner)
+            if block is None:
+                raise ValueError(f"anchor is missing freeway block {owner!r}")
+            delta = residual[idx:idx + 5]
+            idx += 5
+            vsl_price_perturbed = bool(
+                vsl_price_perturbed
+                or np.any(delta[np.asarray([1, 3, 4], dtype=int)] != 0.0)
+            )
+            freeway.append(updated_block(block, delta))
+
+        vsl_by_owner = {block.owner: block for block in anchor.vsl_blocks}
+        vsl_blocks = []
+        for owner in self.nonmerge_vsl_keys:
+            block = vsl_by_owner.get(owner)
+            if block is None:
+                raise ValueError(f"anchor is missing VSL block {owner!r}")
+            delta = residual[idx:idx + 2]
+            idx += 2
+            vsl_price_perturbed = bool(
+                vsl_price_perturbed or np.any(delta != 0.0)
+            )
+            linear = float(block.linear + delta[0] * self.linear_scale)
+            cholesky = float(max(
+                block.cholesky + delta[1] * self.cholesky_scale, 0.0
+            ))
+            physical_linear = block.physical_linear
+            if delta[0] != 0.0:
+                base = (
+                    float(physical_linear)
+                    if physical_linear is not None
+                    else float(block.linear) / max(float(block.trust_radius), 1.0e-9)
+                )
+                physical_linear = float(
+                    base
+                    + delta[0] * self.linear_scale
+                    / max(float(block.trust_radius), 1.0e-9)
+                )
+            physical_curvature = block.physical_curvature
+            if delta[1] != 0.0:
+                physical_curvature = float(
+                    cholesky * cholesky
+                    / max(float(block.trust_radius) ** 2, 1.0e-18)
+                )
+            vsl_blocks.append(replace(
+                block,
+                linear=linear,
+                cholesky=cholesky,
+                physical_linear=physical_linear,
+                physical_curvature=physical_curvature,
+            ))
+
+        idx += len(self.certificate_ramps)
+        if idx != self.dimension:
+            raise RuntimeError(
+                f"anchored residual decode mismatch: consumed {idx}, "
+                f"expected {self.dimension}"
+            )
+        certificates = anchor.metering_release_certified
+        if certificates is not None and len(certificates) != len(self.ramps):
+            raise ValueError("anchor release certificate count does not match ramps")
+        if not active_mask.metering:
+            certificates = None
+        follower_runtime = anchor.follower_runtime
+        if (
+            follower_runtime is not None
+            and active_mask.vsl
+            and vsl_price_perturbed
+        ):
+            follower_runtime = replace(
+                follower_runtime,
+                priced_vsl_segment_candidates_enabled=True,
+            )
+        return replace(
+            anchor,
+            N_P_star=n_p,
+            N_UF_star=n_uf,
+            urban_blocks=tuple(urban),
+            freeway_blocks=tuple(freeway),
+            mask=active_mask,
+            raw_budget=raw_budget,
+            vsl_blocks=tuple(vsl_blocks),
+            metering_release_certified=certificates,
+            follower_runtime=follower_runtime,
+            native_budget_exact=native_budget_exact,
+        )
+
+    def anchor_envelope_metadata(self) -> dict:
+        names = [
+            "budget.N_P_star",
+            "budget.N_UF_star",
+            "raw_budget.present",
+            "raw_budget.N_P_star",
+            "raw_budget.N_UF_star",
+            "budget.native_projected_exact",
+        ]
+        for family, owners in (
+            ("urban", self.signals),
+            ("freeway", self.ramps),
+        ):
+            for owner in owners:
+                names.extend(
+                    f"{family}.{owner}.{field}"
+                    for field in (
+                        "reference.0", "reference.1",
+                        "trust_radius.0", "trust_radius.1",
+                        "linear.0", "linear.1",
+                        "cholesky.l11", "cholesky.l21", "cholesky.l22",
+                        "physical_linear.present",
+                        "physical_linear.0", "physical_linear.1",
+                        "physical_hessian.present",
+                        "physical_hessian.00", "physical_hessian.01",
+                        "physical_hessian.11",
+                    )
+                )
+        for owner in self.nonmerge_vsl_keys:
+            names.extend(
+                f"vsl.{owner}.{field}"
+                for field in (
+                    "reference", "trust_radius", "linear", "cholesky",
+                    "physical_linear.present", "physical_linear.value",
+                    "physical_curvature.present", "physical_curvature.value",
+                )
+            )
+        names.extend(f"mask.{field}" for field in (
+            "budget", "green", "offset", "metering", "vsl",
+            "linear", "quadratic", "cross",
+        ))
+        names.extend(f"runtime.{field}" for field in (
+            "present",
+            "ramp_offset_enabled",
+            "priced_vsl_segment_candidates_enabled",
+            "joint_green_offset_enabled",
+            "metering_trust_fraction.present",
+            "metering_trust_fraction.value",
+            "vsl_trust_kmh.present",
+            "vsl_trust_kmh.value",
+        ))
+        names.append("certificates.present")
+        names.extend(
+            f"certificate.{owner}.release" for owner in self.certificate_ramps
+        )
+        return {
+            "version": ANCHOR_ENVELOPE_VERSION,
+            "dimension": len(names),
+            "names": names,
+            "dtype": "float64",
+            "selected_branch_encoding": "separate_utf8",
+        }
+
+    def serialize_anchor(self, action: CoordinationAction) -> np.ndarray:
+        if action.schema_version != ACTION_SCHEMA_VERSION:
+            raise ValueError(
+                "cannot serialize an anchor from a different action schema: "
+                f"{action.schema_version}"
+            )
+        urban = {block.owner: block for block in action.urban_blocks}
+        freeway = {block.owner: block for block in action.freeway_blocks}
+        vsl = {block.owner: block for block in action.vsl_blocks}
+        raw_budget = action.raw_budget
+        values = [
+            float(action.N_P_star),
+            float(action.N_UF_star),
+            float(raw_budget is not None),
+            float(raw_budget[0]) if raw_budget is not None else 0.0,
+            float(raw_budget[1]) if raw_budget is not None else 0.0,
+            float(action.native_budget_exact),
+        ]
+        for family, owners, blocks in (
+            ("urban", self.signals, urban),
+            ("freeway", self.ramps, freeway),
+        ):
+            for owner in owners:
+                block = blocks.get(owner)
+                if block is None:
+                    raise ValueError(f"anchor is missing {family} block {owner!r}")
+                values.extend((
+                    *map(float, block.reference),
+                    *map(float, block.trust_radius),
+                    *map(float, block.linear),
+                    *map(float, block.cholesky),
+                    float(block.physical_linear is not None),
+                    *map(float, block.physical_linear or (0.0, 0.0)),
+                    float(block.physical_hessian is not None),
+                    *map(float, block.physical_hessian or (0.0, 0.0, 0.0)),
+                ))
+        for owner in self.nonmerge_vsl_keys:
+            block = vsl.get(owner)
+            if block is None:
+                raise ValueError(f"anchor is missing VSL block {owner!r}")
+            values.extend((
+                float(block.reference),
+                float(block.trust_radius),
+                float(block.linear),
+                float(block.cholesky),
+                float(block.physical_linear is not None),
+                float(block.physical_linear or 0.0),
+                float(block.physical_curvature is not None),
+                float(block.physical_curvature or 0.0),
+            ))
+        values.extend(map(float, action.mask.as_array()))
+        runtime = action.follower_runtime
+        values.extend((
+            float(runtime is not None),
+            float(runtime.ramp_offset_enabled) if runtime is not None else 0.0,
+            (
+                float(runtime.priced_vsl_segment_candidates_enabled)
+                if runtime is not None else 0.0
+            ),
+            float(runtime.joint_green_offset_enabled) if runtime is not None else 0.0,
+            float(runtime is not None and runtime.metering_trust_fraction is not None),
+            (
+                float(runtime.metering_trust_fraction)
+                if runtime is not None and runtime.metering_trust_fraction is not None
+                else 0.0
+            ),
+            float(runtime is not None and runtime.vsl_trust_kmh is not None),
+            (
+                float(runtime.vsl_trust_kmh)
+                if runtime is not None and runtime.vsl_trust_kmh is not None
+                else 0.0
+            ),
+        ))
+        certificates = action.metering_release_certified
+        values.append(float(certificates is not None))
+        if certificates is not None and len(certificates) != len(self.ramps):
+            raise ValueError("anchor release certificate count does not match ramps")
+        values.extend(
+            float(value)
+            for value in (
+                certificates
+                if certificates is not None
+                else (False,) * len(self.certificate_ramps)
+            )
+        )
+        envelope = np.asarray(values, dtype=np.float64)
+        expected = self.anchor_envelope_metadata()["dimension"]
+        if envelope.size != expected:
+            raise RuntimeError(
+                f"anchor envelope mismatch: encoded {envelope.size}, expected {expected}"
+            )
+        return envelope
+
+    def deserialize_anchor(
+        self,
+        envelope: Sequence[float],
+        *,
+        selected_branch: str,
+    ) -> CoordinationAction:
+        values = np.asarray(envelope, dtype=np.float64).reshape(-1)
+        expected = self.anchor_envelope_metadata()["dimension"]
+        if values.size != expected:
+            raise ValueError(
+                f"expected anchor envelope dimension {expected}, got {values.size}"
+            )
+        if not np.all(np.isfinite(values)):
+            raise ValueError("anchor envelope contains nonfinite values")
+        idx = 0
+
+        def take(count: int) -> tuple[float, ...]:
+            nonlocal idx
+            result = tuple(map(float, values[idx:idx + count]))
+            idx += count
+            return result
+
+        n_p, n_uf, raw_present, raw_n_p, raw_n_uf, native_budget_exact = take(6)
+        urban = []
+        for owner in self.signals:
+            fields = take(16)
+            urban.append(PotentialBlock(
+                owner=owner,
+                reference=(fields[0], fields[1]),
+                trust_radius=(fields[2], fields[3]),
+                linear=(fields[4], fields[5]),
+                cholesky=(fields[6], fields[7], fields[8]),
+                lever_keys=("green", "offset"),
+                physical_linear=(fields[10], fields[11]) if fields[9] > 0.5 else None,
+                physical_hessian=(
+                    (fields[13], fields[14], fields[15])
+                    if fields[12] > 0.5 else None
+                ),
+            ))
+        freeway = []
+        for owner in self.ramps:
+            fields = take(16)
+            freeway.append(PotentialBlock(
+                owner=owner,
+                reference=(fields[0], fields[1]),
+                trust_radius=(fields[2], fields[3]),
+                linear=(fields[4], fields[5]),
+                cholesky=(fields[6], fields[7], fields[8]),
+                lever_keys=("metering", self.freeway_vsl_keys[owner]),
+                physical_linear=(fields[10], fields[11]) if fields[9] > 0.5 else None,
+                physical_hessian=(
+                    (fields[13], fields[14], fields[15])
+                    if fields[12] > 0.5 else None
+                ),
+            ))
+        vsl_blocks = []
+        for owner in self.nonmerge_vsl_keys:
+            fields = take(8)
+            vsl_blocks.append(ScalarPotentialBlock(
+                owner=owner,
+                reference=fields[0],
+                trust_radius=fields[1],
+                linear=fields[2],
+                cholesky=fields[3],
+                lever_key="vsl",
+                physical_linear=fields[5] if fields[4] > 0.5 else None,
+                physical_curvature=fields[7] if fields[6] > 0.5 else None,
+            ))
+        mask = CoordinationMask(*(
+            bool(value > 0.5) for value in take(8)
+        ))
+        runtime_fields = take(8)
+        runtime = (
+            FollowerPotentialRuntime(
+                ramp_offset_enabled=runtime_fields[1] > 0.5,
+                priced_vsl_segment_candidates_enabled=runtime_fields[2] > 0.5,
+                joint_green_offset_enabled=runtime_fields[3] > 0.5,
+                metering_trust_fraction=(
+                    runtime_fields[5] if runtime_fields[4] > 0.5 else None
+                ),
+                vsl_trust_kmh=(
+                    runtime_fields[7] if runtime_fields[6] > 0.5 else None
+                ),
+            )
+            if runtime_fields[0] > 0.5 else None
+        )
+        certificate_present = take(1)[0] > 0.5
+        certificate_values = take(len(self.certificate_ramps))
+        if idx != values.size:
+            raise RuntimeError(
+                f"anchor envelope decode mismatch: consumed {idx}, got {values.size}"
+            )
+        return CoordinationAction(
+            N_P_star=n_p,
+            N_UF_star=n_uf,
+            urban_blocks=tuple(urban),
+            freeway_blocks=tuple(freeway),
+            mask=mask,
+            raw_budget=(raw_n_p, raw_n_uf) if raw_present > 0.5 else None,
+            vsl_blocks=tuple(vsl_blocks),
+            metering_release_certified=(
+                tuple(value > 0.5 for value in certificate_values)
+                if certificate_present else None
+            ),
+            selected_branch=str(selected_branch),
+            follower_runtime=runtime,
+            native_budget_exact=native_budget_exact > 0.5,
+        )
+
+    def anchor_fingerprint(
+        self,
+        envelope: Sequence[float],
+        selected_branch: str,
+    ) -> str:
+        values = np.asarray(envelope, dtype="<f8").reshape(-1)
+        expected = self.anchor_envelope_metadata()["dimension"]
+        if values.size != expected or not np.all(np.isfinite(values)):
+            raise ValueError("cannot fingerprint an invalid anchor envelope")
+        digest = hashlib.sha256()
+        digest.update(json.dumps(
+            self.anchor_envelope_metadata(), sort_keys=True, separators=(",", ":")
+        ).encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(str(selected_branch).encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(values.tobytes())
+        return digest.hexdigest()
+
     def metadata(self) -> dict:
         return {
             "version": ACTION_SCHEMA_VERSION,
@@ -355,6 +849,8 @@ class CoordinationActionSchema:
             "certificate_ramps": list(self.certificate_ramps),
             "linear_scale": self.linear_scale,
             "cholesky_scale": self.cholesky_scale,
+            "anchored_residual_contract": ANCHORED_RESIDUAL_CONTRACT_VERSION,
+            "anchor_envelope": self.anchor_envelope_metadata(),
         }
 
 
@@ -605,8 +1101,14 @@ class CoordinationPotentialAdapter:
 
     def apply(self, action: CoordinationAction, follower) -> Dict[str, float]:
         self.clear(follower)
-        follower.ramp_offset_enabled = True
-        follower.priced_vsl_segment_candidates_enabled = True
+        runtime = action.follower_runtime
+        follower.ramp_offset_enabled = (
+            runtime.ramp_offset_enabled if runtime is not None else True
+        )
+        follower.priced_vsl_segment_candidates_enabled = (
+            runtime.priced_vsl_segment_candidates_enabled
+            if runtime is not None else True
+        )
         mask = action.mask
         signal_linear: Dict[str, float] = {}
         offset_linear: Dict[str, float] = {}
@@ -624,11 +1126,20 @@ class CoordinationPotentialAdapter:
             signal_ref[block.owner] = block.reference[0]
             offset_ref[block.owner] = block.reference[1]
             go_ref[block.owner] = block.reference
-            signal_linear[block.owner] = block.linear[0] / tg if mask.linear and mask.green else 0.0
-            offset_linear[block.owner] = block.linear[1] / to if mask.linear and mask.offset else 0.0
-            signal_quad[block.owner] = h[0, 0] / (tg * tg) if mask.quadratic and mask.green else 0.0
-            offset_quad[block.owner] = h[1, 1] / (to * to) if mask.quadratic and mask.offset else 0.0
-            go_cross[block.owner] = h[0, 1] / (tg * to) if mask.quadratic and mask.cross and mask.green and mask.offset else 0.0
+            physical_linear = block.physical_linear or (
+                block.linear[0] / tg,
+                block.linear[1] / to,
+            )
+            physical_hessian = block.physical_hessian or (
+                h[0, 0] / (tg * tg),
+                h[0, 1] / (tg * to),
+                h[1, 1] / (to * to),
+            )
+            signal_linear[block.owner] = physical_linear[0] if mask.linear and mask.green else 0.0
+            offset_linear[block.owner] = physical_linear[1] if mask.linear and mask.offset else 0.0
+            signal_quad[block.owner] = physical_hessian[0] if mask.quadratic and mask.green else 0.0
+            offset_quad[block.owner] = physical_hessian[2] if mask.quadratic and mask.offset else 0.0
+            go_cross[block.owner] = physical_hessian[1] if mask.quadratic and mask.cross and mask.green and mask.offset else 0.0
         if action.urban_blocks and (mask.green or mask.offset):
             follower.signal_marginal_price = signal_linear
             follower.offset_marginal_price = offset_linear
@@ -640,7 +1151,11 @@ class CoordinationPotentialAdapter:
             follower.green_offset_cross_ref = go_ref
             follower.signal_marginal_price_trust_sec = max(block.trust_radius[0] for block in action.urban_blocks)
             follower.offset_marginal_price_trust_sec = max(block.trust_radius[1] for block in action.urban_blocks)
-            follower.joint_green_offset_enabled = bool(mask.green and mask.offset)
+            follower.joint_green_offset_enabled = (
+                runtime.joint_green_offset_enabled
+                if runtime is not None
+                else bool(mask.green and mask.offset)
+            )
 
         meter_linear: Dict[str, float] = {}
         vsl_linear: Dict[str, float] = {}
@@ -659,23 +1174,42 @@ class CoordinationPotentialAdapter:
             meter_ref[block.owner] = block.reference[0]
             vsl_ref[vsl_key] = block.reference[1]
             vm_ref[block.owner] = block.reference
-            meter_linear[block.owner] = block.linear[0] / tm if mask.linear and mask.metering else 0.0
+            physical_linear = block.physical_linear or (
+                block.linear[0] / tm,
+                block.linear[1] / tv,
+            )
+            physical_hessian = block.physical_hessian or (
+                h[0, 0] / (tm * tm),
+                h[0, 1] / (tm * tv),
+                h[1, 1] / (tv * tv),
+            )
+            meter_linear[block.owner] = physical_linear[0] if mask.linear and mask.metering else 0.0
             vsl_linear[vsl_key] = vsl_linear.get(vsl_key, 0.0) + (
-                block.linear[1] / tv if mask.linear and mask.vsl else 0.0
+                physical_linear[1] if mask.linear and mask.vsl else 0.0
             )
-            meter_quad[block.owner] = h[0, 0] / (tm * tm) if mask.quadratic and mask.metering else 0.0
+            meter_quad[block.owner] = physical_hessian[0] if mask.quadratic and mask.metering else 0.0
             vsl_quad[vsl_key] = vsl_quad.get(vsl_key, 0.0) + (
-                h[1, 1] / (tv * tv) if mask.quadratic and mask.vsl else 0.0
+                physical_hessian[2] if mask.quadratic and mask.vsl else 0.0
             )
-            vm_cross[block.owner] = h[0, 1] / (tm * tv) if mask.quadratic and mask.cross and mask.metering and mask.vsl else 0.0
+            vm_cross[block.owner] = physical_hessian[1] if mask.quadratic and mask.cross and mask.metering and mask.vsl else 0.0
         for block in action.vsl_blocks:
             trust = max(float(block.trust_radius), 1.0e-9)
             vsl_ref[block.owner] = float(block.reference)
             vsl_linear[block.owner] = (
-                float(block.linear) / trust if mask.linear and mask.vsl else 0.0
+                (
+                    float(block.physical_linear)
+                    if block.physical_linear is not None
+                    else float(block.linear) / trust
+                )
+                if mask.linear and mask.vsl else 0.0
             )
             vsl_quad[block.owner] = (
-                block.curvature() / (trust * trust) if mask.quadratic and mask.vsl else 0.0
+                (
+                    float(block.physical_curvature)
+                    if block.physical_curvature is not None
+                    else block.curvature() / (trust * trust)
+                )
+                if mask.quadratic and mask.vsl else 0.0
             )
         if (action.freeway_blocks or action.vsl_blocks) and (mask.metering or mask.vsl):
             follower.metering_marginal_price = meter_linear
@@ -686,10 +1220,18 @@ class CoordinationPotentialAdapter:
             follower.metering_marginal_price_ref = meter_ref
             follower.vsl_marginal_price_ref = vsl_ref
             follower.vsl_meter_cross_ref = vm_ref
-            follower.metering_marginal_price_trust_frac = 0.2
+            follower.metering_marginal_price_trust_frac = (
+                runtime.metering_trust_fraction
+                if runtime is not None and runtime.metering_trust_fraction is not None
+                else 0.2
+            )
             trust_radii = [block.trust_radius[1] for block in action.freeway_blocks]
             trust_radii.extend(block.trust_radius for block in action.vsl_blocks)
-            follower.vsl_marginal_price_trust_kmh = max(trust_radii, default=None)
+            follower.vsl_marginal_price_trust_kmh = (
+                runtime.vsl_trust_kmh
+                if runtime is not None
+                else max(trust_radii, default=None)
+            )
             follower.metering_release_certified = (
                 {
                     ramp: bool(certified)

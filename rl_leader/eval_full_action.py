@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from rl_leader.data_contract import RL_CHECKPOINT_FORMAT
 from rl_leader.env import RLLeaderEnv
 from rl_leader.nets import Actor, UnifiedCoordinationActor
 from src.controllers.coordination import (
@@ -30,9 +31,33 @@ DEFAULT_MASKS = (
 )
 
 
+def observation_schema_adapter(checkpoint_schema: dict, environment_schema: dict):
+    old_names = list(checkpoint_schema.get("names", []))
+    new_names = list(environment_schema.get("names", []))
+    if checkpoint_schema == environment_schema:
+        indices = np.arange(len(new_names), dtype=np.int64)
+        return indices, {"mode": "exact", "moved_feature_count": 0}
+    if checkpoint_schema.get("version") != environment_schema.get("version"):
+        raise ValueError("checkpoint observation schema version does not match the environment")
+    if checkpoint_schema.get("dimension") != environment_schema.get("dimension"):
+        raise ValueError("checkpoint observation schema dimension does not match the environment")
+    if len(set(old_names)) != len(old_names) or len(set(new_names)) != len(new_names):
+        raise ValueError("observation schema names must be unique for permutation migration")
+    if set(old_names) != set(new_names):
+        raise ValueError("checkpoint observation schema features do not match the environment")
+    new_index = {name: index for index, name in enumerate(new_names)}
+    indices = np.asarray([new_index[name] for name in old_names], dtype=np.int64)
+    return indices, {
+        "mode": "name_permutation",
+        "moved_feature_count": int(np.count_nonzero(
+            indices != np.arange(len(indices), dtype=np.int64)
+        )),
+    }
+
+
 def load_actor(path: str | Path, env: RLLeaderEnv):
     checkpoint = torch.load(path, map_location="cpu", weights_only=False)
-    if checkpoint.get("format_version") != "rl_coordination_checkpoint_v2":
+    if checkpoint.get("format_version") != RL_CHECKPOINT_FORMAT:
         raise ValueError(f"unsupported checkpoint format: {checkpoint.get('format_version')!r}")
     action_schema = checkpoint.get("action_schema", {})
     observation_schema = checkpoint.get("observation_schema", {})
@@ -42,8 +67,10 @@ def load_actor(path: str | Path, env: RLLeaderEnv):
         raise ValueError("checkpoint observation schema version does not match the controller")
     if action_schema != env.action_schema.metadata():
         raise ValueError("checkpoint action schema layout does not match the environment")
-    if observation_schema != env.observation_schema.metadata():
-        raise ValueError("checkpoint observation schema layout does not match the environment")
+    observation_indices, observation_adapter = observation_schema_adapter(
+        observation_schema,
+        env.observation_schema.metadata(),
+    )
     if checkpoint["actor_class"] == "UnifiedCoordinationActor":
         actor = UnifiedCoordinationActor(
             env.obs_dim,
@@ -56,7 +83,20 @@ def load_actor(path: str | Path, env: RLLeaderEnv):
         actor = Actor(env.obs_dim, env.action_dim)
     actor.load_state_dict(checkpoint["actor_state_dict"])
     actor.eval()
-    return actor, checkpoint
+    return actor, checkpoint, observation_indices, observation_adapter
+
+
+def _clip_action_to_support(action, low, high):
+    action = np.asarray(action, dtype=np.float32)
+    low = np.asarray(low, dtype=np.float32)
+    high = np.asarray(high, dtype=np.float32)
+    if action.shape != low.shape or action.shape != high.shape:
+        raise ValueError(
+            "policy action and checkpoint support must have the same shape: "
+            f"action={action.shape}, low={low.shape}, high={high.shape}"
+        )
+    outside = (action < low) | (action > high)
+    return np.clip(action, low, high).astype(np.float32), outside
 
 
 def _state_snapshot(env):
@@ -231,9 +271,30 @@ def _adapter_receipts(coordination, follower):
 def rollout(
     checkpoint_path, scenario, mask, max_steps, max_sec,
     trace_path: str | Path | None = None, diagnostic_candidates: bool = False,
+    response_candidates: int = 1,
+    response_value_depth: int = 0,
+    strict_pfo_gate: bool = False,
+    pfo_supervisor: bool = False,
+    pstack_anchor: bool = False,
 ):
-    env = RLLeaderEnv(scenario_name=scenario, mask=mask)
-    actor, checkpoint = load_actor(checkpoint_path, env)
+    env = RLLeaderEnv(
+        scenario_name=scenario,
+        mask=mask,
+        response_candidate_count=response_candidates,
+        response_value_depth=response_value_depth,
+        strict_pfo_gate=strict_pfo_gate,
+        pfo_supervisor=pfo_supervisor,
+        pstack_anchor=pstack_anchor,
+    )
+    actor, checkpoint, observation_indices, observation_adapter = load_actor(
+        checkpoint_path, env
+    )
+    action_parameterization = str(checkpoint.get("training", {}).get(
+        "action_parameterization", "absolute"
+    ))
+    if action_parameterization == "pstack_residual" and not pstack_anchor:
+        raise ValueError("P-Stack residual checkpoints require --pstack-anchor")
+    env.action_parameterization = action_parameterization
     obs = env.reset()
     env.follower.diagnostic_trace_enabled = bool(diagnostic_candidates)
     start = time.monotonic()
@@ -244,6 +305,10 @@ def rollout(
     projected_nuf = []
     realized_meter = []
     support_out = []
+    pstack_anchor_picks = []
+    pstack_anchor_gains = []
+    support_clip_delta = []
+    support_clipped_rows = []
     steps = 0
     done = False
     trace_output = Path(trace_path) if trace_path else None
@@ -252,6 +317,7 @@ def rollout(
         trace_output.parent.mkdir(parents=True, exist_ok=True)
         trace_handle = trace_output.open("w", encoding="utf-8")
         trace_output.with_suffix(".meta.json").write_text(json.dumps({
+            **env.experiment_contract.artifact_fields(),
             "checkpoint": str(checkpoint_path),
             "response_contract": RL_RESPONSE_CONTRACT_VERSION,
             "checkpoint_response_contract": checkpoint.get("dataset", {}).get(
@@ -268,19 +334,33 @@ def rollout(
             "action_schema": env.action_schema.metadata(),
             "observation_schema": env.observation_schema.metadata(),
             "diagnostic_candidates": bool(diagnostic_candidates),
+            "response_candidate_count": int(response_candidates),
+            "response_value_depth": int(response_value_depth),
+            "response_horizon_steps": int(env.controller.response_horizon_steps),
+            "strict_pfo_gate": bool(strict_pfo_gate),
+            "pfo_supervisor": bool(pfo_supervisor),
+            "pstack_anchor": bool(pstack_anchor),
+            "action_parameterization": action_parameterization,
+            "checkpoint_support_clipping": True,
+            "observation_schema_adapter": observation_adapter,
         }, indent=2), encoding="utf-8")
+    low = checkpoint["action_support_low"].cpu().numpy()
+    high = checkpoint["action_support_high"].cpu().numpy()
     try:
         while not done and steps < max_steps and time.monotonic() - start < max_sec:
             time_sec_before = float(env.sim.state.time_sec)
             state_before = _state_snapshot(env) if trace_handle else None
             obs_before = obs
-            action = actor.act(obs, deterministic=True)
-            low = checkpoint["action_support_low"].cpu().numpy()
-            high = checkpoint["action_support_high"].cpu().numpy()
-            action_support_out = (action < low) | (action > high)
+            policy_observation = np.asarray(obs)[observation_indices]
+            proposed_action = actor.act(policy_observation, deterministic=True)
+            action, action_support_out = _clip_action_to_support(
+                proposed_action, low, high
+            )
             support_out.append(float(np.mean(action_support_out)))
-            requested = env.action_schema.decode(action, env.previous, env.mask)
+            support_clip_delta.append(float(np.mean(np.abs(proposed_action - action))))
+            support_clipped_rows.append(float(np.any(action_support_out)))
             obs, _, done, info = env.step(action)
+            requested = env.last_requested_coordination
             coordination = env.controller.last_coordination_action or requested
             total_ttt += info["step_ttt"]
             throughput += info["throughput_veh"]
@@ -290,7 +370,16 @@ def rollout(
             raw_nuf.append(info["raw_N_UF"])
             projected_nuf.append(info["projected_N_UF"])
             realized_meter.append(info["realized_metering_total"])
-            if info["native_price_refresh_count"] != 0.0:
+            if pstack_anchor:
+                picked_rl = float(info.get("leader_rl_pstack_anchor_pick_rl", 0.0))
+                pstack_anchor_picks.append(picked_rl)
+                pstack_anchor_gains.append(float(
+                    info.get("leader_rl_pstack_anchor_gain", 0.0)
+                ))
+            anchor_selected = float(info.get(
+                "leader_rl_pstack_anchor_pick_pstack", 0.0
+            )) > 0.5
+            if info["native_price_refresh_count"] != 0.0 and not anchor_selected:
                 raise RuntimeError("RL evaluation unexpectedly enabled the native price generator")
             if trace_handle:
                 relevant_info = {
@@ -305,9 +394,28 @@ def rollout(
                         name: float(value)
                         for name, value in zip(env.observation_schema.names, obs_before)
                     },
+                    "proposed_raw_action": {
+                        name: float(value)
+                        for name, value in zip(env.action_schema.names, proposed_action)
+                    },
                     "raw_action": {
                         name: float(value)
                         for name, value in zip(env.action_schema.names, action)
+                    },
+                    "anchor_raw_action": {
+                        name: float(value)
+                        for name, value in zip(
+                            env.action_schema.names,
+                            env.last_anchor_raw_action
+                            if env.last_anchor_raw_action is not None
+                            else np.full(env.action_dim, np.nan),
+                        )
+                    },
+                    "applied_raw_action": {
+                        name: float(value)
+                        for name, value in zip(
+                            env.action_schema.names, env.last_applied_raw_action
+                        )
                     },
                     "support_out_names": [
                         name for name, outside in zip(env.action_schema.names, action_support_out)
@@ -318,6 +426,7 @@ def rollout(
                     "adapter_receipts": _adapter_receipts(coordination, env.follower),
                     "follower_prices": _price_snapshot(env.follower),
                     "candidate_trace": env.follower.last_candidate_trace,
+                    "response_candidates": env.controller.last_response_candidate_trace,
                     "control_after": _control_snapshot(env),
                     "info": relevant_info,
                 }, separators=(",", ":")) + "\n")
@@ -335,6 +444,8 @@ def rollout(
             trace_handle.close()
     return {
         "checkpoint": str(checkpoint_path),
+        "experiment_contract_sha256": env.experiment_contract_fingerprint,
+        "experiment_profile_id": env.experiment_contract_payload["profile_id"],
         "response_contract": RL_RESPONSE_CONTRACT_VERSION,
         "checkpoint_response_contract": checkpoint.get("dataset", {}).get(
             "response_contract", "legacy"
@@ -355,6 +466,33 @@ def rollout(
         "projected_N_UF_mean": float(np.mean(projected_nuf)) if projected_nuf else 0.0,
         "realized_metering_mean": float(np.mean(realized_meter)) if realized_meter else 0.0,
         "support_out_fraction": float(np.mean(support_out)) if support_out else 0.0,
+        "support_clipped_row_fraction": (
+            float(np.mean(support_clipped_rows)) if support_clipped_rows else 0.0
+        ),
+        "support_clip_mean_abs_delta": (
+            float(np.mean(support_clip_delta)) if support_clip_delta else 0.0
+        ),
+        "checkpoint_support_clipping": True,
+        "observation_schema_adapter_mode": observation_adapter["mode"],
+        "observation_schema_adapter_moved_feature_count": int(
+            observation_adapter["moved_feature_count"]
+        ),
+        "response_candidate_count": int(response_candidates),
+        "response_value_depth": int(response_value_depth),
+        "response_horizon_steps": int(env.controller.response_horizon_steps),
+        "strict_pfo_gate": bool(strict_pfo_gate),
+        "pfo_supervisor": bool(pfo_supervisor),
+        "pstack_anchor": bool(pstack_anchor),
+        "action_parameterization": action_parameterization,
+        "pstack_anchor_rl_pick_count": int(np.count_nonzero(
+            np.asarray(pstack_anchor_picks) > 0.5
+        )),
+        "pstack_anchor_rl_pick_fraction": float(np.mean(pstack_anchor_picks))
+        if pstack_anchor_picks else 0.0,
+        "pstack_anchor_rl_pick_gain_mean": float(np.mean([
+            gain for gain, picked in zip(pstack_anchor_gains, pstack_anchor_picks)
+            if picked > 0.5
+        ])) if any(picked > 0.5 for picked in pstack_anchor_picks) else 0.0,
         "elapsed_sec": float(time.monotonic() - start),
         "trace_path": str(trace_output) if trace_output is not None else "",
     }
@@ -370,6 +508,16 @@ def main(argv=None):
     parser.add_argument("--out", default="results/full_action_validation.csv")
     parser.add_argument("--trace-dir", default="")
     parser.add_argument("--diagnostic-candidates", action="store_true")
+    parser.add_argument("--response-candidates", type=int, default=1)
+    parser.add_argument(
+        "--response-value-depth",
+        type=int,
+        default=0,
+        help="extra leader-only response rollout steps; 3 gives H=6 when MPC H=3",
+    )
+    parser.add_argument("--strict-pfo-gate", action="store_true")
+    parser.add_argument("--pfo-supervisor", action="store_true")
+    parser.add_argument("--pstack-anchor", action="store_true")
     args = parser.parse_args(argv)
     checkpoints = []
     for pattern in args.checkpoints:
@@ -390,6 +538,11 @@ def main(argv=None):
                     checkpoint, scenario, mask, args.max_steps, args.max_sec,
                     trace_path=trace_path,
                     diagnostic_candidates=args.diagnostic_candidates,
+                    response_candidates=args.response_candidates,
+                    response_value_depth=args.response_value_depth,
+                    strict_pfo_gate=args.strict_pfo_gate,
+                    pfo_supervisor=args.pfo_supervisor,
+                    pstack_anchor=args.pstack_anchor,
                 )
                 rows.append(row)
                 print(
@@ -405,7 +558,29 @@ def main(argv=None):
         if rows:
             writer.writeheader()
             writer.writerows(rows)
-    output.with_suffix(".json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+    contracts = {}
+    for row in rows:
+        sha256 = row["experiment_contract_sha256"]
+        scenario = row["scenario"]
+        probe = RLLeaderEnv(
+            scenario_name=scenario,
+            response_candidate_count=args.response_candidates,
+            response_value_depth=args.response_value_depth,
+            strict_pfo_gate=args.strict_pfo_gate,
+            pfo_supervisor=args.pfo_supervisor,
+            pstack_anchor=args.pstack_anchor,
+        )
+        if probe.experiment_contract_fingerprint != sha256:
+            raise RuntimeError(f"evaluation contract drift for {scenario}")
+        contracts[sha256] = probe.experiment_contract_payload
+    companion = {
+        "format_version": "rl_evaluation_v2",
+        "experiment_contracts": contracts,
+        "rows": rows,
+    }
+    output.with_suffix(".json").write_text(
+        json.dumps(companion, indent=2), encoding="utf-8"
+    )
     print(f"saved evaluation -> {output}", flush=True)
 
 

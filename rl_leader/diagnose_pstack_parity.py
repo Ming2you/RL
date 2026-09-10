@@ -28,6 +28,26 @@ PRICE_FIELDS = (
     "metering_release_certified",
 )
 
+NATIVE_BRANCH_FIELDS = (
+    "leader_pfo_incumbent_active",
+    "leader_pfo_incumbent_selected",
+    "leader_pfo_incumbent_tie_break_selected",
+    "leader_fallback_guard_selected",
+    "leader_fallback_guard_selected_pfo",
+    "leader_fallback_guard_rejected_leader",
+    "leader_selected_stage_coarse",
+    "leader_selected_stage_refined",
+    "leader_selected_stage_fallback",
+    "leader_selected_stage_fallback_pfo",
+    "leader_selected_stage_fallback_no_control",
+    "leader_intent_N_P_star",
+    "leader_intent_N_UF_star",
+    "leader_selected_N_P_star",
+    "leader_selected_N_UF_star",
+    "leader_realized_N_P_star",
+    "leader_realized_N_UF_star",
+)
+
 
 def _mapping(value) -> dict[str, float]:
     if not isinstance(value, Mapping):
@@ -58,6 +78,15 @@ def _follower_state_snapshot(follower) -> dict:
         [float(value) for value in pending] if pending is not None else None
     )
     return result
+
+
+def _native_branch_snapshot(result) -> dict[str, float]:
+    metadata = getattr(result, "metadata", {}) or {}
+    diagnostics = getattr(result.control, "diagnostics", {}) or {}
+    return {
+        name: float(metadata.get(name, diagnostics.get(name, 0.0)))
+        for name in NATIVE_BRANCH_FIELDS
+    }
 
 
 def _all_vsl_keys(env: RLLeaderEnv) -> tuple[str, ...]:
@@ -242,6 +271,7 @@ def diagnose_scenario(
     output_dir: Path,
     max_policy_steps: int,
     max_sec: float,
+    sync_follower_state: bool,
 ) -> dict:
     env = RLLeaderEnv(scenario_name=scenario)
     rows: list[dict] = []
@@ -255,6 +285,9 @@ def diagnose_scenario(
             time_sec = float(env.sim.state.time_sec)
             state = env.sim.state.copy()
             previous = env.previous.copy()
+            if sync_follower_state:
+                optimizer = env._ensure_optimizer_controller()
+                optimizer.nash_solver = copy.deepcopy(env.controller.nash_solver)
             follower_state_before = {
                 "native": _follower_state_snapshot(
                     env._ensure_optimizer_controller().nash_solver,
@@ -287,6 +320,8 @@ def diagnose_scenario(
                 "simulation_step": int(env.step_idx),
                 "time_sec": time_sec,
                 "phase": "peak" if time_sec < 5220.0 else "recovery",
+                "sync_follower_state": bool(sync_follower_state),
+                "native_branch": _native_branch_snapshot(native_result),
                 "encoded_saturated_count": int(saturated_indices.size),
                 "encoded_budget_saturated_count": int(np.count_nonzero(saturated_indices < 2)),
                 "encoded_price_saturated_count": int(np.count_nonzero(saturated_indices >= 2)),
@@ -353,6 +388,7 @@ def main() -> None:
     parser.add_argument("--output-dir", default="results/pstack_gap_diagnosis_v1/parity")
     parser.add_argument("--max-policy-steps", type=int, default=75)
     parser.add_argument("--max-sec", type=float, default=14400.0)
+    parser.add_argument("--sync-follower-state", action="store_true")
     args = parser.parse_args()
     output_dir = ROOT / args.output_dir
     summaries = []
@@ -362,6 +398,7 @@ def main() -> None:
             output_dir,
             max(0, int(args.max_policy_steps)),
             max(0.0, float(args.max_sec)),
+            bool(args.sync_follower_state),
         ))
     aggregate = {"format_version": "pstack_adapter_parity_v1", "scenarios": summaries}
     output_dir.mkdir(parents=True, exist_ok=True)

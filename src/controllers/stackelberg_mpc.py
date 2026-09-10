@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import csv
@@ -32,6 +33,10 @@ CALIBRATION_FINGERPRINTS: Dict[str, Dict[str, Dict[str, int]]] = {
 }
 # 경고는 프로세스당 성분별 1회만(후보 worker 재생성 시 반복 스팸 방지).
 _calib_fingerprint_warned: set = set()
+
+
+def _suppress_calibration_warnings() -> bool:
+    return os.environ.get("RL_SUPPRESS_CALIBRATION_WARNINGS", "").strip() == "1"
 
 
 def leader_hinge_cost(cfg: "ExperimentConfig", states: list, forecast=None, force: bool = False) -> float:
@@ -221,6 +226,7 @@ class _LeaderCandidateEvaluation:
     metadata: Dict[str, float]
     rollout_used: bool
     stage: str = "coarse"
+    follower_solver_snapshot: object | None = None
 
 
 def _stackelberg_candidate_worker(payload: dict) -> _LeaderCandidateEvaluation:
@@ -274,6 +280,7 @@ class StackelbergMPCController:
             ).items()
         }
         mismatches = 0
+        suppress = _suppress_calibration_warnings()
         for component, fingerprint in CALIBRATION_FINGERPRINTS.items():
             expected = {
                 str(k): int(v) for k, v in fingerprint.get("ramp_merge", {}).items()
@@ -283,7 +290,7 @@ class StackelbergMPCController:
             if expected == current:
                 continue
             mismatches += 1
-            if component not in _calib_fingerprint_warned:
+            if not suppress and component not in _calib_fingerprint_warned:
                 _calib_fingerprint_warned.add(component)
                 exp_set = sorted(set(expected.values()))
                 cur_set = sorted(set(current.values()))
@@ -297,7 +304,11 @@ class StackelbergMPCController:
 
     def _maybe_emit_recalib_suggestion(self) -> None:
         """재캘리브레이션 제안 stderr — 런(컨트롤러 인스턴스)당 최초 1회만."""
-        if self._recalib_needed and not self._recalib_stderr_emitted:
+        if (
+            self._recalib_needed
+            and not self._recalib_stderr_emitted
+            and not _suppress_calibration_warnings()
+        ):
             self._recalib_stderr_emitted = True
             print(
                 "[제안] 캘리브레이션 표류 감지 - component_canary.py 실행 권장",
@@ -658,6 +669,8 @@ class StackelbergMPCController:
             _nuf0 = float(best_eval.action.N_UF_star)
             _span = max(abs(_nuf0) * 0.5, 300.0)
             _sp = Path(_sweep).with_suffix(".sweep.csv")
+            committed_solver = self.nash_solver
+            common_sweep_solver = copy.deepcopy(committed_solver)
             try:
                 _sp.parent.mkdir(parents=True, exist_ok=True)
                 _newp = not _sp.exists()
@@ -666,6 +679,7 @@ class StackelbergMPCController:
                     if _newp:
                         _sw.writerow(["step", "req_N_UF", "N_P", "objective", "realized_N_UF"])
                     for _k in range(11):
+                        self.nash_solver = copy.deepcopy(common_sweep_solver)
                         _nuf = _nuf0 - _span + 2.0 * _span * _k / 10.0
                         _ev = self._evaluate_full_candidate(
                             900000 + _k, LeaderAction(_npv, _nuf), state, forecast, previous,
@@ -673,6 +687,8 @@ class StackelbergMPCController:
                         _sw.writerow([_step_s, _nuf, _npv, _ev.objective, _ev.action.N_UF_star])
             except OSError:
                 pass
+            finally:
+                self.nash_solver = committed_solver
         metadata = dict(base_metadata)
         metadata.update(proxy_metadata)
         metadata.update(refined_proxy_metadata)

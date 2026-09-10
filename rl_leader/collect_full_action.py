@@ -9,9 +9,22 @@ from pathlib import Path
 
 import numpy as np
 
+from rl_leader.data_contract import (
+    PSTACK_DATASET_FORMAT,
+    PSTACK_RESIDUAL_DATA_CONTRACT,
+    PSTACK_RESIDUAL_ROW_FORMAT,
+)
+from rl_leader.experiment_contract import (
+    EXPERIMENT_CONTRACT_VERSION,
+    EXPERIMENT_PROFILE_ID,
+)
 from rl_leader.env import (
     OPTIMIZER_ANCHOR_CONTRACT,
+    OPTIMIZER_ANCHOR_SUPERVISOR_CONTRACT,
+    OPTIMIZER_ANCHOR_TRANSITION_CONTRACT,
+    OPTIMIZER_PREVIEW_CONTRACT,
     RLLeaderEnv,
+    WARMUP_CONTROL_CONTRACT,
     make_random_scenario,
     make_targeted_scenario,
 )
@@ -57,6 +70,15 @@ def action_block_layout(action_schema):
     return tuple(layout)
 
 
+def priority_block_indices(layout, priority_blocks):
+    """Match legacy owner names or unambiguous family-qualified block keys."""
+    requested = set(map(str, priority_blocks))
+    return [
+        index for index, (family, owner, _, _) in enumerate(layout)
+        if owner in requested or f"{family}:{owner}" in requested
+    ]
+
+
 def _git_commit() -> str:
     try:
         result = subprocess.run(
@@ -84,8 +106,7 @@ def structured_action(
     action[0] = np.clip(rng.normal(0.0, 0.25), -1.0, 1.0)
     action[1] = np.clip(rng.normal(0.75, 0.12), -1.0, 1.0)
     layout = action_block_layout(env.action_schema)
-    owners = tuple(owner for _, owner, _, _ in layout)
-    priority_indices = [index for index, owner in enumerate(owners) if owner in priority_blocks]
+    priority_indices = priority_block_indices(layout, priority_blocks)
 
     def choose_block():
         candidates = priority_indices if priority_indices and rng.random() < priority_probability else range(len(layout))
@@ -220,6 +241,40 @@ def _save(path: Path, rows: dict, manifest: dict) -> None:
         "projection_veh": np.asarray(rows["projection_veh"], dtype=np.float32),
         "rejected_veh": np.asarray(rows["rejected_veh"], dtype=np.float32),
         "throughput_veh": np.asarray(rows["throughput_veh"], dtype=np.float32),
+        "teacher_pfo_selected": np.asarray(rows["teacher_pfo_selected"], dtype=np.float32),
+        "teacher_internal_pfo_selected": np.asarray(
+            rows["teacher_internal_pfo_selected"], dtype=np.float32,
+        ),
+        "teacher_outer_pfo_selected": np.asarray(
+            rows["teacher_outer_pfo_selected"], dtype=np.float32,
+        ),
+        "teacher_selected_stage": np.asarray(rows["teacher_selected_stage"], dtype="U32"),
+        "teacher_far_enabled": np.asarray(rows["teacher_far_enabled"], dtype=np.float32),
+        "teacher_encoded_saturated_count": np.asarray(
+            rows["teacher_encoded_saturated_count"], dtype=np.float32,
+        ),
+        "teacher_encoded_budget_saturated_count": np.asarray(
+            rows["teacher_encoded_budget_saturated_count"], dtype=np.float32,
+        ),
+        "teacher_native_N_P_star": np.asarray(
+            rows["teacher_native_N_P_star"], dtype=np.float32,
+        ),
+        "teacher_native_N_UF_star": np.asarray(
+            rows["teacher_native_N_UF_star"], dtype=np.float32,
+        ),
+        "teacher_response": np.asarray(rows["teacher_response"], dtype=np.float32),
+        "anchor_action": np.asarray(rows["anchor_action"], dtype=np.float32),
+        "policy_residual": np.asarray(rows["policy_residual"], dtype=np.float32),
+        "deployed_residual": np.asarray(rows["deployed_residual"], dtype=np.float32),
+        "anchor_envelope": np.asarray(rows["anchor_envelope"], dtype=np.float64),
+        "anchor_selected_branch": np.asarray(
+            rows["anchor_selected_branch"], dtype="U32"
+        ),
+        "anchor_fingerprint": np.asarray(rows["anchor_fingerprint"], dtype="U64"),
+        "pstack_anchor_pick_rl": np.asarray(
+            rows["pstack_anchor_pick_rl"], dtype=np.float32,
+        ),
+        "pstack_anchor_gain": np.asarray(rows["pstack_anchor_gain"], dtype=np.float32),
         "manifest_json": np.asarray(json.dumps(manifest, sort_keys=True)),
     }
     temporary = path.with_suffix(".tmp.npz")
@@ -236,7 +291,18 @@ def collect(args) -> Path:
     unknown = set(modes) - set(DEFAULT_MODES) - set(TARGETED_MODES)
     if unknown:
         raise ValueError(f"unknown behavior modes: {sorted(unknown)}")
+    if args.pstack_anchor and any(
+        mode not in {"optimizer_anchor", "optimizer_local"} for mode in modes
+    ):
+        raise ValueError(
+            "P-Stack anchored collection only supports optimizer_anchor/optimizer_local"
+        )
     priority_blocks = tuple(part.strip() for part in args.priority_blocks.split(",") if part.strip())
+    target_scenarios = tuple(
+        part.strip() for part in args.target_scenarios.split(",") if part.strip()
+    )
+    if target_scenarios and args.scenario_profile != "targeted":
+        raise ValueError("--target-scenarios requires --scenario-profile targeted")
     rows = {key: [] for key in (
         "obs", "act", "rew", "next_obs", "done", "episode", "step",
         "behavior_mode", "behavior_probability", "termination_reason", "mask",
@@ -244,14 +310,22 @@ def collect(args) -> Path:
         "response", "simulation_time_sec", "perturb_active", "anchor_distance",
         "validity", "conservation_residual", "projection_veh",
         "rejected_veh", "throughput_veh",
+        "teacher_pfo_selected", "teacher_selected_stage", "teacher_far_enabled",
+        "teacher_internal_pfo_selected", "teacher_outer_pfo_selected",
+        "teacher_encoded_saturated_count", "teacher_encoded_budget_saturated_count",
+        "teacher_native_N_P_star", "teacher_native_N_UF_star", "teacher_response",
+        "anchor_action", "pstack_anchor_pick_rl", "pstack_anchor_gain",
+        "policy_residual", "deployed_residual", "anchor_envelope",
+        "anchor_selected_branch", "anchor_fingerprint",
     )}
     output = Path(args.out)
     episode_summaries = []
+    experiment_contracts = {}
     action_schema = observation_schema = None
     for episode in range(args.episodes):
         mode = modes[episode % len(modes)]
         scenario = (
-            make_targeted_scenario(rng)
+            make_targeted_scenario(rng, target_scenarios)
             if args.scenario_profile == "targeted"
             else make_random_scenario(rng, holdout_demand=args.stressor_demand_cap)
         )
@@ -259,23 +333,34 @@ def collect(args) -> Path:
             scenario_dict=scenario,
             T_total=args.t_total,
             warmup_nc_steps=args.warmup,
+            pfo_supervisor=args.pfo_supervisor,
+            pstack_anchor=args.pstack_anchor,
+            action_parameterization=(
+                "pstack_residual" if args.pstack_anchor else "absolute"
+            ),
         )
         action_schema = env.action_schema.metadata()
         observation_schema = env.observation_schema.metadata()
+        contract = env.experiment_contract
+        experiment_contracts[contract.sha256] = contract.payload
         obs = env.reset()
         start = time.monotonic()
         episode_start = len(rows["obs"])
         layout = action_block_layout(env.action_schema)
-        owners = tuple(owner for _, owner, _, _ in layout)
-        eligible = [
-            index for index, owner in enumerate(owners)
-            if not priority_blocks or owner in priority_blocks
-        ]
+        eligible = (
+            priority_block_indices(layout, priority_blocks)
+            if priority_blocks else list(range(len(layout)))
+        )
+        if not eligible:
+            raise ValueError("priority blocks did not match the action schema")
         selected_count = min(max(int(args.perturb_block_count), 1), len(eligible))
         selected_indices = tuple(sorted(int(value) for value in rng.choice(
             eligible, size=selected_count, replace=False
         )))
-        selected_owners = tuple(owners[index] for index in selected_indices)
+        selected_owners = tuple(layout[index][1] for index in selected_indices)
+        selected_block_keys = tuple(
+            f"{layout[index][0]}:{layout[index][1]}" for index in selected_indices
+        )
         selected_slices = tuple(layout[index][2] for index in selected_indices)
         positive_indices = tuple(
             index for _, _, _, positive in layout for index in positive
@@ -300,16 +385,27 @@ def collect(args) -> Path:
                 exploratory = mode not in {"optimizer_anchor", "budget", "loose_anchor"}
                 perturb_active = False
                 anchor_distance = 0.0
-                if mode == "optimizer_anchor":
+                anchor_action = None
+                if mode == "optimizer_anchor" and args.pstack_anchor:
+                    mask = CoordinationMask.named("RL-FULL")
+                    env.mask = mask
+                    residual_action = np.zeros(env.action_dim, dtype=np.float32)
+                    next_obs, reward, natural_done, info = env.step(residual_action)
+                    action = np.asarray(env.last_applied_raw_action, dtype=np.float32)
+                    anchor_action = np.asarray(env.last_anchor_raw_action, dtype=np.float32)
+                elif mode == "optimizer_anchor":
                     next_obs, reward, natural_done, info, action, mask = (
                         optimizer_replay_anchor_step(env)
                     )
+                    anchor_action = np.asarray(action, dtype=np.float32).copy()
                 elif mode in {"optimizer_local", "loose_anchor", "loose_local"}:
                     base_action = (
                         env.optimizer_anchor_action()
                         if mode == "optimizer_local"
                         else loose_anchor_action(env)
                     )
+                    if mode == "optimizer_local":
+                        anchor_action = np.asarray(base_action, dtype=np.float32).copy()
                     if mode.endswith("_local"):
                         perturb_active = local_step >= args.perturb_start_step
                         action, temporal_noise = temporally_correlated_action(
@@ -328,7 +424,14 @@ def collect(args) -> Path:
                         action = base_action
                     mask = CoordinationMask.named("RL-FULL")
                     env.mask = mask
-                    next_obs, reward, natural_done, info = env.step(action)
+                    if mode == "optimizer_local" and args.pstack_anchor:
+                        residual_action = np.asarray(action - base_action, dtype=np.float32)
+                        next_obs, reward, natural_done, info = env.step(residual_action)
+                        action = np.asarray(env.last_applied_raw_action, dtype=np.float32)
+                        anchor_action = np.asarray(env.last_anchor_raw_action, dtype=np.float32)
+                        anchor_distance = float(np.linalg.norm(action - anchor_action))
+                    else:
+                        next_obs, reward, natural_done, info = env.step(action)
                 else:
                     if mode == "epsilon_mixture":
                         exploratory = bool(rng.random() < epsilon)
@@ -345,6 +448,44 @@ def collect(args) -> Path:
                     )
                     env.mask = mask
                     next_obs, reward, natural_done, info = env.step(action)
+                if args.pstack_anchor:
+                    if (
+                        env.last_policy_raw_action is None
+                        or env.last_deployed_residual is None
+                        or env.last_optimizer_anchor_coordination is None
+                    ):
+                        raise RuntimeError(
+                            "anchored transition did not expose its runtime contract"
+                        )
+                    policy_residual = np.asarray(
+                        env.last_policy_raw_action, dtype=np.float32
+                    ).copy()
+                    deployed_residual = np.asarray(
+                        env.last_deployed_residual, dtype=np.float32
+                    ).copy()
+                    anchor_coordination = env.last_optimizer_anchor_coordination
+                    anchor_envelope = env.action_schema.serialize_anchor(
+                        anchor_coordination
+                    )
+                    anchor_selected_branch = str(
+                        anchor_coordination.selected_branch
+                    )
+                    anchor_fingerprint = env.action_schema.anchor_fingerprint(
+                        anchor_envelope, anchor_selected_branch
+                    )
+                    anchor_distance = float(np.linalg.norm(policy_residual))
+                else:
+                    policy_residual = np.full(
+                        env.action_dim, np.nan, dtype=np.float32
+                    )
+                    deployed_residual = policy_residual.copy()
+                    anchor_envelope = np.full(
+                        env.action_schema.anchor_envelope_metadata()["dimension"],
+                        np.nan,
+                        dtype=np.float64,
+                    )
+                    anchor_selected_branch = "none"
+                    anchor_fingerprint = ""
                 invalid = not bool(info["validity_gate_pass"])
                 done = bool(natural_done or invalid)
                 if invalid:
@@ -379,6 +520,64 @@ def collect(args) -> Path:
                 rows["projection_veh"].append(info["movement_queue_projection_veh"])
                 rows["rejected_veh"].append(info["coupling_offramp_arrivals_rejected_veh"])
                 rows["throughput_veh"].append(info["throughput_veh"])
+                teacher_metadata = (
+                    env.last_optimizer_anchor_metadata
+                    if mode in {"optimizer_anchor", "optimizer_local"}
+                    else {}
+                )
+                rows["teacher_pfo_selected"].append(float(
+                    teacher_metadata.get("teacher_pfo_selected", -1.0)
+                ))
+                rows["teacher_selected_stage"].append(str(
+                    teacher_metadata.get("teacher_selected_stage", "none")
+                ))
+                rows["teacher_internal_pfo_selected"].append(float(
+                    teacher_metadata.get("teacher_internal_pfo_selected", -1.0)
+                ))
+                rows["teacher_outer_pfo_selected"].append(float(
+                    teacher_metadata.get("teacher_outer_pfo_selected", -1.0)
+                ))
+                rows["teacher_far_enabled"].append(float(
+                    teacher_metadata.get("teacher_far_enabled", -1.0)
+                ))
+                rows["teacher_encoded_saturated_count"].append(float(
+                    teacher_metadata.get("teacher_encoded_saturated_count", -1.0)
+                ))
+                rows["teacher_encoded_budget_saturated_count"].append(float(
+                    teacher_metadata.get("teacher_encoded_budget_saturated_count", -1.0)
+                ))
+                rows["teacher_native_N_P_star"].append(float(
+                    teacher_metadata.get("teacher_native_N_P_star", np.nan)
+                ))
+                rows["teacher_native_N_UF_star"].append(float(
+                    teacher_metadata.get("teacher_native_N_UF_star", np.nan)
+                ))
+                teacher_response = (
+                    env.last_optimizer_anchor_response
+                    if mode in {"optimizer_anchor", "optimizer_local"}
+                    else None
+                )
+                rows["teacher_response"].append(
+                    np.asarray(teacher_response, dtype=np.float32)
+                    if teacher_response is not None
+                    else np.full_like(env.response_vector(), np.nan, dtype=np.float32)
+                )
+                rows["anchor_action"].append(
+                    anchor_action
+                    if anchor_action is not None
+                    else np.full(env.action_dim, np.nan, dtype=np.float32)
+                )
+                rows["policy_residual"].append(policy_residual)
+                rows["deployed_residual"].append(deployed_residual)
+                rows["anchor_envelope"].append(anchor_envelope)
+                rows["anchor_selected_branch"].append(anchor_selected_branch)
+                rows["anchor_fingerprint"].append(anchor_fingerprint)
+                rows["pstack_anchor_pick_rl"].append(float(
+                    info.get("leader_rl_pstack_anchor_pick_rl", -1.0)
+                ))
+                rows["pstack_anchor_gain"].append(float(
+                    info.get("leader_rl_pstack_anchor_gain", np.nan)
+                ))
                 obs = next_obs
                 if (local_step + 1) % 10 == 0:
                     print(
@@ -417,10 +616,18 @@ def collect(args) -> Path:
             "elapsed_sec": time.monotonic() - start,
             "error": error_message,
             "scenario": scenario,
+            "experiment_contract_sha256": contract.sha256,
             "perturb_blocks": list(selected_owners) if mode.endswith("_local") else [],
+            "perturb_block_keys": (
+                list(selected_block_keys) if mode.endswith("_local") else []
+            ),
         })
         manifest = {
+            "format_version": PSTACK_DATASET_FORMAT,
             "dataset": args.dataset_name,
+            "experiment_contract_version": EXPERIMENT_CONTRACT_VERSION,
+            "experiment_profile_id": EXPERIMENT_PROFILE_ID,
+            "experiment_contracts": experiment_contracts,
             "response_contract": RL_RESPONSE_CONTRACT_VERSION,
             "seed": args.seed,
             "git_commit": _git_commit(),
@@ -433,14 +640,26 @@ def collect(args) -> Path:
             "priority_blocks": list(priority_blocks),
             "priority_probability": float(args.priority_probability),
             "scenario_profile": args.scenario_profile,
-            "optimizer_anchor_contract": OPTIMIZER_ANCHOR_CONTRACT,
-            "optimizer_anchor_transition_contract": "rl_adapter_replay_v1",
+            "target_scenarios": list(target_scenarios),
+            "optimizer_anchor_contract": (
+                OPTIMIZER_ANCHOR_SUPERVISOR_CONTRACT
+                if args.pfo_supervisor else OPTIMIZER_ANCHOR_CONTRACT
+            ),
+            "optimizer_anchor_transition_contract": OPTIMIZER_ANCHOR_TRANSITION_CONTRACT,
+            "optimizer_preview_contract": OPTIMIZER_PREVIEW_CONTRACT,
+            "warmup_control_contract": WARMUP_CONTROL_CONTRACT,
+            "pfo_supervisor": bool(args.pfo_supervisor),
+            "pstack_anchor": bool(args.pstack_anchor),
+            "action_parameterization_support": PSTACK_RESIDUAL_DATA_CONTRACT,
+            "pstack_residual_row_format": PSTACK_RESIDUAL_ROW_FORMAT,
+            "anchor_envelope_schema": env.action_schema.anchor_envelope_metadata(),
             "perturb_start_step": int(args.perturb_start_step),
             "temporal_rho": float(args.temporal_rho),
             "budget_perturb_scale": float(args.budget_perturb_scale),
             "block_perturb_scale": float(args.block_perturb_scale),
             "perturb_block_count": int(args.perturb_block_count),
             "max_total_sec": float(args.max_total_sec),
+            "failure_cost": float(args.failure_cost),
             "collection_elapsed_sec": float(time.monotonic() - collection_start),
             "episode_summaries": episode_summaries,
         }
@@ -470,12 +689,15 @@ def main(argv=None):
     parser.add_argument("--priority-probability", type=float, default=0.7)
     parser.add_argument("--stressor-demand-cap", type=float, default=1.8)
     parser.add_argument("--scenario-profile", choices=("broad", "targeted"), default="broad")
+    parser.add_argument("--target-scenarios", default="")
     parser.add_argument("--perturb-start-step", type=int, default=24)
     parser.add_argument("--temporal-rho", type=float, default=0.95)
     parser.add_argument("--budget-perturb-scale", type=float, default=0.05)
     parser.add_argument("--block-perturb-scale", type=float, default=0.10)
     parser.add_argument("--perturb-block-count", type=int, default=2)
     parser.add_argument("--modes", default=",".join(DEFAULT_MODES))
+    parser.add_argument("--pfo-supervisor", action="store_true")
+    parser.add_argument("--pstack-anchor", action="store_true")
     parser.add_argument("--dataset-name", default="full_action_v2")
     parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--out", default="data/full_action_v2/worker_100.npz")

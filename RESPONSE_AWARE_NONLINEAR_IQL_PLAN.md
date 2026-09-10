@@ -1,5 +1,9 @@
 # Response-Aware Nonlinear IQL Short-Paper 구현 기준서
 
+> **2026-08-31 변경:** learning component는 masked parametric Double DQN으로 전환했다.
+> 현재 구현과 실행 계약은 `RESPONSE_AWARE_DQN_IMPLEMENTATION.md`가 우선하며,
+> 이 문서는 IQL 단계의 설계 근거와 비교 baseline 계획으로 보존한다.
+
 **상태 기준일:** 2026-08-30
 **목적:** 지금까지 구축한 실험 기반을 보존하면서, `170 incident` 대표 시나리오에서 논문 초안의 비선형 coordination leader를 구현하고 short paper에 필요한 핵심 가설을 검증한다.
 

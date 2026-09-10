@@ -182,6 +182,10 @@ class NetworkConfig:
     # 완충 세그먼트 수(양쪽 각각, 2026-07-19): 0=완충 없음(기존 거동 비트동일). 코어 배열
     # 길이는 불변 — controllers/SEG13/VSL 키 전부 무접촉, plant만 상·하류 체인 연장.
     freeway_buffer_segments: int = 0
+    # Use a zero density gradient at the artificial ends of freeway buffers.
+    # This used to be attached dynamically, which made config serialization
+    # silently omit a trajectory-affecting switch.
+    terminal_zero_gradient: bool = False
     freeway_segment_length_km: float = 0.5
     freeway_lanes: int = 2
     v_free: float = 100.0
@@ -356,6 +360,10 @@ class MPCConfig:
     # rollout) → follower는 myopic-3 그대로, leader만 (3+d) full coupled rollout으로 후보 랭킹·price를
     # 매긴다 = ∂(TTT+V)/∂lever, V=leader full rollout tail. 기본 0=비트동일.
     leader_value_depth: int = 0
+    # Exact search accelerations. Both preserve the selected candidate under
+    # their intended contract and must still be serialized for reproducibility.
+    leader_skip_local_refinement: bool = False
+    leader_rollout_early_stop: bool = False
     # far(MFD tail) terminal cost(2026-07-08 구현, 2026-07-09 기본 ON — 사용자 지시):
     # leader 후보 채점(V=near+far)과 가격 rollout(price_far) 양쪽이 참조. urban(N²/2G,
     # boundary 큐 포함) + freeway(본선 N²/2G_fw + ramp 큐 bilinear). weight=1이 물리 정확값.

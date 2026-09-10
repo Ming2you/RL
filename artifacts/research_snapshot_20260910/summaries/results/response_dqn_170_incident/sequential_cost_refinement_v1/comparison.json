@@ -1,0 +1,105 @@
+{
+  "control_full_run": {
+    "action_support_counts": [
+      73,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+    "end_control_step": 74,
+    "epsilon": 0.0,
+    "first_action": null,
+    "lcb_guard": false,
+    "prefix_ttt": 109.70334631072762,
+    "pstack_improvement_percent": 0.5607747788538298,
+    "replay": "results\\response_dqn_170_incident\\sequential_nonlinear_coverage_v1\\targeted\\evaluation\\replay.npz",
+    "response_preview": true,
+    "scope": "ungated_full_run",
+    "signature": "5118855f6f0cc6768de77d86499c750d1ff7c1ce2a942437fc7dc5aa830d79bc",
+    "start_control_step": 0,
+    "terminal_inventory": 429.4306890818408,
+    "total_ttt": 5698.656123148699,
+    "trace_segments": [
+      "results\\response_dqn_170_incident\\sequential_nonlinear_coverage_v1\\targeted\\evaluation\\trace.jsonl"
+    ],
+    "transitions": 75,
+    "wall_seconds": 4001.655543599998
+  },
+  "target_ttt": 5444.2533164870365,
+  "timing_note": "Variants use 4 preview workers each concurrently; control used 4 preview workers.",
+  "variants": {
+    "long_cql_001": {
+      "action_support_counts": [
+        57,
+        2,
+        6,
+        3,
+        2,
+        4,
+        1,
+        0,
+        0,
+        0
+      ],
+      "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+      "end_control_step": 74,
+      "epsilon": 0.0,
+      "first_action": null,
+      "lcb_guard": false,
+      "prefix_ttt": 109.70334631072762,
+      "pstack_improvement_percent": -0.42270994894659214,
+      "replay": "results\\response_dqn_170_incident\\sequential_cost_refinement_v1\\long_cql_001\\evaluation\\replay.npz",
+      "response_preview": true,
+      "scope": "ungated_full_run",
+      "signature": "3b263dda23236ca825b60abf4771bc82d3798dd0ce6e655faea601eb968ed63b",
+      "start_control_step": 0,
+      "terminal_inventory": 431.341602717957,
+      "total_ttt": 5755.017596738613,
+      "trace_segments": [
+        "results\\response_dqn_170_incident\\sequential_cost_refinement_v1\\long_cql_001\\evaluation\\trace.jsonl"
+      ],
+      "transitions": 75,
+      "wall_seconds": 4373.291831700002
+    },
+    "long_cql_010": {
+      "action_support_counts": [
+        71,
+        1,
+        0,
+        0,
+        1,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+      "end_control_step": 74,
+      "epsilon": 0.0,
+      "first_action": null,
+      "lcb_guard": false,
+      "prefix_ttt": 109.70334631072762,
+      "pstack_improvement_percent": 0.018025357318661884,
+      "replay": "results\\response_dqn_170_incident\\sequential_cost_refinement_v1\\long_cql_010\\evaluation\\replay.npz",
+      "response_preview": true,
+      "scope": "ungated_full_run",
+      "signature": "7195d96e1774579fb7f80fa64f4fa0dd633e5ae841c913b1301c315fec4d9664",
+      "start_control_step": 0,
+      "terminal_inventory": 431.5194034962229,
+      "total_ttt": 5729.759968814113,
+      "trace_segments": [
+        "results\\response_dqn_170_incident\\sequential_cost_refinement_v1\\long_cql_010\\evaluation\\trace.jsonl"
+      ],
+      "transitions": 75,
+      "wall_seconds": 4246.874698100002
+    }
+  }
+}

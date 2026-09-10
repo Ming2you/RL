@@ -1,0 +1,10 @@
+# Experiment pins hash raw bytes, including the original mixed line endings.
+src/** -text
+rl_leader/** -text
+work/** -text
+artifacts/** -text
+data/** -text
+results/** -text
+models/** -text
+checkpoints/** -text
+*.zip.part* binary

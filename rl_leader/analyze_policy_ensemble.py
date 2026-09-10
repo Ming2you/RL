@@ -9,13 +9,24 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from rl_leader.data_contract import PSTACK_DATASET_FORMAT, RL_CHECKPOINT_FORMAT
 from rl_leader.nets import UnifiedCoordinationActor
+from src.controllers.coordination import (
+    ACTION_SCHEMA_VERSION,
+    OBSERVATION_SCHEMA_VERSION,
+)
 
 
 def _load_actor(path):
     checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+    if checkpoint.get("format_version") != RL_CHECKPOINT_FORMAT:
+        raise ValueError(f"unsupported checkpoint format: {path}")
     action_schema = checkpoint["action_schema"]
     observation_schema = checkpoint["observation_schema"]
+    if action_schema.get("version") != ACTION_SCHEMA_VERSION:
+        raise ValueError(f"checkpoint action schema mismatch: {path}")
+    if observation_schema.get("version") != OBSERVATION_SCHEMA_VERSION:
+        raise ValueError(f"checkpoint observation schema mismatch: {path}")
     actor = UnifiedCoordinationActor(
         observation_schema["dimension"],
         len(action_schema["signals"]),
@@ -41,7 +52,13 @@ def main(argv=None):
         raise ValueError("at least two checkpoints are required for disagreement")
     observations = []
     for path in sorted(glob.glob(args.data)):
-        observations.append(np.load(path, allow_pickle=False)["obs"])
+        dataset = np.load(path, allow_pickle=False)
+        if "manifest_json" not in dataset.files:
+            raise ValueError(f"dataset manifest is missing: {path}")
+        manifest = json.loads(str(dataset["manifest_json"].item()))
+        if manifest.get("format_version") != PSTACK_DATASET_FORMAT:
+            raise ValueError(f"dataset format is incompatible: {path}")
+        observations.append(dataset["obs"])
     if not observations:
         raise ValueError("no dataset observations found")
     obs = np.concatenate(observations).astype(np.float32)
@@ -51,6 +68,11 @@ def main(argv=None):
         actor, checkpoint = _load_actor(path)
         actors.append(actor)
         checkpoints.append(checkpoint)
+    for checkpoint in checkpoints[1:]:
+        if checkpoint["action_schema"] != checkpoints[0]["action_schema"]:
+            raise ValueError("checkpoint action schemas do not match")
+        if checkpoint["observation_schema"] != checkpoints[0]["observation_schema"]:
+            raise ValueError("checkpoint observation schemas do not match")
     with torch.no_grad():
         tensor = torch.as_tensor(obs)
         actions = np.stack([torch.tanh(actor(tensor)[0]).cpu().numpy() for actor in actors])

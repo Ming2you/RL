@@ -1,0 +1,100 @@
+{
+  "hypothesis": "Correct post-commit equivalence removes nominal-only action aliases while preserving genuine follower/native-controller continuation differences. Learn only from fresh versioned raw sequential replay after real branch and reference-parity checks; no fixed-return labels.",
+  "output_dir": "results/response_dqn_170_incident/sequential_continuation_v2",
+  "start_only_after_output_dir": "results/response_dqn_170_incident/sequential_terminal_strata_v1",
+  "additional_lock_dirs": [
+    "results/response_dqn_170_incident/sequential_cql_reference_v1",
+    "results/response_dqn_170_incident/sequential_cql_audit_v1",
+    "results/response_dqn_170_incident/sequential_td_audit_v1",
+    "results/response_dqn_170_incident/sequential_continuation_v1"
+  ],
+  "additional_stop_files": [
+    "results/response_dqn_170_incident/sequential_cql_reference_v1/STOP",
+    "results/response_dqn_170_incident/sequential_cql_audit_v1/STOP",
+    "results/response_dqn_170_incident/sequential_td_audit_v1/STOP",
+    "results/response_dqn_170_incident/sequential_continuation_v1/STOP"
+  ],
+  "environment_config": "work/sequential_ddqn_170_incident_v1.json",
+  "training_spec": "work/response_terminal_strata_v1.json",
+  "control_evaluation_dir": "results/response_dqn_170_incident/sequential_terminal_strata_v1/terminal_025/evaluation",
+  "response_workers_per_actor": 4,
+  "collection_seed": 20260921,
+  "collection_episode_base": 34000,
+  "evaluation_episode_base": 35000,
+  "probes": [
+    {
+      "step": 17,
+      "snapshot": "data/response_dqn_170_incident/snapshot_cache_targeted_rfw_steps17_24_filtered_v1/step_0017_6bbdcc2860635794.pkl",
+      "legacy_replay": "results/response_dqn_170_incident/sequential_cql_reference_v1/references/pstack/replay.npz"
+    },
+    {
+      "step": 18,
+      "snapshot": "data/response_dqn_170_incident/snapshot_cache_augmented_v1/step_0018_1fb3a61bb9f3f90e.pkl",
+      "legacy_replay": "results/response_dqn_170_incident/sequential_cql_reference_v1/references/known_best_suffix/replay.npz"
+    }
+  ],
+  "collection": [
+    {
+      "name": "pstack_reference",
+      "full_run": true,
+      "first_action": null,
+      "epsilon": 0,
+      "reference": {
+        "first_action": null,
+        "expected_total_ttt": 5730.792964723197,
+        "expected_trace": "results/response_dqn_170_incident/pstack_rl_contract_v2/trace.jsonl",
+        "expected_interval_field": "interval_ttt",
+        "expected_interval_sign": -1
+      }
+    },
+    {
+      "name": "known_best_reference",
+      "full_run": false,
+      "first_action": 1,
+      "epsilon": 0,
+      "reference": {
+        "first_action": 1,
+        "expected_total_ttt": 5682.100819335536,
+        "expected_trace": "results/response_dqn_170_incident/ddqn_action103_step18_fullrun_v1/trace.jsonl",
+        "expected_interval_field": "interval_reward",
+        "expected_interval_sign": 1
+      }
+    },
+    {
+      "name": "explore_full",
+      "full_run": true,
+      "first_action": null,
+      "epsilon": 0.25
+    },
+    {
+      "name": "explore_after_best",
+      "full_run": false,
+      "first_action": 1,
+      "epsilon": 0.25
+    }
+  ],
+  "input_sha256": {
+    "data/response_dqn_170_incident/snapshot_cache_targeted_rfw_steps17_24_filtered_v1/step_0017_6bbdcc2860635794.pkl": "45B76E38D56F04683528E33461B13D7D9295A064D7D93A888CF4C180E349F257",
+    "data/response_dqn_170_incident/snapshot_cache_augmented_v1/step_0018_1fb3a61bb9f3f90e.pkl": "DC6C908E0C3DA9E00537B1E7817516B7EF56220B751822D9979E379350AAD9D0",
+    "work/sequential_ddqn_170_incident_v1.json": "DF38629121F4A7688C51D3677C1995F7C535EDB95B4C7B4A57C4D6CF3A00B864",
+    "work/response_terminal_strata_v1.json": "1925154F7E44CF815CE3017266E5B1BA6D07AA2D30A007A66E1F033D3890E953",
+    "results/response_dqn_170_incident/sequential_cql_reference_v1/references/pstack/replay.npz": "06CB5CF362451650A47B751DEAE97E5984040F9D1BF96F74541D6A5362E57A15",
+    "results/response_dqn_170_incident/sequential_cql_reference_v1/references/known_best_suffix/replay.npz": "21BA7F4CDE059C11F83A5D71EEDE19D11C4358DC3F3C6B066E9F65790D26E52B"
+  },
+  "implementation_files": [
+    "rl_leader/response_continuation_state.py",
+    "rl_leader/response_dqn_collect.py",
+    "rl_leader/response_dqn_mask.py",
+    "rl_leader/response_dqn_data.py",
+    "rl_leader/response_dqn.py",
+    "rl_leader/env.py",
+    "rl_leader/run_sequential_response_ddqn.py",
+    "rl_leader/train_response_dqn.py",
+    "src/controllers/coordination.py",
+    "src/controllers/stackelberg_wu_metered.py",
+    "src/controllers/wu_faithful_follower.py",
+    "work/run_response_continuation_cycle.py",
+    "work/run_response_cql_ablation.py",
+    "work/run_response_reference_coverage.py"
+  ]
+}

@@ -2,7 +2,16 @@ param(
     [int]$DurationSec = 86400,
     [int]$WorkerCount = 8,
     [string]$OutputDir = "data/contract_v4_24h_v1",
-    [string]$Python = "python"
+    [string]$Python = "python",
+    [bool]$PfoSupervisor = $false,
+    [bool]$PstackAnchor = $false,
+    [bool]$ResidualOnly = $false,
+    [bool]$LocalOnly = $false,
+    [int]$SeedBase = 920,
+    [int]$PerturbStartStep = 24,
+    [int]$PerturbBlockCount = 3,
+    [string]$TargetScenarios = "",
+    [string]$PriorityBlocks = "A,B,C,D,F,R_D_W,R_F_W,R_D_E,R_F_E,FW_W__seg0,FW_W__seg1,FW_W__seg2,FW_W__seg4,FW_W__seg6,FW_W__seg7,FW_E__seg0,FW_E__seg1,FW_E__seg2,FW_E__seg4,FW_E__seg6,FW_E__seg7"
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,14 +31,22 @@ $modeRotations = @(
     "optimizer_anchor,loose_anchor,optimizer_local,epsilon_mixture",
     "optimizer_local,loose_local,linear,quadratic"
 )
-$priorityBlocks = "A,B,C,D,F,R_D_W,R_F_W,R_D_E,R_F_E"
+if ($ResidualOnly) {
+    $modeRotations = @(
+        "optimizer_anchor,optimizer_local,optimizer_local,optimizer_local",
+        "optimizer_local,optimizer_anchor,optimizer_local,optimizer_local"
+    )
+}
+if ($LocalOnly) {
+    $modeRotations = @("optimizer_local")
+}
 $collectionSec = [Math]::Max($DurationSec - 600, 60)
 $startedAt = Get-Date
 $deadline = $startedAt.AddSeconds($DurationSec)
 $processes = @()
 
 for ($index = 0; $index -lt $WorkerCount; $index++) {
-    $seed = 920 + $index
+    $seed = $SeedBase + $index
     $workerOutput = Join-Path $output ("worker_{0}.npz" -f $seed)
     $stdout = Join-Path $logs ("worker_{0}.out.log" -f $seed)
     $stderr = Join-Path $logs ("worker_{0}.err.log" -f $seed)
@@ -45,17 +62,20 @@ for ($index = 0; $index -lt $WorkerCount; $index++) {
         "--max-total-sec", "$collectionSec",
         "--epsilon-start", "0.5",
         "--epsilon-end", "0.15",
-        "--perturb-start-step", "24",
+        "--perturb-start-step", "$PerturbStartStep",
         "--temporal-rho", "0.95",
         "--budget-perturb-scale", "0.05",
         "--block-perturb-scale", "0.08",
-        "--perturb-block-count", "3",
-        "--priority-blocks", $priorityBlocks,
+        "--perturb-block-count", "$PerturbBlockCount",
+        "--priority-blocks", $PriorityBlocks,
         "--priority-probability", "1.0",
         "--dataset-name", $datasetName,
         "--seed", "$seed",
         "--out", $workerOutput
     )
+    if ($PfoSupervisor) { $arguments += "--pfo-supervisor" }
+    if ($PstackAnchor) { $arguments += "--pstack-anchor" }
+    if ($TargetScenarios) { $arguments += @("--target-scenarios", $TargetScenarios) }
     $process = Start-Process -FilePath $Python -ArgumentList $arguments `
         -WorkingDirectory $root -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $stdout -RedirectStandardError $stderr
@@ -70,6 +90,15 @@ $launch = [ordered]@{
     collection_sec = $collectionSec
     worker_count = $WorkerCount
     dataset_name = $datasetName
+    pfo_supervisor = $PfoSupervisor
+    pstack_anchor = $PstackAnchor
+    residual_only = $ResidualOnly
+    local_only = $LocalOnly
+    seed_base = $SeedBase
+    perturb_start_step = $PerturbStartStep
+    perturb_block_count = $PerturbBlockCount
+    priority_blocks = $PriorityBlocks
+    target_scenarios = $TargetScenarios
     modes = $modeRotations
     pids = @($processes | ForEach-Object { $_.Id })
 }

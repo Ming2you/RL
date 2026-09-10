@@ -1,0 +1,73 @@
+{
+  "format_version": "response_dqn_extra_actions_v1",
+  "description": "Scaled variants of the best 170-incident step18 multi-field residual discovered by cached H12 residual sampling and validated by full-tail schedule evaluation.",
+  "source_artifact": "results/rl_phase0_implementation_20260903/residual_5pct_loop_peak17_24_seed11_step2_sampler4_h12_v6/samplers/step18_seed2026090311_h1120_h12x20/summary.json",
+  "source_candidate_id": "random:seed2026098230_draw38:94104f866a72",
+  "full_tail_reference": "results/rl_phase0_implementation_20260903/residual_neighborhood_step18_h12seed_full_v1/tail_evals/all_s0.75_at18/summary.json",
+  "actions": [
+    {
+      "key": "artifact:step18_multifield_s0.25",
+      "owner": "artifact",
+      "template": "step18_multifield",
+      "family": "hybrid",
+      "magnitude": 0.25,
+      "residual_nonzero": {
+        "budget.N_P": 0.0625,
+        "freeway.R_D_E.l11": -0.0625,
+        "freeway.R_F_W.g_meter": 0.25,
+        "urban.A.g_green": 0.25,
+        "urban.A.l21": 0.0625,
+        "urban.D.l11": 0.25,
+        "urban.D.l22": -0.125
+      }
+    },
+    {
+      "key": "artifact:step18_multifield_s0.5",
+      "owner": "artifact",
+      "template": "step18_multifield",
+      "family": "hybrid",
+      "magnitude": 0.5,
+      "residual_nonzero": {
+        "budget.N_P": 0.125,
+        "freeway.R_D_E.l11": -0.125,
+        "freeway.R_F_W.g_meter": 0.5,
+        "urban.A.g_green": 0.5,
+        "urban.A.l21": 0.125,
+        "urban.D.l11": 0.5,
+        "urban.D.l22": -0.25
+      }
+    },
+    {
+      "key": "artifact:step18_multifield_s0.75",
+      "owner": "artifact",
+      "template": "step18_multifield",
+      "family": "hybrid",
+      "magnitude": 0.75,
+      "residual_nonzero": {
+        "budget.N_P": 0.1875,
+        "freeway.R_D_E.l11": -0.1875,
+        "freeway.R_F_W.g_meter": 0.75,
+        "urban.A.g_green": 0.75,
+        "urban.A.l21": 0.1875,
+        "urban.D.l11": 0.75,
+        "urban.D.l22": -0.375
+      }
+    },
+    {
+      "key": "artifact:step18_multifield_s1",
+      "owner": "artifact",
+      "template": "step18_multifield",
+      "family": "hybrid",
+      "magnitude": 1.0,
+      "residual_nonzero": {
+        "budget.N_P": 0.25,
+        "freeway.R_D_E.l11": -0.25,
+        "freeway.R_F_W.g_meter": 1.0,
+        "urban.A.g_green": 1.0,
+        "urban.A.l21": 0.25,
+        "urban.D.l11": 1.0,
+        "urban.D.l22": -0.5
+      }
+    }
+  ]
+}

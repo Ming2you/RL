@@ -1,0 +1,33 @@
+{
+  "action_support_counts": [
+    75,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+  "end_control_step": 74,
+  "epsilon": 0,
+  "first_action": null,
+  "lcb_guard": false,
+  "prefix_ttt": 109.70334631072762,
+  "pstack_improvement_percent": 0.0,
+  "replay": "results\\response_dqn_170_incident\\sequential_continuation_v3\\collection\\pstack_reference\\replay.npz",
+  "response_preview": true,
+  "scope": "ungated_full_run",
+  "signature": "df2ab41cd4b5025d898a0951d696429e571499dfd6aa6dca49d8f2363073f519",
+  "start_control_step": 0,
+  "terminal_inventory": 430.8500610965373,
+  "total_ttt": 5730.792964723197,
+  "trace_segments": [
+    "results\\response_dqn_170_incident\\sequential_continuation_v3\\collection\\pstack_reference\\trace.jsonl"
+  ],
+  "transitions": 75,
+  "wall_seconds": 4020.7725378000177
+}

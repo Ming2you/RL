@@ -1,0 +1,33 @@
+{
+  "action_support_counts": [
+    8,
+    1,
+    35,
+    16,
+    1,
+    0,
+    0,
+    0,
+    11,
+    3
+  ],
+  "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+  "end_control_step": 74,
+  "epsilon": 0.0,
+  "first_action": null,
+  "lcb_guard": false,
+  "prefix_ttt": 109.70334631072762,
+  "pstack_improvement_percent": -25.276812407161174,
+  "replay": "results\\response_dqn_170_incident\\sequential_td_audit_v1\\ungated_full_run\\replay.npz",
+  "response_preview": true,
+  "scope": "ungated_full_run",
+  "signature": "8841558f333d4f6ff925e8748abeb85f63568063c4bdca0d9460eb22f613073e",
+  "start_control_step": 0,
+  "terminal_inventory": 427.9316587137513,
+  "total_ttt": 7179.354751859069,
+  "trace_segments": [
+    "results\\response_dqn_170_incident\\sequential_td_audit_v1\\ungated_full_run\\trace.jsonl"
+  ],
+  "transitions": 75,
+  "wall_seconds": 3708.449276899919
+}

@@ -1,0 +1,105 @@
+{
+  "control_full_run": {
+    "action_support_counts": [
+      69,
+      4,
+      0,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      0
+    ],
+    "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+    "end_control_step": 74,
+    "epsilon": 0.0,
+    "first_action": null,
+    "lcb_guard": false,
+    "prefix_ttt": 109.70334631072762,
+    "pstack_improvement_percent": -7.143417856624749,
+    "replay": "results\\response_dqn_170_incident\\sequential_onpolicy_refit_v1\\onpolicy\\evaluation\\replay.npz",
+    "response_preview": true,
+    "scope": "ungated_full_run",
+    "signature": "a937b4b6c4376d138776ba5a7f780381c3cd3af82f870fdc986c3dc0d2b77000",
+    "start_control_step": 0,
+    "terminal_inventory": 430.88953745200564,
+    "total_ttt": 6140.1674526914285,
+    "trace_segments": [
+      "results\\response_dqn_170_incident\\sequential_onpolicy_refit_v1\\onpolicy\\evaluation\\trace.jsonl"
+    ],
+    "transitions": 75,
+    "wall_seconds": 3480.2337458
+  },
+  "target_ttt": 5444.2533164870365,
+  "timing_note": "Variants use 4 preview workers each concurrently; control used 8 preview workers.",
+  "variants": {
+    "finite_horizon_cost": {
+      "action_support_counts": [
+        71,
+        2,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+      "end_control_step": 74,
+      "epsilon": 0.0,
+      "first_action": null,
+      "lcb_guard": false,
+      "prefix_ttt": 109.70334631072762,
+      "pstack_improvement_percent": 0.612267257543861,
+      "replay": "results\\response_dqn_170_incident\\sequential_value_head_v1\\finite_horizon_cost\\evaluation\\replay.npz",
+      "response_preview": true,
+      "scope": "ungated_full_run",
+      "signature": "2f429b51499b45236c011c79ad14a2bbcad0387dbdecf489dfdd463733cd8223",
+      "start_control_step": 0,
+      "terminal_inventory": 431.97053383860225,
+      "total_ttt": 5695.7051958025695,
+      "trace_segments": [
+        "results\\response_dqn_170_incident\\sequential_value_head_v1\\finite_horizon_cost\\evaluation\\trace.jsonl"
+      ],
+      "transitions": 75,
+      "wall_seconds": 3841.0280577999984
+    },
+    "free_q": {
+      "action_support_counts": [
+        71,
+        2,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+      "end_control_step": 74,
+      "epsilon": 0.0,
+      "first_action": null,
+      "lcb_guard": false,
+      "prefix_ttt": 109.70334631072762,
+      "pstack_improvement_percent": -2.6738969637474974,
+      "replay": "results\\response_dqn_170_incident\\sequential_value_head_v1\\free_q\\evaluation\\replay.npz",
+      "response_preview": true,
+      "scope": "ungated_full_run",
+      "signature": "ac6d8bfebe68c44b2e843804b02584da840c07d1e425f8660d76f45caae12e0c",
+      "start_control_step": 0,
+      "terminal_inventory": 430.85376632564453,
+      "total_ttt": 5884.0284638055855,
+      "trace_segments": [
+        "results\\response_dqn_170_incident\\sequential_value_head_v1\\free_q\\evaluation\\trace.jsonl"
+      ],
+      "transitions": 75,
+      "wall_seconds": 4082.056899700001
+    }
+  }
+}

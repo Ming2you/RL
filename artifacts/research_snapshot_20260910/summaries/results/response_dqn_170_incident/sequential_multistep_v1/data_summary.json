@@ -1,0 +1,24 @@
+{
+  "action_counts": [
+    762,
+    24,
+    24,
+    10,
+    11,
+    20,
+    4,
+    0,
+    0,
+    1
+  ],
+  "base_rows": 706,
+  "data_sha256": "e3893d1ffd2491660a466b2821cc686d3fad5fb742c46a6e4b5844deb9733d21",
+  "new_rows": [
+    75,
+    75
+  ],
+  "new_simulator_collection_episodes": 0,
+  "terminals": 12,
+  "total_rows": 856,
+  "verified_links": 844
+}

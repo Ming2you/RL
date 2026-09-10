@@ -895,3 +895,272 @@ coordination/parity 계약 test `21/21`, dataset/policy gate와 기존 follower 
 종료 audit에서 출력 디렉터리는 `v2`인데 NPZ 내부 dataset label이 `contract_v4_24h_v1`인 orchestration metadata 오류도 확인했다. schema와 response contract 검증에는 영향이 없지만, 이후 실행은 `work/run_contract_v4_24h.ps1`이 출력 디렉터리 basename을 dataset name으로 기록하도록 수정했다.
 
 재개 순서와 명령은 `RL_NEXT_STEPS.md`를 단일 실행 checklist로 사용한다.
+
+## 17. 2026-08-23 PFO-anchor follower-response top-K 실험
+
+### 17.1 구현 목적
+
+표준 IQL actor가 75차원 absolute action 하나만 출력하고 그 후보가 fallback guard에서 거부되면 바로 PFO로 끝나는 구조를 개선했다. PFO를 default anchor로 유지하면서 RL은 최종 action이 아니라 후보를 제안하고, 후보별 follower response를 정확히 계산한 뒤 PFO보다 좋은 경우에만 commit하도록 만들었다.
+
+기존 single-candidate 경로는 `response_candidate_count=1`에서 그대로 유지한다. 실험 옵션을 켜면 다음 10개 후보를 평가한다.
+
+- budget: actor budget, actor-PFO 중점, PFO budget
+- price potential scale: `0.5`, `1`, `2`, `4`
+- PFO incumbent: 항상 별도 anchor 후보로 포함
+
+선형항은 scale을 직접 곱하고 Cholesky factor는 scale의 제곱근을 곱해 quadratic Hessian도 동일 scale로 유지한다. 후보마다 PFO 평가 직후 follower solver를 독립 복제하므로 후보 순서에 따른 dual/coupling memory 오염이 없다. 후보 선택은 realized follower rollout TTT를 사용하고, PFO보다 `max(0.1 veh-h, 0.1%)` 이상 좋아야 RL 후보를 commit한다.
+
+평가 CLI에는 `--response-candidates 1..10`을 추가했다. Trace의 `response_candidates`에는 후보별 budget/price scale, requested/realized budget, objective, rollout TTT, terminal/completed proxy와 최종 선택 여부가 저장된다. 이 로그는 이후 PFO-relative response surrogate의 paired counterfactual 학습 데이터로 사용한다.
+
+### 17.2 구현 검증
+
+- coordination action test: `21/21` 통과
+- fallback/PFO/candidate search 관련 test: `5/5` 통과
+- 3-candidate simulator one-step smoke: 후보 3개 평가, PFO strict 선택, validity 통과
+- 실제 IQL checkpoint 10-candidate one-step smoke: 후보 10개 response와 PFO 비교 및 trace 저장 확인
+- full-run 3개: 모두 75 step, simulation `14,400초`, validity `100%`, wall-clock truncation 없음
+
+### 17.3 full-horizon 결과
+
+모든 RL 값은 seed 0 단일 run이므로 3-seed 성능 주장으로 사용하지 않는다.
+
+| Scenario / actor | Single actor | Top-K | Delta | P-Stack | Top-K vs P-Stack |
+|---|---:|---:|---:|---:|---:|
+| 170 / full-data IQL | `4,532.999` | `4,399.853` | `-2.94%` | `3,809.607` | `-15.49%` |
+| 190 / full-data IQL | `6,859.880` | `6,740.951` | `-1.73%` | `5,734.776` | `-17.54%` |
+| 190 / optimizer-neighborhood IQL | `6,522.048` | `6,526.624` | `+0.07%` | `5,734.776` | `-13.80%` |
+
+Full-data actor의 RL 후보 채택은 170 `15/75`, 190 `16/75`였다. `VSL < 115` segment 비율은 기존 두 scenario 모두 `0%`에서 각각 `6.1%`, `12.3%`로 증가했다. 따라서 후보 가격 scale과 exact follower-response ranking은 실제 제어 공간을 넓혔고 single actor보다 TTT를 개선했다.
+
+가장 중요한 반례는 optimizer-neighborhood actor와 top-K를 결합한 190이다.
+
+| Phase | Filter actor | Filter + Top-K | Delta |
+|---|---:|---:|---:|
+| Peak | `3,791.328` | `3,583.640` | `-207.688` (`-5.48%`) |
+| Recovery | `2,730.721` | `2,942.984` | `+212.263` (`+7.77%`) |
+| Total | `6,522.048` | `6,526.624` | `+4.575` (`+0.07%`) |
+
+결합 정책은 peak 24 step 중 16회, recovery 51 step 중 6회 RL 후보를 채택했고 실제 segment VSL은 policy 구간 전체에서 `115 km/h` 미만이었다. H=3 follower response는 peak의 즉시 TTT를 크게 낮췄지만 그 action이 만든 잔류 차량과 회복 지연을 평가하지 못해 total 이득이 상쇄됐다.
+
+### 17.4 판정
+
+1. PFO-anchor exact top-K는 single absolute-action IQL의 후보 탐색 부족을 일부 해결한다.
+2. 그러나 현재 H=3 response score만으로는 장기 action quality를 판별하지 못한다. 계산량을 약 10배 늘리고도 optimizer-neighborhood actor를 개선하지 못했으므로 현재 top-K를 production 기본값으로 승격하지 않는다.
+3. follower 구조 자체가 원인이라는 증거는 약하다. 동일 follower 안에서 후보 선택만 바꿔 peak TTT가 크게 달라졌기 때문이다.
+4. 다음 병목은 candidate generation보다 response value horizon과 terminal cost다. 좋은 후보가 없는 문제와 좋은 후보를 짧은 score가 잘못 선택하는 문제가 함께 존재한다.
+5. full horizon 없이 10~20 step만 평가하면 결합 정책을 잘못 채택했을 것이다. 향후 control 변경 gate는 반드시 peak와 recovery를 모두 포함한다.
+
+### 17.5 다음 구현 순서
+
+1. Actor observation의 학습 계약 H=3은 유지하고 response ranking만 H=6/H=9로 늘리는 분리된 value-depth 옵션을 추가한다.
+2. 후보별 `PFO 대비 delta cumulative TTT + terminal queue/density`를 trace하고, 170/190에서 H=3/6/9 ranking의 top-1 일치율과 full-run 결과를 비교한다.
+3. 이번 exact trace를 PFO-relative paired dataset으로 변환해 realized follower control, next congestion state, multi-step delta TTT를 예측하는 response surrogate를 학습한다.
+4. Surrogate가 넓은 후보군을 batch ranking하고 exact follower solve는 top 3/5/10과 PFO에만 사용하도록 계산량을 줄인다.
+5. Candidate generator는 전체 action scale만 바꾸는 현재 방식에서 owner-block residual, 3-seed ensemble과 dataset-neighbor action을 포함하는 방식으로 확장한다.
+6. H=6/9 selector가 optimizer-neighborhood actor 단독보다 total TTT `1%` 이상 개선하지 못하면 top-K 경로는 진단 도구로만 남기고 behavior-prior residual 또는 block critic을 우선한다.
+
+산출물:
+
+- `results/rl_response_topk_v1/rl_s0_170.csv`
+- `results/rl_response_topk_v1/rl_s0_190.csv`
+- `results/rl_response_topk_v1/rl_optimizer_s0_190.csv`
+- `results/rl_response_topk_v1/traces_s0/*.jsonl`
+- `results/rl_response_topk_v1/traces_optimizer_s0/*.jsonl`
+
+## 18. 2026-08-23 response horizon H6/H9 진단
+
+### 18.1 구현과 검증
+
+Actor observation의 forecast는 checkpoint 계약과 동일한 H=3으로 유지하고, exact follower-response 후보 평가에만 추가 value depth를 주는 `response_value_depth`를 구현했다. 기본 MPC horizon이 3이므로 depth 3/6은 각각 H6/H9 ranking이다. 장기 ranking에서는 RL 후보와 PFO를 동일한 long objective로 비교하며 legacy H3 rollout-TTT guard는 비활성화한다.
+
+Trace는 후보별 H3 rollout TTT, long rollout TTT, total objective, penalty 구성, response score와 선택 여부를 분리해 저장한다. CLI에는 `--response-value-depth`가 추가됐고 결과 CSV에도 depth와 실제 response horizon을 기록한다.
+
+- Python compile 통과
+- coordination action/controller test `24/24` 통과
+- fallback/PFO 관련 regression test `3/3` 통과
+- H6 one-step smoke에서 actor observation H3 동일성, 후보/PFO H6 비교와 validity 통과 확인
+- H6/H9 모두 75 step, simulation `14,400초`, validity 통과, wall-clock truncation 없음
+
+### 18.2 full-horizon 결과
+
+모든 RL 값은 같은 optimizer-neighborhood seed 0 checkpoint와 top-10 후보를 사용했다. H3 single만 후보 수 1이다.
+
+| Selector | Total TTT | Peak TTT | Recovery TTT | P-Stack 대비 열세 |
+|---|---:|---:|---:|---:|
+| P-Stack | `5,734.776` | `3,416.064` | `2,318.712` | `0.00%` |
+| H3 single | `6,522.048` | `3,791.328` | `2,730.721` | `13.73%` |
+| H3 top-10 | `6,526.624` | `3,583.640` | `2,942.984` | `13.81%` |
+| H6 top-10 | `6,575.747` | `3,859.456` | `2,716.291` | `14.66%` |
+| H9 top-10 | `6,611.511` | `3,868.440` | `2,743.071` | `15.29%` |
+
+H6은 H3 top-10의 recovery 악화를 `226.693 veh-h` 회수했지만 peak가 `275.817 veh-h` 악화돼 total은 `49.124 veh-h` 나빠졌다. H9는 H6보다 total이 다시 `35.764 veh-h` 악화됐다. 따라서 단순 horizon 연장은 single actor 대비 `1%` 개선이라는 사전 기준을 통과하지 못했다.
+
+### 18.3 trace 기반 원인 분해
+
+H6은 peak/recovery에서 RL 후보를 `22/9`회, H9는 `21/23`회 채택했다. Horizon이 길어지며 recovery 후보 채택은 늘었지만, long score와 실제 TTT 개선의 정렬이 약했다.
+
+H9의 44개 채택 step을 분해하면 다음과 같다.
+
+- 평균 long score 이득: `29.639`
+- 평균 long TTT-base 이득: `6.957`
+- 평균 objective penalty 이득: `22.682`, score 이득의 `76.5%`
+- 평균 H3 TTT 이득: `0.111`
+- PFO보다 H3 TTT가 나쁜 후보 채택: peak `15`, recovery `6`, 합계 `21/44`
+
+전체 75 step에서도 평균 score 이득 `16.200` 중 long TTT-base 이득은 `2.157`, penalty 이득은 `14.043`이었다. 특히 peak에서는 평균 score 이득 `32.750` 중 `28.389`가 penalty 차이였다. 긴 horizon이 미래를 더 본 것 자체는 맞지만, ranking target에 포함된 density 등 surrogate penalty가 cumulative TTT보다 선택을 더 크게 지배했다.
+
+따라서 H3의 recovery myopia만이 단독 원인은 아니다. H6/H9는 짧은 시야 문제를 일부 바꾸었지만 raw leader objective의 calibration 오류 때문에 다른 잘못된 후보를 더 자주 통과시켰다. follower response 계산을 늘리는 것만으로는 초기 모델과 P-Stack 사이의 격차를 닫을 수 없다.
+
+### 18.4 중단 판정과 다음 우선순위
+
+1. exact top-K H3/H6/H9는 production 후보에서 제외하고 paired counterfactual 생성과 ranking 진단 도구로 유지한다.
+2. 전체 데이터가 초기 모델보다 나빠진 주원인은 데이터 총량 부족보다 상충 behavior mode의 혼합, 75차원 scalar-advantage 평균화, PFO supervisor가 빠진 teacher와 scenario x phase 불균형이다.
+3. 다음 구조는 native P-Stack/PFO switching을 포함한 supervised behavior prior를 먼저 학습하고, IQL이 prior 주변의 bounded owner-block residual만 출력하도록 한다.
+4. critic/advantage도 budget, urban owner, ramp/VSL owner block으로 분리해 한 scalar가 joint action mode 전체를 평균내지 않도록 matched ablation한다.
+5. response surrogate의 primary target은 raw objective가 아니라 PFO-relative multi-step cumulative TTT와 terminal vehicle inventory로 바꾼다. density/queue penalty는 auxiliary target 또는 hard guard로 분리한다.
+6. 170/190 seed-0 full run에서 absolute IQL 대비 total `1%` 이상 개선하고 phase별 악화가 `2%` 이내인 구조만 3 seed x 5 scenario 평가로 확장한다.
+
+산출물:
+
+- `results/rl_response_value_depth_v1/smoke_h6.csv`
+- `results/rl_response_value_depth_v1/optimizer_s0_190_h6.csv`
+- `results/rl_response_value_depth_v1/optimizer_s0_190_h9.csv`
+- `results/rl_response_value_depth_v1/traces_optimizer_s0_h6/*.jsonl`
+- `results/rl_response_value_depth_v1/traces_optimizer_s0_h9/*.jsonl`
+
+## 19. 2026-08-23 P-Stack anchor 및 teacher branch 분리
+
+### 19.1 재현된 원인
+
+현재 계약의 40-step parity에서는 TTT가 거의 같아도 native P-Stack과 replay control의 budget, green, metering, VSL이 다수 step에서 달랐다. follower state를 강제로 동기화한 뒤에도 내부 PFO fallback이 연속 action으로 재현되지 않는 행이 남았다.
+
+production PFO supervisor를 포함한 5-step smoke 결과는 다음과 같다.
+
+| Branch | Rows | Exact replay | Max response error |
+|---|---:|---:|---:|
+| Leader | 1 | `100%` | `0` |
+| Internal PFO fallback | 3 | `66.7%` | `15` |
+| External supervisor PFO | 1 | `100%` | `0` |
+
+오차 행에서 teacher는 내부 PFO를 골랐지만 RL adapter는 내부 PFO를 고르지 않았고 외부 PFO가 최종 선택됐다. 외부 supervisor를 끄면 오차는 `45.44`까지 증가했다. 내부 PFO를 독립적으로 다시 solve해도 native selected response와 `15` 차이가 남아, P-Stack 후보 탐색의 mutable follower path에 의존하는 결과임을 확인했다.
+
+### 19.2 구현 판정
+
+PFO action을 연속 price 회귀 target으로 두는 구조를 중단했다. `teacher_pfo_selected`, internal/outer branch, stage, FAR gate, saturation, native budget/response를 dataset에 기록하고 다음 ownership을 적용한다.
+
+- Critic: 실제 RL adapter를 지난 transition 전체
+- Continuous actor: 일반 behavior action + exact-replay 가능한 optimizer leader action
+- PFO rows: baseline branch label과 critic transition으로만 사용
+
+dataset validator는 synchronized teacher contract, production PFO supervisor, leader/PFO 양쪽 label, leader exact replay, actor supervision 존재를 fail-closed로 검사한다.
+
+### 19.3 P-Stack anchor gate
+
+PFO guard만으로는 P-Stack보다 나빠질 수 있으므로 native P-Stack control을 배포 후보에 추가했다. P-Stack과 RL은 같은 state에서 별도 follower memory로 계산한다. Raw FAR penalty는 H9 진단에서 score 이득의 `76.5%`를 지배했으므로 채택 기준에서 제외했다. 공통 H=3 cumulative TTT gain이 `max(0.1, 0.1%)`를 넘고 terminal inventory가 P-Stack보다 증가하지 않을 때만 RL을 commit하며, 나머지는 P-Stack control과 follower memory를 commit한다.
+
+zero actor와 native P-Stack의 4-step 병렬 대조에서 RL 채택은 `0/4`, response 최대 오차 `0`, step TTT 오차 `0`이었다. 이 결과는 anchor fallback과 follower-memory handoff가 baseline을 정확히 재현함을 보인다.
+
+### 19.4 실행 상태
+
+`data/contract_v5_residual_24h_v1` 수집을 2026-08-23 23:59:43 KST에 8 worker로 시작했다. production PFO supervisor를 활성화하고 `optimizer_anchor/optimizer_local`만 수집하며, native P-Stack action을 `anchor_action`으로 함께 저장한다. 2026-08-24 11:09 중간 audit은 `3,924` transition, validity `100%`, residual actor supervision `2,915` transition을 기록했다. trainable dead residual은 없지만 비영 residual은 peak `0`, recovery `1,848` transition이다. 기존 `perturb-start-step=24`가 warmup 이후 simulation time `5,220초`와 정확히 일치해 모든 실제 perturbation이 recovery에만 있었기 때문이다.
+
+release certificate는 local residual 485개가 0이 아니었지만 실제 부호 전환은 `0`이었고 최대 residual도 `0.220`에 그쳤다. 따라서 이산 certificate 4개는 native P-Stack anchor에 고정하고 residual actor target과 deployment delta에서 제외했다. ramp owner와 certificate owner가 같은 문자열을 써 local block 선택이 중복되는 문제는 `freeway:R_D_W` 형태의 family-qualified key로 분리했다. 관련 compile, PowerShell parse와 coordination/validation/environment 58개 테스트를 모두 통과했다.
+
+데이터 양보다 방향성 검증을 우선하기 위해 base 수집은 2026-08-24 17:39에 완료 episode까지만 보존하고 종료했다. final base는 `6,224` transition, validity `100%`다. `data/contract_v5_residual_direction_pilot_v1`의 2시간 local-only pilot은 19:35에 forced PID 없이 완료됐다. `perturb-start-step=0`, continuous block 21개, 4 block/episode로 peak price 탐색만 최소 보충했다. pilot은 `611` transitions, 11 episodes, 5개 target scenario, peak/recovery 비영 residual `239/372`, validity `100%`다. 21개 continuous owner 중 20개가 선택됐고 빠진 `vsl.FW_W__seg2`는 base에 support가 있다.
+
+base+pilot 합계는 `6,835` transitions, residual actor supervision `5,362`, peak/recovery 비영 residual `239/3,420`, trainable dead `0`, exact leader replay `239`, validity `100%`다. directional minimum `6,000` gate는 실패 없이 통과했다. 이 데이터로 seed 0 residual IQL을 먼저 학습해 170/190 full run을 `--pfo-supervisor --pstack-anchor`로 판정한다. RL 채택이 없으면 proposal/actor 문제, RL 채택이 있으나 TTT가 나쁘면 anchor gate 문제로 분리하고 추가 수집 없이 해당 원인으로 돌아간다. P-Stack 개선 신호가 확인될 때만 production `10,000+` dataset을 추가 수집하고 3 seed x 5 scenario로 확장한다.
+
+## 20. 2026-08-25 native P-Stack parity와 contract-v6
+
+### 20.1 contract-v5 seed 0 판정
+
+`6,835` transition으로 residual IQL seed 0을 80,000 update 학습했다. 14,400초 결과는 170 `4,021.755`, 190 `5,893.915 veh-h`였고, 올바른 warm-up 제외 P-Stack `3,809.607/5,734.776`보다 `5.57%/2.78%` 나빴다.
+
+이 결과는 최종 성능 판정에서 제외한다. 평가가 외부 PFO supervisor와 P-Stack anchor를 동시에 사용했고, 수집 teacher도 fixed warm-up, continuous leader search, 외부 PFO가 섞인 계약이었다. 170에서는 첫 RL 채택 전부터 hybrid 기준선이 native P-Stack보다 `135.858 veh-h` 나빠져 있었다.
+
+### 20.2 production baseline 통합
+
+P-Stack ALLPRICE-JOINT 생성 코드를 `src/controllers/pstack_factory.py`로 통합하고 RL optimizer anchor와 five-controller baseline이 같은 factory를 사용하도록 수정했다. warm-up을 uncontrolled control로 바꾸고, grid search 49개, value depth 3, OPT12, offset inner iteration 4, ramp offset을 production과 동일하게 맞췄다. follower 전체 deep-copy는 static config를 덮어쓰므로 coupling/dual/corrector 등 runtime field만 동기화한다.
+
+검증 결과 warm-up state, 첫 optimizer decision, 4-step P-Stack fallback의 TTT와 response가 모두 정확히 일치했다. 외부 PFO supervisor와 P-Stack anchor의 동시 활성화는 constructor에서 즉시 거부한다.
+
+### 20.3 price replay 가정 폐기
+
+native P-Stack 최종 가격을 standalone RL follower에 replay한 smoke에서는 ramp별 marginal price와 reference가 일치했지만 metering response가 달랐다. native는 약 `1,305~1,320 veh/h`, RL replay는 `1,500 veh/h`, 최대 response 오차는 `194.825 veh/h`였다. native response가 P-Stack 내부 49-candidate search가 커밋한 follower path에 의존하므로 최종 가격만으로 동일 response를 재현할 수 없다.
+
+따라서 optimizer price replay를 P-Stack transition으로 간주하던 contract-v5 데이터는 corrected residual 학습에서 사용하지 않는다.
+
+### 20.4 contract-v6 수집 계약
+
+새 수집기는 실제 배포와 동일한 P-Stack anchor gate를 transition 함수로 사용한다. 외부 PFO는 끄고, uncontrolled warm-up과 native grid P-Stack을 계산한 뒤 local residual의 RL response와 공통 H=3 TTT 및 terminal inventory를 비교한다. 선택된 branch의 control과 follower memory만 plant에 commit한다.
+
+Actor ownership은 다음과 같다.
+
+- zero residual: exact native P-Stack anchor target
+- nonzero residual: anchor gate가 실제로 RL을 채택한 행만 target
+- 기각 residual 및 internal PFO 행: critic transition 전용
+- release certificate: native P-Stack에 고정
+
+manifest는 `pstack_allprice_joint_grid_native_v3`, `pstack_anchor_gate_native_transition_v4`, `uncontrolled_native_v1`, `pstack_residual_anchor_gate_v2`를 모두 기록한다. validator는 외부 PFO 비활성, anchor gate 활성, exact zero-anchor, peak/recovery nonzero accepted residual을 fail-closed로 확인한다.
+
+2시간 directional pilot에서 개선 RL residual이 발견될 때만 seed 0을 40,000 update 학습한다. 개선 residual이 없으면 데이터 시간을 늘리지 않고 perturbation scale, owner block 수, 시간 상관을 한 변수씩 바꾼다. seed 0 170/190 full run이 P-Stack보다 좋아진 뒤에만 10,000+ transition과 3 seed x 5 scenario로 확장한다.
+
+## 21. 2026-08-25 contract-v6 재학습 결과와 long-horizon 전환
+
+### 21.1 재수집 및 재학습 완료
+
+`data/contract_v6_native_pstack_direction_pilot_v1`과 `data/contract_v6_native_pstack_190_topup_v1`을 합쳐 `946` transition을 확보했다. validity `100%`, peak/recovery `414/532`, zero anchor `447`, gate-accepted local residual `21`이다. 5개 target scenario가 모두 포함됐지만 nonzero accepted residual은 peak `7`, recovery `14`뿐이다.
+
+seed 0 residual IQL을 `40,000` update 학습했다. accepted-local residual target 평균 절대값 `0.009632`에 actor 예측 `0.009639`, MSE는 수치상 거의 `0`으로 actor는 수집 label을 충분히 학습했다.
+
+### 21.2 full-run 실패
+
+외부 PFO 없이 native P-Stack anchor와 support clipping을 적용한 14,400초 결과는 다음과 같다.
+
+| Scenario | P-Stack | RL | Total 차이 | Peak 차이 | Recovery 차이 | RL 채택 |
+|---|---:|---:|---:|---:|---:|---:|
+| 170 | `3,809.607` | `3,876.666` | `-1.76%` | `-0.37%` | `-4.13%` | `1/75` |
+| 190 | `5,734.776` | `6,154.657` | `-7.32%` | `-4.76%` | `-11.09%` | `2/75` |
+
+170의 한 번의 채택과 190의 두 번의 채택은 H3에서 각각 양의 gain으로 판정됐지만 full recovery에서는 큰 손실로 뒤집혔다. follower 계약, key mapping, adapter price, 물리 validity는 통과했다. 따라서 현재 병목은 follower 구조나 actor 미학습이 아니라 H3 gate label과 장기 TTT의 오정렬이다.
+
+### 21.3 critic action 계약 교정
+
+기존 residual IQL critic은 절대 `act`를 사용했다. 그러나 local proposal이 P-Stack gate에서 기각돼도 수집 `act`에는 제안 action이 저장되므로, 기각 transition `478`개가 실제 적용되지 않은 action에 연결됐다. critic action을 실제 배포 residual로 수정했다.
+
+- anchor/rejected local: zero residual
+- accepted local: `act - anchor_action`
+- checkpoint contract: `pstack_gate_applied_residual_v1`
+
+동일 데이터와 seed로 `actor_contract_v6_native_pstack_direction_s0_criticfix.pt`를 40,000 update 재학습했다. 기존 actor 대비 평균 action 차이는 `0.001129`이며, 기존 손실 채택 시점의 residual은 더 커졌다. 장기 label이 바뀌지 않은 상태에서 이 모델의 full run을 반복하는 것은 중단한다.
+
+### 21.4 다음 구현 gate
+
+1. RL/P-Stack branch를 recovery까지 이어가는 paired counterfactual generator를 만든다.
+2. H3 gain 대신 multi-step TTT 및 terminal inventory delta를 primary target으로 저장한다.
+3. long-horizon positive residual만 actor supervision에 남기고 false-positive H3 residual은 negative/reject label로 사용한다.
+4. learned value의 conservative lower-confidence bound와 P-Stack을 비교하는 gate를 구현한다.
+5. 170/190 paired holdout에서 false-positive `0`을 먼저 요구한다.
+6. 이 방향성 gate를 통과한 뒤에만 full run, 추가 데이터, 3 seed x 5 scenario 순으로 확장한다.
+
+동일 H3 acceptance label을 장시간 더 수집하는 작업은 보류한다. 현재 데이터는 양이 부족하기 전에 target 정의가 잘못됐다.
+
+## 22. 2026-08-25 장기 counterfactual과 reward 계약 교정
+
+환경 reward는 정책 step별 `-(urban TTT + freeway TTT)`이고 IQL은 `gamma=1.0`, `reward_scale=0.01`을 사용한다. 완전한 자연 종료 trajectory에서는 return이 `-total TTT`와 일치한다. 하지만 offline IQL actor는 return을 직접 최적화하지 않고 advantage-weighted behavior target MSE를 학습하므로, H3 gate가 만든 잘못된 positive target을 자동으로 제거한다는 보장은 없다.
+
+또한 contract-v6의 19개 episode 중 10개 `collection_time_limit`이 환경 terminal처럼 `done=1`로 저장돼 critic return이 조기 절단됐다. IQL terminal 계약을 `collection_time_limit_bootstrap_v1`로 바꿔 이 10개는 bootstrap하고 natural 9개만 terminal로 사용한다.
+
+새 `pstack_first_action_closed_loop_recovery_v1` generator는 candidate residual과 native P-Stack first action을 같은 state에서 분기한 뒤, 양쪽을 native P-Stack 폐루프로 H12까지 재최적화한다. 기존 H3 accepted 21개 중 exact single-query replay에 성공한 12개를 판정한 결과 H12 positive 7개, false-positive 5개였다. original H3와 H12 gain 상관은 Pearson `-0.113`, Spearman `-0.231`이다. 특히 sweet_190_w60은 `0/3`만 장기 양성이었고 H12 gain 평균은 `-21.763 veh-h`였다.
+
+나머지 9개는 collector의 사전 `optimizer_anchor_action()` query가 live optimizer state를 변경한 뒤 `env.step()`이 두 번째 decision을 수행한 double-query 경로 때문에 배포 transition을 exact replay하지 못했다. preview를 deep-copy에서 계산하도록 수정했으며, 실제 P-Stack 통합 대조에서 preview 유무에 따른 observation, reward, anchor 오차가 모두 `0`임을 확인했다.
+
+따라서 기존 accepted 21개를 재학습에 그대로 사용하지 않는다. 다음 gate는 clean pilot, live H12 label, positive/reject 분리, conservative long-horizon value, 170/190 paired holdout 순으로 검증한다. H12 positive 7개는 방향성 seed일 뿐 full-to-end label은 아니다. 14,400초 full run과 장시간 추가 수집은 paired holdout에서 false-positive `0`을 확인한 뒤에만 수행한다.
+
+## 23. 2026-08-25 contract-v7 clean 24시간 실행
+
+사용자 결정에 따라 clean 경로의 24시간 수집과 후속 재학습을 시작했다. `run_contract_v7_clean_24h_pipeline.ps1`은 raw collection, audit, exact H12 counterfactual, long-positive relabel, timeout-bootstrap IQL, 170/190 full-run을 자동으로 연결한다.
+
+collector manifest는 `optimizer_preview_contract=deepcopy_side_effect_free_v1`을 기록한다. relabeled manifest는 `actor_supervision_contract=pstack_h12_positive_residual_v1`을 기록하며 IQL은 두 계약이 함께 존재하지 않으면 fail-closed한다. raw transition은 critic에 모두 유지하고, actor에는 native zero residual과 exact H12 positive local residual만 사용한다.
+
+2026-08-25 17:15:33 KST에 8 worker가 시작됐고 수집 deadline은 2026-08-26 17:15:33 KST다. 수집 이후 H12 계산 시간이 추가로 필요하다. replay error `0`, accepted label coverage `100%`, long-positive `20+`, 170/190 positive coverage를 만족하지 못하면 checkpoint를 만들지 않고 진단 산출물과 실패 stage를 남긴다.

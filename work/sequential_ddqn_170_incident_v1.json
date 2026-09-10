@@ -1,0 +1,29 @@
+{
+  "scenario": "sweet_170_incident_w60",
+  "t_total": 14400.0,
+  "experiment_contract_sha256": "95694fc1e5bb06da621e784a7e4d4bad56135b6d75ac360bb3a42b2d18501831",
+  "snapshot": "data/response_dqn_170_incident/snapshot_cache_augmented_v1/step_0018_1fb3a61bb9f3f90e.pkl",
+  "reference_trace": "results/response_dqn_170_incident/ddqn_action103_step18_fullrun_v1/trace.jsonl",
+  "pstack_total_ttt": 5730.792964723197,
+  "extra_actions": ["results/response_dqn_170_incident/pstack_step18_sampler_h12_wide_seed20260912_v1/summary.json"],
+  "action_keys": [
+    "anchor",
+    "artifact:random:seed20268831_draw76:1873f998670e",
+    "freeway:R_F_W:linear_first_negative:m0.5",
+    "freeway:R_F_W:linear_first_positive:m0.5",
+    "freeway:R_F_W:linear_second_negative:m0.5",
+    "freeway:R_F_W:linear_second_positive:m0.5",
+    "freeway:R_F_W:quadratic_first_increase:m0.5",
+    "freeway:R_F_W:cross_negative:m0.5",
+    "freeway:R_F_W:cross_positive:m0.5",
+    "freeway:R_F_W:combo_first_pos_quad_first_dec:m0.5"
+  ],
+  "output_dir": "results/response_dqn_170_incident/sequential_td_audit_v1",
+  "actors": 2,
+  "response_workers": 4,
+  "rounds": 2,
+  "epsilon": 0.2,
+  "gradient_steps": 6000,
+  "seed": 20260907,
+  "final_full_run": true
+}

@@ -2,14 +2,17 @@
 
 계층적 Stackelberg MPC(P-Stack)의 leader를 강화학습으로 대체하는 연구.
 
-> ## 👉 이어서 작업하려면 **[HANDOFF.md](HANDOFF.md)** 부터 읽으세요.
-> 현재 도달점·확립된 사실·실패한 접근·즉시 이어서 할 일·새 컴퓨터 세팅·함정이 전부 정리돼 있습니다.
+> **최신 인수인계: [RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)**
+> 사용자 요청으로 실행과 예약은 일시 중지 중입니다. 현재 ungated full-run 최적은 P-Stack 대비 0.6415% 개선이며 5% 목표는 미달입니다.
+> 1-step / 5-step 비교는 학습 완료, 평가 각각 48/75단계에서 checkpoint를 보존했습니다.
+> [데이터·모델·로그 전체 스냅샷](artifacts/research_snapshot_20260910)과 [상세 audit](RL_LOGIC_AUDIT_20260907.md)을 함께 참고하세요.
 
 > **새 구현 기준:** 논문 초안의 비선형·follower-response-aware 방향은
-> **[RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md](RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md)** 를 따릅니다.
+> **[RESPONSE_AWARE_DQN_IMPLEMENTATION.md](RESPONSE_AWARE_DQN_IMPLEMENTATION.md)** 를 따릅니다.
+> 이전 IQL 설계 판단은 [RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md](RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md)에 보존되어 있습니다.
 > 아래 초기 held-out 결과는 연구 이력이며, 현재 방법의 최종 성능 주장으로 사용하지 않습니다.
 
-## 현재 결과 — offline IQL이 held-out 2셀에서 P-Stack 격파
+## 과거 결과: 초기 IQL, 현재 DDQN과 다른 평가 조건
 
 | windowed TTT | NC | PFO | P-Stack | **IQL(RL)** | P-CENT |
 |---|---|---|---|---|---|
@@ -19,7 +22,7 @@
 vs P-Stack **−88.0 / −125.8**(둘 다 승) · vs PFO 승 · **vs P-CENT는 여전히 패**(+534 / +244).
 가격 없이 budget만으로, budget+가격+far게이트+감독자를 다 갖춘 손튜닝 P-Stack을 이겼습니다.
 
-## 핵심 발견 3가지
+## 초기 가설과 관찰 (역사 기록, 현재 일반 결론 아님)
 
 1. **진짜 병목은 데이터 기근이었다** — BC/SAC 실패 원인은 알고리즘보다 **총 375샘플**. 병렬 수집으로 3시간에 27,706샘플(72배) 확보하자 IQL이 바로 P-Stack을 넘었습니다.
 2. **online은 불가, offline만 현실적** — env가 8.5s/step(혼잡 시 스텝당 수십 분)이라 online SAC은 발산·불가. IQL은 **env 접촉 0**이라 이 문제를 전부 우회합니다.
@@ -28,7 +31,9 @@ vs P-Stack **−88.0 / −125.8**(둘 다 승) · vs PFO 승 · **vs P-CENT는 �
 ⚠️ **이겼다는 측정됐지만 왜 이겼는지는 아직 미규명**입니다(HANDOFF §5).
 
 ## 문서
-- **[HANDOFF.md](HANDOFF.md)** — 이어받기용 종합 문서(최우선)
+- **[RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)** — 최신 상태·데이터·실패 이력·재개·다음 작업
+- [RL_LOGIC_AUDIT_20260907.md](RL_LOGIC_AUDIT_20260907.md) — 계약·실험별 검증·중지 기록
+- [HANDOFF.md](HANDOFF.md) — 초기 IQL 역사 기록
 - [REPORT.md](REPORT.md) — 배경·데이터·초기 RL 설계
 - [DATA.md](DATA.md) — 데이터·코드 안내
 - [SIM.md](SIM.md) — 시뮬레이터·최종 컨트롤러 설정·실행법

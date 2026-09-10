@@ -6,3 +6,13 @@ outputs/
 logs/
 *.log
 .DS_Store
+
+# Raw research artifacts are preserved in the verified split snapshot bundle.
+# Previously tracked historical data remains tracked.
+/.venv*/
+/data/
+/results/
+/models/
+/checkpoints/
+/paper/
+*.lock

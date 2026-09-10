@@ -1,0 +1,105 @@
+{
+  "target_ttt": 5444.2533164870365,
+  "timing_note": "Variants use 4 preview workers each concurrently; vanilla ran alone with eight.",
+  "vanilla_full_run": {
+    "action_support_counts": [
+      8,
+      1,
+      35,
+      16,
+      1,
+      0,
+      0,
+      0,
+      11,
+      3
+    ],
+    "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+    "end_control_step": 74,
+    "epsilon": 0.0,
+    "first_action": null,
+    "lcb_guard": false,
+    "prefix_ttt": 109.70334631072762,
+    "pstack_improvement_percent": -25.276812407161174,
+    "replay": "results\\response_dqn_170_incident\\sequential_td_audit_v1\\ungated_full_run\\replay.npz",
+    "response_preview": true,
+    "scope": "ungated_full_run",
+    "signature": "8841558f333d4f6ff925e8748abeb85f63568063c4bdca0d9460eb22f613073e",
+    "start_control_step": 0,
+    "terminal_inventory": 427.9316587137513,
+    "total_ttt": 7179.354751859069,
+    "trace_segments": [
+      "results\\response_dqn_170_incident\\sequential_td_audit_v1\\ungated_full_run\\trace.jsonl"
+    ],
+    "transitions": 75,
+    "wall_seconds": 3708.449276899919
+  },
+  "variants": {
+    "alpha_010": {
+      "action_support_counts": [
+        51,
+        0,
+        1,
+        0,
+        0,
+        7,
+        0,
+        0,
+        0,
+        16
+      ],
+      "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+      "end_control_step": 74,
+      "epsilon": 0.0,
+      "first_action": null,
+      "lcb_guard": false,
+      "prefix_ttt": 109.70334631072762,
+      "pstack_improvement_percent": -5.714581991274108,
+      "replay": "results\\response_dqn_170_incident\\sequential_cql_audit_v1\\alpha_010\\evaluation\\replay.npz",
+      "response_preview": true,
+      "scope": "ungated_full_run",
+      "signature": "bd90b3911060ffe4f570a3f21a062a6bc380051e7e52981f43ff0ec723fa8d7f",
+      "start_control_step": 0,
+      "terminal_inventory": 434.5707524359121,
+      "total_ttt": 6058.283827442472,
+      "trace_segments": [
+        "results\\response_dqn_170_incident\\sequential_cql_audit_v1\\alpha_010\\evaluation\\trace.jsonl"
+      ],
+      "transitions": 75,
+      "wall_seconds": 4553.92373229994
+    },
+    "alpha_100": {
+      "action_support_counts": [
+        60,
+        1,
+        2,
+        0,
+        0,
+        7,
+        0,
+        0,
+        1,
+        4
+      ],
+      "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+      "end_control_step": 74,
+      "epsilon": 0.0,
+      "first_action": null,
+      "lcb_guard": false,
+      "prefix_ttt": 109.70334631072762,
+      "pstack_improvement_percent": -10.071610390088964,
+      "replay": "results\\response_dqn_170_incident\\sequential_cql_audit_v1\\alpha_100\\evaluation\\replay.npz",
+      "response_preview": true,
+      "scope": "ungated_full_run",
+      "signature": "57fa9a5cf4e8e6454291d4d17c1293eeba0baa6fc3b8f8bfb341357a626b4118",
+      "start_control_step": 0,
+      "terminal_inventory": 433.6686703410071,
+      "total_ttt": 6307.976104392746,
+      "trace_segments": [
+        "results\\response_dqn_170_incident\\sequential_cql_audit_v1\\alpha_100\\evaluation\\trace.jsonl"
+      ],
+      "transitions": 75,
+      "wall_seconds": 4480.777909899945
+    }
+  }
+}

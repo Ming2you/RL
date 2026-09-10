@@ -3130,6 +3130,14 @@ class WuFaithfulFollower:
             return _lo - 1.0e-9 <= float(_v) <= _hi + 1.0e-9
         evals_total = 0
 
+        trial_runtime: Dict[
+            tuple[tuple[str, float], ...],
+            tuple[Dict[str, float], bool],
+        ] = {}
+
+        def _meter_key(meter: Mapping[str, float]) -> tuple[tuple[str, float], ...]:
+            return tuple(sorted((str(r), float(v)) for r, v in meter.items()))
+
         def _solve_with(meter: Mapping[str, float]) -> tuple[Dict[str, float], float, int]:
             probe_prev = ControlAction(
                 ramp_metering=dict(snapshot.ramp_metering),
@@ -3142,7 +3150,25 @@ class WuFaithfulFollower:
             vsl_dict, cost, e = self._solve_freeway_agent_local(
                 link, state, coupling, demand, probe_prev,
             )
+            trial_runtime[_meter_key(meter)] = (
+                dict(self._wu._last_offramp_flow),
+                bool(self._wu._has_last_offramp_flow),
+            )
             return vsl_dict, cost, e
+
+        def _finalize(
+            vsl: Mapping[str, float],
+            meter: Mapping[str, float],
+            evals: int,
+        ) -> tuple[Dict[str, float], Dict[str, float], int]:
+            """Commit the off-ramp cache produced with the selected local trial."""
+            selected_runtime = trial_runtime.get(_meter_key(meter))
+            if selected_runtime is None:
+                raise RuntimeError("selected metering trial has no follower runtime snapshot")
+            off_ramp_flow, has_off_ramp_flow = selected_runtime
+            self._wu._last_offramp_flow = dict(off_ramp_flow)
+            self._wu._has_last_offramp_flow = bool(has_off_ramp_flow)
+            return dict(vsl), dict(meter), int(evals)
 
         # ---- B3 metering 가격항 준비(설정 시에만; 기본 None=완전 휴면) ----
         # leader가 동결 운영점에서 완성해 하달한 g_ext를 선형으로 더한다. green과 동일
@@ -3306,7 +3332,7 @@ class WuFaithfulFollower:
                     if cost < best_cost:
                         best_cost, best_vsl, local_best = cost, vsl_dict, cand_val
                 best_meter[ramp] = local_best
-            return best_vsl, best_meter, evals_total
+            return _finalize(best_vsl, best_meter, evals_total)
 
         # ---- leader 분기: N_UF를 hard BUDGET으로 처리(simplex allocation) ----
         # leader가 N_UF_star(총 urban→freeway 교환유량 target, veh/h)를 주면, 이 link의 몫
@@ -3373,7 +3399,7 @@ class WuFaithfulFollower:
                         if cost < best_cost:
                             best_cost, best_vsl, local_best = cost, vsl_dict, cand_val
                     best_meter[ramp] = local_best
-                return best_vsl, best_meter, evals_total
+                return _finalize(best_vsl, best_meter, evals_total)
 
             if nuf_mode == "cap":
                 def _project_to_cap(meter: Mapping[str, float]) -> Dict[str, float]:
@@ -3411,7 +3437,7 @@ class WuFaithfulFollower:
                         evals_total += e
                         if cost < best_cost:
                             best_cost, best_vsl, best_meter = cost, vsl_dict, dict(trial)
-                return best_vsl, best_meter, evals_total
+                return _finalize(best_vsl, best_meter, evals_total)
 
             best_meter: Dict[str, float] = {}
             best_vsl: Dict[str, float] = {}
@@ -3449,7 +3475,7 @@ class WuFaithfulFollower:
                     if cost < best_cost:
                         best_cost, best_vsl, best_meter = cost, vsl_dict, dict(meter)
 
-            return best_vsl, best_meter, evals_total
+            return _finalize(best_vsl, best_meter, evals_total)
 
         # ---- leader=None(PFO) 분기: 기존 autonomous per-ramp metering 좌표하강 ----
         # 현재 best metering(절대 veh/h). 초기값 = capacity(=metering off, snapshot 기본).
@@ -3514,7 +3540,7 @@ class WuFaithfulFollower:
                     best_cost, best_vsl, local_best_meter = cost, vsl_dict, cand_val
             best_meter[ramp] = local_best_meter
 
-        return best_vsl, best_meter, evals_total
+        return _finalize(best_vsl, best_meter, evals_total)
 
     # ---------- Jacobi 합의 루프 (Wu §IV-D) ----------
 

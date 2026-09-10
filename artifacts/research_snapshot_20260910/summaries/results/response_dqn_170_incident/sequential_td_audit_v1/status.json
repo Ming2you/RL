@@ -1,0 +1,5 @@
+{
+  "model_dir": "results\\response_dqn_170_incident\\sequential_td_audit_v1\\round_01\\model",
+  "phase": "pilot_complete",
+  "rounds": 2
+}

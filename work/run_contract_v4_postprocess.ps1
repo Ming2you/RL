@@ -3,7 +3,12 @@ param(
     [string]$ResultDir = "results/contract_v4_24h_v2",
     [int]$TrainingSteps = 80000,
     [int]$MinimumTransitions = 10000,
-    [string]$Python = "python"
+    [string]$Python = "python",
+    [string]$CheckpointStem = "actor_contract_v4_24h_v2",
+    [string]$ActionParameterization = "absolute",
+    [bool]$BalancedCells = $false,
+    [bool]$PfoSupervisor = $false,
+    [bool]$PstackAnchor = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,17 +44,20 @@ try {
 
     $checkpoints = @()
     for ($seed = 0; $seed -lt 3; $seed++) {
-        $checkpoint = Join-Path $root ("checkpoints/actor_contract_v4_24h_v2_s{0}.pt" -f $seed)
-        Invoke-CheckedPython @(
+        $checkpoint = Join-Path $root ("checkpoints/{0}_s{1}.pt" -f $CheckpointStem, $seed)
+        $trainingArguments = @(
             "-B", "-m", "rl_leader.iql",
             "--data", $Data,
             "--steps", "$TrainingSteps",
             "--gamma", "1.0",
             "--support-weight", "0.3",
             "--channel-dropout", "0.1",
+            "--action-parameterization", $ActionParameterization,
             "--seed", "$seed",
             "--out", $checkpoint
         )
+        if ($BalancedCells) { $trainingArguments += "--balanced-cells" }
+        Invoke-CheckedPython -Arguments $trainingArguments
         $checkpoints += $checkpoint
     }
 
@@ -74,6 +82,8 @@ try {
             "--out", $evalOutput,
             "--trace-dir", (Join-Path $result ("traces_s{0}" -f $seed))
         )
+        if ($PfoSupervisor) { $arguments += "--pfo-supervisor" }
+        if ($PstackAnchor) { $arguments += "--pstack-anchor" }
         $process = Start-Process -FilePath $Python -ArgumentList $arguments `
             -WorkingDirectory $root -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput $stdout -RedirectStandardError $stderr

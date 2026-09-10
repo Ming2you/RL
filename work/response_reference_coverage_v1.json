@@ -1,0 +1,38 @@
+{
+  "output_dir": "results/response_dqn_170_incident/sequential_cql_reference_v1",
+  "start_only_after_output_dir": "results/response_dqn_170_incident/sequential_cql_audit_v1",
+  "additional_lock_dirs": ["results/response_dqn_170_incident/sequential_td_audit_v1"],
+  "environment_config": "work/sequential_ddqn_170_incident_v1.json",
+  "training_spec": "work/response_cql_ablation_v1.json",
+  "base_replay": "results/response_dqn_170_incident/sequential_td_audit_v1/round_01/training_replay.npz",
+  "base_sha256": "E5FEEFE0D1487E6CB15801BB862C4436F7700391FBA9880FD05257836934AD5E",
+  "policy_replay": "results/response_dqn_170_incident/sequential_cql_audit_v1/alpha_010/evaluation/replay.npz",
+  "policy_sha256": "3C3DBFE677435FB2BD699FAE2A7120B42AFF41905AA5C2BC30FD7A7CED10AEB3",
+  "control_evaluation_dir": "results/response_dqn_170_incident/sequential_cql_audit_v1/alpha_010/evaluation",
+  "conservative_alpha": 0.1,
+  "response_workers_per_actor": 4,
+  "reference_episode_base": 31000,
+  "evaluation_episode_base": 32000,
+  "reference_ttt_tolerance": 0.0001,
+  "references": [
+    {
+      "name": "pstack",
+      "full_run": true,
+      "first_action": null,
+      "expected_total_ttt": 5730.792964723197,
+      "expected_trace": "results/response_dqn_170_incident/pstack_rl_contract_v2/trace.jsonl",
+      "expected_interval_field": "interval_ttt",
+      "expected_interval_sign": -1.0
+    },
+    {
+      "name": "known_best_suffix",
+      "full_run": false,
+      "first_action": 1,
+      "expected_total_ttt": 5682.100819335536,
+      "expected_trace": "results/response_dqn_170_incident/ddqn_action103_step18_fullrun_v1/trace.jsonl",
+      "expected_interval_field": "interval_reward",
+      "expected_interval_sign": 1.0
+    }
+  ],
+  "hypothesis": "Adding parity-verified native-P-Stack and known-better sequential reference coverage improves CQL beyond adding only the reached states of the current best ungated policy."
+}

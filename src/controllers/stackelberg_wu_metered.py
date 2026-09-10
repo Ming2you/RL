@@ -20,6 +20,7 @@ follower를 바꾸려면 `_make_follower_solver`만 오버라이드하면 된다
 """
 from __future__ import annotations
 
+import copy
 from collections import deque
 from typing import Dict, List, Optional
 
@@ -270,6 +271,8 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         self._regret_forced_remaining: int = 0
         self._regret_force_this_step: bool = False
         self._regret_last_gap: float = 0.0
+        self._beta_regret_entry_time: Optional[float] = None
+        self._beta_regret_entry_meta: Dict[str, float] = {}
 
     def _make_follower_solver(self, cfg: ExperimentConfig):
         return WuFaithfulFollower(cfg)
@@ -360,6 +363,16 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             meta["leader_regret_window_len"] = float(len(self._regret_window))
         return meta
 
+    def prepare_applied_transition(self, state: TrafficState) -> Dict[str, float]:
+        """Observe the previous live transition once before proposal fan-out."""
+        time_sec = float(state.time_sec)
+        if self._beta_regret_entry_time == time_sec:
+            return dict(self._beta_regret_entry_meta)
+        meta = self._beta_regret_on_entry(state)
+        self._beta_regret_entry_time = time_sec
+        self._beta_regret_entry_meta = dict(meta)
+        return meta
+
     def _committed_horizon_pred_ttt(
         self,
         state: TrafficState,
@@ -446,6 +459,8 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             self.leader = Leader(config)
             self.nash_solver = self._make_follower_solver(config)
             self._pfo_fallback_previous_control = None
+            self._beta_regret_entry_time = None
+            self._beta_regret_entry_meta = {}
         forecast = list(demand_forecast)
         previous = (
             previous_control.copy()
@@ -456,7 +471,7 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         )
         # 층2(2026-07-14): β̂/regret 스텝 시작 갱신 — 직전 interval 실현 TTT 측정,
         # β̂ EWMA·regret 창·강제 incumbent 여부 확정(플래그 OFF면 무동작=비트동일).
-        l2_meta = self._beta_regret_on_entry(state)
+        l2_meta = self.prepare_applied_transition(state)
         # LINK-SHARE(2026-07-09): mode에 따라 step 시작 시 ω_F 설정.
         #  density → headroom 비례(상태 피드백), search/off → 균등(후보 평가 일관성).
         follower_ls = self.nash_solver
@@ -492,7 +507,9 @@ class StackelbergWuMeteredController(StackelbergMPCController):
                 self._signal_price_meta = dict(self._signal_price_meta)
                 self._signal_price_meta["wu_b2_price_skipped"] = 1.0
                 self._signal_price_meta["wu_b2_price_refreshed"] = 0.0
-            result = super().decide_with_info(state, forecast, previous_control, config)
+            result = self._decide_with_candidate_snapshot(
+                state, forecast, previous_control, config
+            )
         else:
             # B: leader↔follower price↔response 반복(dual ascent). 매 iteration마다 현재
             # response 운영점에서 price 재선형화 → leader 재최적 → under-relaxation으로 되먹임.
@@ -502,7 +519,9 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             for k in range(max_iter):
                 self._maybe_refresh_signal_prices(state, forecast, current, force=True)
                 # config는 최상단서 이미 적용 → super엔 None(재init 방지). previous=current(선형화점).
-                result = super().decide_with_info(state, forecast, current, None)
+                result = self._decide_with_candidate_snapshot(
+                    state, forecast, current, None
+                )
                 new = result.control
                 if k > 0 and self._price_iter_converged(current, new):
                     break
@@ -523,6 +542,28 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             result.metadata.update(l2_meta)
             result.control.diagnostics.update(l2_meta)
         return result
+
+    def _decide_with_candidate_snapshot(
+        self,
+        state: TrafficState,
+        forecast: List[DemandStep],
+        previous_control: Optional[ControlAction],
+        config: Optional[ExperimentConfig],
+    ) -> DecisionResult:
+        """Give PFO, leader, and link-share alternatives one prepared base."""
+        anchor_seed = getattr(self, "_anchor_follower_seed", None)
+        common_source = self.nash_solver if anchor_seed is None else anchor_seed
+        self._candidate_common_solver = self._clone_follower_solver(common_source)
+        if bool(getattr(self, "retain_candidate_common_solver_snapshot", False)):
+            self.last_candidate_common_solver = self._clone_follower_solver(
+                self._candidate_common_solver
+            )
+        try:
+            return super().decide_with_info(
+                state, forecast, previous_control, config
+            )
+        finally:
+            self._candidate_common_solver = None
 
     def _link_share_omega(self, state: TrafficState) -> Dict[str, float]:
         """본선 headroom 비례 link budget 분할 — ω_l ∝ Σ_seg max(0, ρ_crit−ρ)·L·λ_eff.
@@ -2134,7 +2175,11 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         pfo_previous.N_P_star = 0.0
         pfo_previous.N_UF_star = 0.0
         pfo_previous.inflow_outflow_allocation = {}
-        pfo_nash = self.nash_solver.solve(state.copy(), None, forecast, pfo_previous)
+        common_solver = getattr(self, "_candidate_common_solver", None)
+        pfo_solver = self._clone_follower_solver(
+            self.nash_solver if common_solver is None else common_solver
+        )
+        pfo_nash = pfo_solver.solve(state.copy(), None, forecast, pfo_previous)
         action, action_meta = self._pfo_equivalent_action(pfo_nash.control, state, forecast, previous)
         pfo_nash.control.N_P_star = float(action.N_P_star)
         pfo_nash.control.N_UF_star = float(action.N_UF_star)
@@ -2170,6 +2215,7 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             metadata=metadata,
             rollout_used=rollout_used,
             stage="fallback_pfo",
+            follower_solver_snapshot=pfo_solver,
         )
         self._pfo_incumbent_center = action
         self._pfo_incumbent_eval = pfo_eval
@@ -2348,7 +2394,11 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         best, metadata = super()._select_with_fallback_guard(leader_evaluations, fallback_evaluations)
         pfo_eval = getattr(self, "_pfo_incumbent_eval", None)
         pfo_tie_break_selected = False
-        if pfo_eval is not None and best.stage != "fallback_pfo":
+        if (
+            pfo_eval is not None
+            and best.stage != "fallback_pfo"
+            and not bool(getattr(self, "_rl_response_rank_by_ttt", False))
+        ):
             eps = 1.0e-9
             if float(best.objective) >= float(pfo_eval.objective) - eps:
                 best = pfo_eval
@@ -2383,6 +2433,9 @@ class StackelbergWuMeteredController(StackelbergMPCController):
                 pfo_eval is not None and getattr(self, "_pfo_incumbent_center", None) is not None
             ),
         })
+        selected_solver = best.follower_solver_snapshot
+        if selected_solver is not None:
+            self.nash_solver = selected_solver
         # ---- LINK-SHARE 스윕(mode="search" 전용): 선택된 leader 후보 위에서 s 좌표하강 ----
         # incumbent(PFO) 선택이면 skip(자율 metering이라 ω 무관). 균등(0.5)은 best가 이미
         # 그 값으로 평가된 결과이므로 grid 2점만 추가 평가. 개선 시 best 교체 + ω 고정.
@@ -2397,18 +2450,40 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             ls_state, ls_forecast, ls_previous = self._link_share_ctx
             links = list(self.cfg.network.freeway_links)
             best_s = 1.0 / len(links)
-            for s in self.nuf_link_share_grid:
-                self.nash_solver._wu._omega_f = {
-                    links[0]: float(s), links[1]: 1.0 - float(s),
-                }
-                trial = self._evaluate_full_candidate(
-                    9000 + int(round(float(s) * 100)), best.action,
+            common_solver = getattr(self, "_candidate_common_solver", None)
+            link_share_base = self._clone_follower_solver(
+                self.nash_solver if common_solver is None else common_solver
+            )
+            baseline_solver = self._clone_follower_solver(link_share_base)
+            self.nash_solver = baseline_solver
+            try:
+                best = self._evaluate_full_candidate(
+                    9050, best.action,
                     ls_state, ls_forecast, ls_previous, stage="link_share",
                 )
+            finally:
+                self.nash_solver = link_share_base
+            best.follower_solver_snapshot = baseline_solver
+            for s in self.nuf_link_share_grid:
+                trial_solver = self._clone_follower_solver(link_share_base)
+                trial_solver._wu._omega_f = {
+                    links[0]: float(s), links[1]: 1.0 - float(s),
+                }
+                self.nash_solver = trial_solver
+                try:
+                    trial = self._evaluate_full_candidate(
+                        9000 + int(round(float(s) * 100)), best.action,
+                        ls_state, ls_forecast, ls_previous, stage="link_share",
+                    )
+                finally:
+                    self.nash_solver = link_share_base
+                trial.follower_solver_snapshot = trial_solver
                 if float(trial.objective) < float(best.objective):
                     best = trial
                     best_s = float(s)
             # 커밋되는 best와 일치하는 ω로 고정(다음 step 시작 시 균등 리셋).
+            if best.follower_solver_snapshot is not None:
+                self.nash_solver = best.follower_solver_snapshot
             self.nash_solver._wu._omega_f = {
                 links[0]: float(best_s), links[1]: 1.0 - float(best_s),
             }
@@ -2600,7 +2675,11 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         dedupe_hit = cached is not None
         if dedupe_hit:
             self._dedupe_hits += 1
-            nash_rep, predicted_states, follower_ttt, rollout_used = cached
+            (
+                nash_rep, predicted_states, follower_ttt, rollout_used,
+                cached_solver,
+            ) = cached
+            self.nash_solver = self._clone_follower_solver(cached_solver)
             nash = self._clone_nash_for_candidate(nash_rep, action_p)
         else:
             nash = self.nash_solver.solve(state.copy(), action_p, forecast, previous)
@@ -2611,7 +2690,9 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             # 재평가될 수 있다(선택 동일성 보존).
             if follower_ttt != float("inf"):
                 self._nuf_solve_cache[key] = (
-                    nash, predicted_states, follower_ttt, rollout_used,
+                    copy.deepcopy(nash), copy.deepcopy(predicted_states),
+                    follower_ttt, rollout_used,
+                    self._clone_follower_solver(self.nash_solver),
                 )
         evaluated_action, closure_metadata = self._close_nash_response_leader_action(
             action_p, nash, forecast, intent_action=raw_action,
@@ -2658,7 +2739,7 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         λ_next = clip(λ + gain·(Σnin − projected(N_P))). 나머지 target 계열은
         로그 정확성용. sigma/sum_nin/λ_P는 후보 무관이라 대표 값 재사용."""
         import dataclasses as _dc
-        control = nash_rep.control.copy()
+        control = copy.deepcopy(nash_rep.control)
         control.N_P_star = float(action_p.N_P_star)
         control.N_UF_star = float(action_p.N_UF_star)
         d = control.diagnostics
@@ -2691,7 +2772,11 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         if "wu_faithful_np_original_target_veh" in d:
             d["wu_faithful_np_original_target_veh"] = n_p
             d["urban_net_inflow_original_target_veh"] = n_p
-        return _dc.replace(nash_rep, control=control)
+        return _dc.replace(
+            nash_rep,
+            control=control,
+            diagnostics=copy.deepcopy(nash_rep.diagnostics),
+        )
 
     def _evaluate_candidate_set(
         self,
@@ -2715,21 +2800,34 @@ class StackelbergWuMeteredController(StackelbergMPCController):
             raise ValueError("Stackelberg leader prefilter removed every candidate.")
         results: List[_LeaderCandidateEvaluation] = []
         stage_incumbent = float(incumbent_obj)
+        live_solver = self.nash_solver
+        prepared_common = getattr(self, "_candidate_common_solver", None)
+        common_solver = self._clone_follower_solver(
+            live_solver if prepared_common is None else prepared_common
+        )
         # OPT2의 abort 기준은 **같은 스케일**(full 후보 objective = (3+d) rollout+far)만 —
         # fallback incumbent(_response_tts_objective, 3스텝·far 없음)는 스케일이 작아 섞으면
         # 과잉 pruning으로 정상 후보를 기각(leader가 fallback으로 후퇴, 실측 +1000 손실).
         rollout_inc = float("inf")
         for idx in selected_indices:
-            result = self._evaluate_full_candidate(
-                idx + index_offset,
-                candidates[idx],
-                state,
-                forecast,
-                previous,
-                stage=stage,
-                incumbent_obj=stage_incumbent,
-                rollout_abort_obj=rollout_inc,
-            )
+            candidate_solver = self._clone_follower_solver(common_solver)
+            self.nash_solver = candidate_solver
+            try:
+                result = self._evaluate_full_candidate(
+                    idx + index_offset,
+                    candidates[idx],
+                    state,
+                    forecast,
+                    previous,
+                    stage=stage,
+                    incumbent_obj=stage_incumbent,
+                    rollout_abort_obj=rollout_inc,
+                )
+                result.follower_solver_snapshot = self._clone_follower_solver(
+                    self.nash_solver
+                )
+            finally:
+                self.nash_solver = live_solver
             results.append(result)
             stage_incumbent = min(stage_incumbent, float(result.objective))
             if float(result.objective) != float("inf"):
@@ -2744,3 +2842,10 @@ class StackelbergWuMeteredController(StackelbergMPCController):
         for result in results:
             result.metadata.update(diag)
         return results
+
+    def _clone_follower_solver(self, solver=None):
+        """Clone follower runtime while retaining this controller's config root."""
+        source = self.nash_solver if solver is None else solver
+        if hasattr(source, "cfg") and hasattr(self, "cfg"):
+            return copy.deepcopy(source, {id(source.cfg): self.cfg})
+        return copy.deepcopy(source)

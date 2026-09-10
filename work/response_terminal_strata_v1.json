@@ -1,0 +1,54 @@
+{
+  "hypothesis": "On the same 453 raw sequential rows, allocating 25% of each training batch to actual terminal transitions reduces the observed terminal-boundary fitting error and improves ungated control. This deliberately reweights TD and CQL fitting, not the traffic reward.",
+  "start_only_after_output_dir": "results/response_dqn_170_incident/sequential_cql_reference_v1",
+  "additional_lock_dirs": [
+    "results/response_dqn_170_incident/sequential_cql_audit_v1",
+    "results/response_dqn_170_incident/sequential_td_audit_v1"
+  ],
+  "additional_stop_files": [
+    "results/response_dqn_170_incident/sequential_cql_audit_v1/STOP",
+    "results/response_dqn_170_incident/sequential_td_audit_v1/STOP"
+  ],
+  "required_previous_phase": "ablation_complete",
+  "data": "results/response_dqn_170_incident/sequential_cql_reference_v1/with_references/training_replay.npz",
+  "data_sha256": "3219d69bc019370504be5dd6182015940a053e12d4c604b362ac42bb78939e30",
+  "control_evaluation_dir": "results/response_dqn_170_incident/sequential_cql_reference_v1/with_references/evaluation",
+  "control_response_workers": 4,
+  "catalog_fingerprint": "45f6ac3e60ff8f87be745c3cf42bd5d7cb9355ffae34bf9cb9be3721f0483c26",
+  "experiment_contract_sha256": "95694fc1e5bb06da621e784a7e4d4bad56135b6d75ac360bb3a42b2d18501831",
+  "environment_config": "work/sequential_ddqn_170_incident_v1.json",
+  "output_dir": "results/response_dqn_170_incident/sequential_terminal_strata_v1",
+  "common_training": {
+    "seed": 20260917,
+    "ensemble_size": 3,
+    "workers": 3,
+    "member_threads": 1,
+    "gradient_steps": 6000,
+    "batch_size": 32,
+    "hidden": "128,128",
+    "target_update_interval": 100,
+    "learning_rate": 0.0001,
+    "gamma": 1.0,
+    "reward_scale": 0.01,
+    "min_action_support": 1,
+    "terminal_batch_fraction": 0.25,
+    "group_resampling": false,
+    "require_sequential_td": true
+  },
+  "variants": [{"name": "terminal_025", "conservative_alpha": 0.1}],
+  "evaluation_episode_base": 33000,
+  "evaluation": {
+    "scope": "ungated_full_run",
+    "epsilon": 0.0,
+    "first_action": null,
+    "lcb_guard": false,
+    "response_preview": true,
+    "maximum_total_response_workers": 8
+  },
+  "pre_evaluation_fit_gate": {
+    "terminal_mae_max_ratio_vs_control": 0.5,
+    "all_behavior_td_mae_max_ratio_vs_control": 2.0
+  },
+  "reuse_control_without_retraining": true,
+  "do_not_add_new_replay_to_this_controlled_comparison": true
+}

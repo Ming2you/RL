@@ -25,6 +25,7 @@ from src.controllers.joint_wu_controllers import (
     JointB2TRController,
     JointF1Controller,
 )
+from src.controllers.pstack_factory import make_pstack_allprice_joint_controller
 from src.controllers.centralized_mpc import CentralizedMPC
 from src.controllers.stackelberg_wu_metered import StackelbergWuMeteredController
 from src.controllers.wu_faithful_follower import WuFaithfulFollower
@@ -242,78 +243,7 @@ def make_controller(controller_id: str, cfg: ExperimentConfig):
     #                  cross 가격만 freeway 채점에 추가.
     # LEADER_V_DEPTH=k와 함께 실행(far는 leader 채점 기본 ON, 가격 far=E1은 env 옵션).
     if controller_id == "P-STACK-WU-FAITHFUL-ALLPRICE-JOINT":
-        # DEFAULT = SPLIT-PRICE v2 + DEPTH d3(18분) — 2026-07-09 최종 확정.
-        # 플래그십 = hybrid v2(총량 equality + 배분 own_TTS+가격 + incumbent 가격-레벨
-        # 배제): d3 = 11893, d0 무붕괴(13079 — level의 d0 22698 붕괴와 대조), 사용자
-        # 스펙 정합. 수량 전송 구조라 depth 곡선이 G1DF형(깊어야 후보 랭킹 안정) →
-        # 기본 d3. 구 level 모드(가격-레벨, 고원 11.7~12.0k)는 METER_PRICE_MODE=level.
-        # env LEADER_V_DEPTH 지정 시 그 값 우선(명시적 0 포함).
-        import os as _os_ap
-        if "LEADER_V_DEPTH" not in _os_ap.environ and int(
-            getattr(cfg.mpc, "leader_value_depth", 0)
-        ) == 0:
-            cfg.mpc.leader_value_depth = 3
-        # OPT12 기본 ON(2026-07-10 확정): local 스텝 refined 재정련 생략 + rollout exact
-        # 조기절단 — sweet_190 ablation TTT 11459 vs 11458(+1, 무손실)에 compute −28%
-        # (81.7→59.2s/step). OPT12=0으로 해제. (OPT3·SPSA는 APJOINT서 유해 판정 — 제외.)
-        if _os_ap.environ.get("OPT12") != "0":
-            cfg.mpc.leader_skip_local_refinement = True
-            cfg.mpc.leader_rollout_early_stop = True
-        controller = F1StackelbergWuMeteredController(cfg)
-        if _os_ap.environ.get("GRAD_SEED") == "1":
-            # proxy-gradient 유도 시드(2026-07-21, 사용자 설계): 균등 Halton 대신 하강 방향
-            # 시드 추가 — 적은 평가로 최적 예산 접근. 미설정 시 완전 비활성(원본 동일).
-            from src.controllers.gradseed_mpc import enable_gradseed
-            enable_gradseed(controller)
-        if _os_ap.environ.get("BIAS_SAMPLE") == "1":
-            # box 상단 편향 샘플링(2026-07-21, 사용자 설계): 선택점이 box 상단 0.85~0.94에
-            # 몰려 있어 Halton을 상단 warp. BIAS_POW=p(<1). CAND와 병용해 후보 더 축소.
-            from src.controllers.biasedsample_mpc import enable_biased_sampling
-            cfg.mpc.leader_bias_sample_pow = float(_os_ap.environ.get("BIAS_POW", "0.4"))
-            enable_biased_sampling(controller)
-        controller.nash_solver.f1_spillback_weight = 0.0
-        controller.signal_price_enabled = True
-        controller.metering_price_enabled = True
-        controller.vsl_price_enabled = True
-        # ★동결 변경(2026-07-16): cross 2종 기본 OFF. 10셀 실측 —
-        #   ②상수terminal+crossON(구 동결): 평균 +3.70% / 최악 −5.61% / 7승3패
-        #   ③state-aware terminal+crossOFF(신): 평균 +4.78% / 최악 −4.34% / 8승2패
-        # cross는 **눈먼 terminal의 대역**이었다(170_incident: 상수terminal에선 crossON이
-        # +5.62%로 구제, state-aware에선 crossON이 −17.27% 파국 — 이중 보호로 과잉 조임).
-        # terminal이 절벽을 보게 되자 cross는 중복이자 잡음. CROSS_ON=1로 구거동 복원.
-        controller.green_offset_cross_price_enabled = False
-        controller.vsl_meter_cross_price_enabled = False
-        controller.nash_solver.joint_green_offset_enabled = True
-        # offset price 편입(2026-07-18, 사용자 요청): "ALLPRICE"에 offset marginal price도 포함.
-        # SQP식 inner-walk 4회로 trust 한 칸 갇힘 해소. 실측 이 망에선 offset 한계가치 무시 수준
-        # (‖가격‖~0.01, wTTT −0.02%, High demand만 offset 3/5 이동) — §3 "죽은 채널"로 보고.
-        # green 채널 진단 훅(2026-07-19, 보호큐/Wu격차 공통 병소 규명용):
-        # GREEN_TRUST_SEC=k → 가격 trust 반경 확대(기본 ±6s — 보행 속도 제한 가설 A/B),
-        # GREEN_PRICE=0 → 리더 B2 green 가격 해제(가격-벌점 상쇄 가설 A/B).
-        if _os_ap.environ.get("GREEN_TRUST_SEC"):
-            controller.signal_price_trust_sec = float(_os_ap.environ["GREEN_TRUST_SEC"])
-        if _os_ap.environ.get("GREEN_PRICE") == "0":
-            controller.signal_price_enabled = False
-        # OFFSET_PRICE=0 env로 해제(구거동 재현). 미지정=ON.
-        if _os_ap.environ.get("OFFSET_PRICE") != "0":
-            controller.offset_price_enabled = True
-            controller.offset_price_inner_iters = int(_os_ap.environ.get("OFFSET_INNER_ITER", "4"))
-        # D/F(램프 신호) offset 편입(2026-07-18, 사용자 요청): A/B/C는 위 offset price(비램프),
-        # D/F는 ramp-aware offset 탐색(G1DF 계보 nash_solver.ramp_offset_enabled). RAMP_OFFSET=0로 해제.
-        if _os_ap.environ.get("RAMP_OFFSET") != "0":
-            controller.nash_solver.ramp_offset_enabled = True
-        # metering δ 스캔 승자(2026-07-15): δ=300 + trust_frac=0.20(=반경 300veh/h) 짝.
-        # 170_skew_w wTTT 3244.7(baseline)→3089(회랑 floor 0.65 단독)→3028(δ=300 추가),
-        # 190_w 5419.4→5357(floor)→5045(δ). METER_PRICE_DELTA env가 미지정일 때만 적용
-        # (env가 δ·trust를 직접 주면 그 값 우선). **주의: δ·trust는 짝으로만 유효** —
-        # trust=0.20 단독(δ=60)은 3186으로 오히려 열화, δ=300은 반드시 함께 줘야 한다.
-        # **선결조건: 회랑 예산 floor(seg13_release_floor_frac=0.65)** — floor 없이 이
-        # 반경이면 과소방류 나선(d300_floor0 wTTT 3768). 수량 floor와 짝으로만 안전.
-        import os as _os_mpd
-        if "METER_PRICE_DELTA" not in _os_mpd.environ:
-            controller.metering_price_delta_veh_h = 300.0
-            controller.metering_price_trust_frac = 0.20
-        return controller
+        return make_pstack_allprice_joint_controller(cfg)
     # ---- G1DF-NORHO(2026-07-07): g1df에서 rho_crit 안전장치 2종 제거 — 진단 ----
     # 사용자 진단: freeway follower의 F1 ρ_crit hinge(own-TTS penalty)와 leader의 density_headroom
     # 캡(N_UF 예산을 merge 밀도가 rho_crit 닿는 flow로 상한)이 freeway 유입을 과하게 조여 격차의
