@@ -2,8 +2,10 @@
 
 계층적 Stackelberg MPC(P-Stack)의 leader를 강화학습으로 대체하는 연구.
 
-> **최신 인수인계: [RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)**
-> 사용자 요청으로 실행과 예약은 일시 중지 중입니다. 현재 ungated full-run 최적은 P-Stack 대비 0.6415% 개선이며 5% 목표는 미달입니다.
+> **최신 작업: [다섯 조건 공통 정책 학습](RL_FIVE_CELL_HANDOFF_20260910.md)**
+> 2026-09-10 사용자 요청으로 155·170·170-incident·170-skew·190을 하나의 공통 정책으로 학습하는 파이프라인을 시작했습니다. 현재 진행 단계는 새 인수인계 문서의 상태 파일에서 확인합니다. [복원·종합 점검](LOCAL_AUDIT_20260910.md)에서 기존 결과와 코드·데이터를 검증했습니다.
+> **이전 170-incident 인수인계: [RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)**
+> 이전 단일 조건 실험과 예약은 중지 상태로 보존합니다. 해당 조건의 ungated full-run 최적은 P-Stack 대비 0.6415% 개선이며 5% 목표는 미달입니다.
 > 1-step / 5-step 비교는 학습 완료, 평가 각각 48/75단계에서 checkpoint를 보존했습니다.
 > [데이터·모델·로그 전체 스냅샷](artifacts/research_snapshot_20260910)과 [상세 audit](RL_LOGIC_AUDIT_20260907.md)을 함께 참고하세요.
 

@@ -35,6 +35,7 @@ from rl_leader.response_dqn_mask import (
     build_response_mask,
     response_feature_matrix,
     LEGACY_EQUIVALENCE, CONTINUATION_EQUIVALENCE,
+    FIVE_CELL_CONTINUATION_EQUIVALENCE, CONTINUATION_EQUIVALENCE_MODES,
 )
 from src.controllers.coordination import RL_RESPONSE_CONTRACT_VERSION
 
@@ -91,13 +92,23 @@ def _active_follower(env: RLLeaderEnv):
 
 def _equivalence_mode(env):
     mode = getattr(env, "response_equivalence_mode", LEGACY_EQUIVALENCE)
-    if mode not in {LEGACY_EQUIVALENCE, CONTINUATION_EQUIVALENCE}:
+    if mode not in {LEGACY_EQUIVALENCE, *CONTINUATION_EQUIVALENCE_MODES}:
         raise ValueError(f"unsupported response equivalence mode: {mode}")
+    if mode == FIVE_CELL_CONTINUATION_EQUIVALENCE:
+        from rl_leader.response_continuation_state import validate_five_cell_contract
+        validate_five_cell_contract(
+            env, expected_contract_sha256=getattr(env, "response_expected_contract_sha256", None),
+        )
     return mode
 
 
 def _continuation_identity(env, *, interval_reward, terminal):
-    from rl_leader.response_continuation_state import continuation_identity
+    from rl_leader.response_continuation_state import continuation_identity, five_cell_continuation_identity
+    if _equivalence_mode(env) == FIVE_CELL_CONTINUATION_EQUIVALENCE:
+        return five_cell_continuation_identity(
+            env, interval_reward=interval_reward, terminal=terminal,
+            expected_contract_sha256=env.response_expected_contract_sha256,
+        )
     return continuation_identity(env, interval_reward=interval_reward, terminal=terminal)
 
 
@@ -130,7 +141,7 @@ def _candidate_trial(
     except Exception as exc:
         return np.empty(0, dtype=np.float32), "", False, type(exc).__name__
     # Identity failures are audit failures, not evidence that an action is infeasible.
-    if mode == CONTINUATION_EQUIVALENCE:
+    if mode in CONTINUATION_EQUIVALENCE_MODES:
         memory = _encoded_continuation(trial, reward, done, validity)
     return response, memory, validity, ""
 
@@ -209,7 +220,7 @@ def evaluate_executable_responses(
     )
     if anchor_response.size == 0:
         raise RuntimeError(f"P-Stack anchor preview failed: {anchor_reason}")
-    if mode == CONTINUATION_EQUIVALENCE and not anchor_valid:
+    if mode in CONTINUATION_EQUIVALENCE_MODES and not anchor_valid:
         raise ValueError("anchor preview failed the validity gate")
     if action_ids is None:
         preview_ids = [
@@ -289,7 +300,7 @@ def evaluate_anchor_response(
     response_feature_dim: int | None = None,
 ) -> EvaluatedState:
     """Build a cheap evaluated state when policy selection is forced to anchor."""
-    if _equivalence_mode(env) == CONTINUATION_EQUIVALENCE:
+    if _equivalence_mode(env) in CONTINUATION_EQUIVALENCE_MODES:
         raise ValueError("continuation equivalence requires explicit executable previews")
     started = time.perf_counter()
     anchor_context = env.prepare_pstack_anchor_context()
@@ -376,7 +387,7 @@ def commit_action(
         next_obs, reward, done, info = env.step_anchored_candidate(
             catalog.residual(action_id), evaluated.anchor_context,
         )
-    if evaluated.response_equivalence_mode == CONTINUATION_EQUIVALENCE:
+    if evaluated.response_equivalence_mode in CONTINUATION_EQUIVALENCE_MODES:
         expected = next(item for item in evaluated.candidate_responses if item.action_id == action_id)
         actual = _encoded_continuation(env, reward, done, info.get("validity_gate_pass", False))
         if actual != expected.follower_memory_fingerprint:
@@ -717,7 +728,7 @@ def collect_sequential_episode(
                     "response_evaluation_seconds": current.evaluation_seconds,
                     **decision.diagnostics,
                 }
-                if current.response_equivalence_mode == CONTINUATION_EQUIVALENCE:
+                if current.response_equivalence_mode in CONTINUATION_EQUIVALENCE_MODES:
                     payload["candidate_continuation_identities"] = {
                         str(item.action_id): json.loads(item.follower_memory_fingerprint)
                         for item in current.candidate_responses if item.valid
@@ -777,6 +788,11 @@ def rows_to_replay(
     })
     if _equivalence_mode(env) != LEGACY_EQUIVALENCE:
         manifest["response_equivalence_mode"] = _equivalence_mode(env)
+    if _equivalence_mode(env) == FIVE_CELL_CONTINUATION_EQUIVALENCE:
+        from rl_leader.response_continuation_state import validate_five_cell_contract
+        manifest["continuation_contract_scope"] = validate_five_cell_contract(
+            env, expected_contract_sha256=env.response_expected_contract_sha256,
+        )
     return FrozenResponseReplay(
         observation=np.asarray(rows["observation"], dtype=np.float32),
         action_id=np.asarray(rows["action_id"], dtype=np.int64),

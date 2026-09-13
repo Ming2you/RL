@@ -10,6 +10,10 @@ import numpy as np
 RESPONSE_MASK_FORMAT = "response_equivalence_mask_v1"
 LEGACY_EQUIVALENCE = "legacy_follower_runtime_v1"
 CONTINUATION_EQUIVALENCE = "post_commit_continuation_v1"
+FIVE_CELL_CONTINUATION_EQUIVALENCE = "post_commit_continuation_five_cell_v1"
+CONTINUATION_EQUIVALENCE_MODES = frozenset({
+    CONTINUATION_EQUIVALENCE, FIVE_CELL_CONTINUATION_EQUIVALENCE,
+})
 
 
 @dataclass(frozen=True)

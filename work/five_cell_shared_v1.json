@@ -1,0 +1,64 @@
+{
+  "format_version": "five_cell_shared_policy_plan_v1",
+  "output_dir": "results/five_cell_shared_v1",
+  "scenarios": [
+    "sweet_155_w60",
+    "sweet_170_w60",
+    "sweet_170_incident_w60",
+    "sweet_170_skew15_w60",
+    "sweet_190_w60"
+  ],
+  "scenario_weights": [0.2, 0.2, 0.2, 0.2, 0.2],
+  "t_total": 14400.0,
+  "warmup_steps": 5,
+  "control_steps": 75,
+  "actors": 2,
+  "response_workers": 4,
+  "maximum_response_workers": 8,
+  "max_episode_wall_seconds": 14400,
+  "max_episode_attempts": 3,
+  "initial_exploration_episodes_per_scenario": 2,
+  "rounds": 2,
+  "onpolicy_episodes_per_scenario_per_round": 1,
+  "initial_epsilon": 0.6,
+  "onpolicy_epsilon": 0.2,
+  "seed": 20260910,
+  "response_equivalence_mode": "post_commit_continuation_five_cell_v1",
+  "catalog": {
+    "magnitude": 0.5,
+    "owners": ["R_F_W", "R_F_E"],
+    "templates": [
+      "linear_first_negative", "linear_first_positive",
+      "linear_second_negative", "linear_second_positive",
+      "quadratic_first_increase", "cross_negative", "cross_positive",
+      "combo_first_pos_quad_first_dec"
+    ]
+  },
+  "training": {
+    "ensemble_size": 3,
+    "gradient_steps": 24000,
+    "batch_size": 32,
+    "learning_rate": 0.0001,
+    "gamma": 1.0,
+    "backup_horizon": 1,
+    "reward_scale": 0.01,
+    "target_update_interval": 100,
+    "hidden": [128, 128],
+    "conservative_alpha": 0.01,
+    "terminal_batch_fraction": 0.25,
+    "mask_constant_features": true,
+    "value_parameterization": "finite_horizon_cost_v1",
+    "min_action_support": 1
+  },
+  "evaluation": {
+    "policy": "one_shared_greedy_ensemble_for_all_five_scenarios",
+    "epsilon": 0.0,
+    "forced_first_action": null,
+    "intervention_gate": false,
+    "lcb_fallback": false,
+    "scope": "full_normal_reset_all_75_control_intervals",
+    "primary_metric": "equal_weight_mean_of_per_scenario_TTT_improvement_percent",
+    "also_report": ["each_scenario_TTT", "worst_scenario_improvement", "terminal_inventory", "action_counts", "total_wall_time"],
+    "generalization_claim": "none: all five specified scenarios are in training"
+  }
+}

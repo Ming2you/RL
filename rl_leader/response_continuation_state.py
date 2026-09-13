@@ -1,4 +1,7 @@
-"""Conservative post-commit continuation identity for one audited experiment.
+"""Conservative post-commit continuation identity with an exact contract scope.
+
+The original 170-incident entry point remains unchanged. The separate five-cell
+entry point accepts only five pinned scenarios sharing every non-scenario field.
 
 This is NOT the strict snapshot fingerprint and is not physical-control
 equivalence. Equal controls can retain different prices, predictor/corrector
@@ -44,6 +47,7 @@ from collections import deque
 import hashlib
 import json
 import math
+from types import MappingProxyType
 
 import numpy as np
 
@@ -73,6 +77,21 @@ from src.simulation.simulator import MixedTrafficSimulator
 IDENTITY_VERSION = "post_commit_continuation_v1"
 AUDITED_CONTRACT_SHA256 = (
     "95694fc1e5bb06da621e784a7e4d4bad56135b6d75ac360bb3a42b2d18501831"
+)
+FIVE_CELL_IDENTITY_VERSION = "post_commit_continuation_five_cell_v1"
+# These full contracts include canonical follower configuration performed by reset.
+# They can also be resolved without simulation from make_cfg plus
+# configure_pstack_b13_follower_contract. Only scenario_name and scenario differ;
+# all execution/accounting fields are pinned.
+FIVE_CELL_CONTRACT_SHA256 = MappingProxyType({
+    "sweet_155_w60": "d0ffa21d79b61bcca7d052bc152b7ea36e5729eedc8840bb673bc9a0eeecf74c",
+    "sweet_170_w60": "4f74f8ed8e13d86a535350141ffcfc309b39faad3ffb263a0ab787398fab6c98",
+    "sweet_170_incident_w60": AUDITED_CONTRACT_SHA256,
+    "sweet_170_skew15_w60": "ff5944e72e4c899f2debafbbd13e0ab9dc7f67551f4fc83a6cbded6e916aff26",
+    "sweet_190_w60": "23f6b73e86dbb57f4ef5231b518ff2724b85ba7cd137b1d76158247fba4f4fbd",
+})
+FIVE_CELL_SHARED_CONTRACT_SHA256 = (
+    "89e46bd3cc7a35f5dce5633ab7c24f11bd6331020bdb27706ee177c7214bb98e"
 )
 
 # Exact names only: do not generalize these to price/diagnostic name prefixes.
@@ -213,14 +232,57 @@ def _expect(obj, expected, path):
             raise ValueError(f"{path}.{name}: unsupported mode/value")
 
 
+def validate_five_cell_contract(env, *, expected_contract_sha256: str) -> dict:
+    """Validate an explicitly opted-in, exact five-cell contract without solves.
+
+    The static allowlist cannot be broadened by passing an arbitrary expected hash.
+    Runtime FAR activation remains the sole config exception already audited by
+    _Projection; runtime state, aliases and controller modes are still validated
+    by the unchanged projection after each candidate commits.
+    """
+    _require_type(env, RLLeaderEnv, "env")
+    scenario_name = env.scenario_name
+    allowed = FIVE_CELL_CONTRACT_SHA256.get(scenario_name)
+    if allowed is None:
+        raise ValueError("five-cell continuation: unsupported scenario")
+    if type(expected_contract_sha256) is not str or expected_contract_sha256 != allowed:
+        raise ValueError("five-cell continuation: expected contract is not the scenario's pinned contract")
+    contract = env._experiment_contract
+    _require_type(contract, ExperimentContract, "env._experiment_contract")
+    if set(vars(contract)) != {"canonical_json", "sha256"}:
+        raise ValueError("env: unsupported experiment contract fields")
+    validated = ExperimentContract.from_artifact(contract.payload, allowed)
+    if contract.sha256 != validated.sha256:
+        raise ValueError("env: unsupported experiment contract digest")
+    payload = validated.payload
+    if payload["scenario_name"] != scenario_name:
+        raise ValueError("five-cell continuation: scenario name differs from pinned contract")
+    shared = {key: value for key, value in payload.items() if key not in {"scenario", "scenario_name"}}
+    if _sha(shared) != FIVE_CELL_SHARED_CONTRACT_SHA256:
+        raise ValueError("five-cell continuation: non-scenario contract fields changed")
+    base_cfg, scenario, _ = validated.materialize()
+    _expect(env, {"scenario": scenario}, "env")
+    if _Projection.config_shape(env.cfg) != _Projection.config_shape(base_cfg):
+        raise ValueError("five-cell continuation: runtime config differs from pinned contract")
+    return {
+        "version": FIVE_CELL_IDENTITY_VERSION,
+        "scenario": scenario_name,
+        "expected_contract_sha256": allowed,
+        "experiment_contract_sha256": validated.sha256,
+        "shared_contract_sha256": FIVE_CELL_SHARED_CONTRACT_SHA256,
+    }
+
+
 class _Projection:
-    def __init__(self, env):
+    def __init__(self, env, *, expected_contract_sha256=AUDITED_CONTRACT_SHA256):
         _require_type(env, RLLeaderEnv, "env")
         contract = env._experiment_contract
         _require_type(contract, ExperimentContract, "env._experiment_contract")
         if set(vars(contract)) != {"canonical_json", "sha256"}:
             raise ValueError("env: unsupported experiment contract fields")
-        validated = ExperimentContract.from_artifact(contract.payload, AUDITED_CONTRACT_SHA256)
+        if expected_contract_sha256 not in FIVE_CELL_CONTRACT_SHA256.values():
+            raise ValueError("env: unsupported expected experiment contract")
+        validated = ExperimentContract.from_artifact(contract.payload, expected_contract_sha256)
         if contract.sha256 != validated.sha256:
             raise ValueError("env: unsupported experiment contract digest")
         self.base_cfg, scenario, options = validated.materialize()
@@ -359,7 +421,9 @@ class _Projection:
         return fields
 
 
-def continuation_identity(env, *, interval_reward: float, terminal: bool) -> dict:
+def _continuation_identity(env, *, interval_reward: float, terminal: bool,
+                           expected_contract_sha256: str, identity_version: str,
+                           contract_metadata=None) -> dict:
     """Return exact component SHA256s; read-only, with no solves or forecasting.
 
     Call only AFTER a candidate has committed its plant interval and controller
@@ -370,7 +434,7 @@ def continuation_identity(env, *, interval_reward: float, terminal: bool) -> dic
         raise ValueError("interval_reward must be a finite Python float")
     if type(terminal) is not bool:
         raise ValueError("terminal must be a Python bool")
-    projection = _Projection(env)
+    projection = _Projection(env, expected_contract_sha256=expected_contract_sha256)
     previous = _view(env.previous)
     _require_type(env.previous.diagnostics, dict, "previous.diagnostics")
     previous["diagnostics"] = {key: value for key, value in env.previous.diagnostics.items()
@@ -402,10 +466,12 @@ def continuation_identity(env, *, interval_reward: float, terminal: bool) -> dic
                        "done_semantics": "environment_terminal"},
     }
     result = {
-        "version": IDENTITY_VERSION,
-        "experiment_contract_sha256": AUDITED_CONTRACT_SHA256,
+        "version": identity_version,
+        "experiment_contract_sha256": expected_contract_sha256,
         "component_sha256": {name: projection.digest(value) for name, value in components.items()},
     }
+    if contract_metadata is not None:
+        result["contract_scope"] = contract_metadata
     result["sha256"] = _sha(result)
     # Field digests explain a failed replay comparison without storing solver graphs.
     result["field_sha256"] = {}
@@ -421,3 +487,22 @@ def continuation_identity(env, *, interval_reward: float, terminal: bool) -> dic
             else:
                 result["field_sha256"][component][name] = projection.digest(item)
     return result
+
+
+def continuation_identity(env, *, interval_reward: float, terminal: bool) -> dict:
+    """Original single-scenario identity; its default bytes and contract are unchanged."""
+    return _continuation_identity(
+        env, interval_reward=interval_reward, terminal=terminal,
+        expected_contract_sha256=AUDITED_CONTRACT_SHA256, identity_version=IDENTITY_VERSION,
+    )
+
+
+def five_cell_continuation_identity(env, *, interval_reward: float, terminal: bool,
+                                    expected_contract_sha256: str) -> dict:
+    """Exact committed identity for the explicit five-cell opt-in contract."""
+    metadata = validate_five_cell_contract(env, expected_contract_sha256=expected_contract_sha256)
+    return _continuation_identity(
+        env, interval_reward=interval_reward, terminal=terminal,
+        expected_contract_sha256=expected_contract_sha256,
+        identity_version=FIVE_CELL_IDENTITY_VERSION, contract_metadata=metadata,
+    )
