@@ -145,3 +145,15 @@
   ZIPbytes16parts, verify-localPASSallmembers0writes.778checkpoint/lockfilesremain
   localwithhashinventory, notdeleted. Newmachinepreflightmustbefreshbecauseold
   preservationmapincludesomittedintermediatehistory. Exactmodel/sourceunchanged.
+- Publication20260930: localcommit1ab7792 created607files, archive/coreclosure
+  verified745dependencies (217rawGit,528archivemembers). SixexporttestsPASS.
+  `git push -u origin codex/sdmpc-rl-budget-20260929` was REJECTED byauto-review
+  beforeexecution overresearchdata destination/payloadauthorization. NOTPUSHED.
+  Parentreportedrestriction andaskeduserexplicitapproval forMing2you/RL branch
+  and653MBdata/code/logpayload, orcode/docs-only. Approvalpending; do notbypass
+  orsilentlyretry. Noactualcanonicalrunnerstarted. Existinggoal/heartbeatnot
+  disabled; pendingpublicationapprovalisnotperformancefailure/orgoalsuccess.
+- User explicitly APPROVED fullcode/model/simulationdata/log653MBpublication to
+  https://github.com/Ming2you/RL branchcodex/sdmpc-rl-budget-20260929 inresponse
+  totheexactpayload/destination/publicvisibilityquestion. Parentmayretrythis
+  authorizedpushnormally, noforcepush/mainchanges. Verifyremoterefafterpush.
