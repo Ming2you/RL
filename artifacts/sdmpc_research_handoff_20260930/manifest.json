@@ -1,0 +1,127 @@
+{
+  "format": "rl_research_split_zip_v1",
+  "created_utc": "2026-09-30T04:04:32.923313+00:00",
+  "status": "HANDOFF_NO_EXPERIMENT_LAUNCH",
+  "roots": [
+    "data",
+    "results",
+    "models",
+    "checkpoints"
+  ],
+  "file_count": 1627,
+  "uncompressed_bytes": 5098378577,
+  "archive_bytes": 652636855,
+  "archive_sha256": "0a2fd794882bb36afe5dc18f3c8c714001c6e6504c212e833f35942f2f4a511f",
+  "parts": [
+    {
+      "path": "research.zip.part001",
+      "bytes": 41943040,
+      "sha256": "075f701c4456cd08de65c1f6a4b72cbe792045ae210a5ac05c76332da5b3629f"
+    },
+    {
+      "path": "research.zip.part002",
+      "bytes": 41943040,
+      "sha256": "4b361a67f25cab967e66c7eb6e4963c25fed222f948985a576226fe297199ae0"
+    },
+    {
+      "path": "research.zip.part003",
+      "bytes": 41943040,
+      "sha256": "271749e84140850b589fd799f8873feb9641471bfcdde7c81e46fcee139a7d9f"
+    },
+    {
+      "path": "research.zip.part004",
+      "bytes": 41943040,
+      "sha256": "e01d21b41c0a22fd0c6e581cebb4a5ccbbb48b7d65427f20dfb0ed524782e260"
+    },
+    {
+      "path": "research.zip.part005",
+      "bytes": 41943040,
+      "sha256": "3742d214b31c755316514a8a1fd789183524a4ff0e1d01729a23c89654db520e"
+    },
+    {
+      "path": "research.zip.part006",
+      "bytes": 41943040,
+      "sha256": "18030333a730206d2001de59605df63ba9b64ef0994672bb7474948b03fcf1b1"
+    },
+    {
+      "path": "research.zip.part007",
+      "bytes": 41943040,
+      "sha256": "f902a6b33d1bce195f632410ac4cd4847adf1887c03a06a5094c8238f51c2bb5"
+    },
+    {
+      "path": "research.zip.part008",
+      "bytes": 41943040,
+      "sha256": "bc5e0f00812a4352de9c23f2d15263277dcc34c9e129e1fe32b63edd8aea5ccf"
+    },
+    {
+      "path": "research.zip.part009",
+      "bytes": 41943040,
+      "sha256": "0a4a92ff9ba0fb737af7b85035f442cb8fe95232727fc1524c1cd0fffedf2b2b"
+    },
+    {
+      "path": "research.zip.part010",
+      "bytes": 41943040,
+      "sha256": "3cf6723191cbf72d7b329c4222cd0edb587c2fb1e3319f46decf71e200c80fa7"
+    },
+    {
+      "path": "research.zip.part011",
+      "bytes": 41943040,
+      "sha256": "ce18305381307559db03f44287026d0bda46cfe0c2a3c0464f67a4c341edbbe3"
+    },
+    {
+      "path": "research.zip.part012",
+      "bytes": 41943040,
+      "sha256": "abc7bfd81d0988d16f847f065a57247c6d52b3baa96d8b41e74e8a9bd24a3e38"
+    },
+    {
+      "path": "research.zip.part013",
+      "bytes": 41943040,
+      "sha256": "10b191e3358d1c54080e09bd38f8c70b232ca1d23a31e692f919501717cb1d7a"
+    },
+    {
+      "path": "research.zip.part014",
+      "bytes": 41943040,
+      "sha256": "8dc857bb2d3baf6e171b967f35bc5cd2c550a3db7dcad1972be884995177590f"
+    },
+    {
+      "path": "research.zip.part015",
+      "bytes": 41943040,
+      "sha256": "79adb5bb39b43884c28b279ffae4b363f8c6d66817effcf736a4acfbf12b2725"
+    },
+    {
+      "path": "research.zip.part016",
+      "bytes": 23491255,
+      "sha256": "dbe015f375dca7da521228899141483868190b5bbec6d8ad3379da41f93fa512"
+    }
+  ],
+  "inventory_sha256": "97a8ec70a6cce1e524db737091b8af5abcd577b5d11546b057689b9f93127d96",
+  "families": {
+    "results/sdmpc_rl_balanced_goal_20260930": {
+      "files": 1041,
+      "bytes": 1881309659
+    },
+    "results/sdmpc_rl_budget_20260929": {
+      "files": 116,
+      "bytes": 928817750
+    },
+    "results/sdmpc_rl_carry_20260929": {
+      "files": 95,
+      "bytes": 474147591
+    },
+    "results/sdmpc_rl_multi_20260929": {
+      "files": 288,
+      "bytes": 1451110803
+    },
+    "results/sdmpc_rl_recovery_20260929": {
+      "files": 87,
+      "bytes": 362992774
+    }
+  },
+  "excluded": [
+    ".venv-torch",
+    "paper",
+    "personal app memory/settings/credentials",
+    "Git internals"
+  ],
+  "note": "Completed SDMPC data, final models, traces, replay and referenced checkpoints. Redundant intermediate checkpoint bytes and lock files remain local and are catalogued separately. Export does not pause/resume the goal or authorize any experiment."
+}

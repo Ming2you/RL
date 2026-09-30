@@ -1,0 +1,21 @@
+{
+  "urban_scale": 2.2,
+  "freeway_scale": 2.2,
+  "ramp_scale": 2.2,
+  "incident_capacity_factor": 1.0,
+  "freeway_lane_closures": [
+    {
+      "link": "FW_E",
+      "segment": 6,
+      "lane_loss": 1.0,
+      "start_sec": 4500.0,
+      "end_sec": 6300.0
+    }
+  ],
+  "pulse_base_scale": 0.5,
+  "pulse_start_sec": 3600.0,
+  "pulse_rampup_sec": 300.0,
+  "pulse_plateau_sec": 3600.0,
+  "pulse_rampdown_sec": 300.0,
+  "required": false
+}

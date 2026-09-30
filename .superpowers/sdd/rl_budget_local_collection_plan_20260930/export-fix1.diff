@@ -1,0 +1,858 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\conftest.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\conftest.py"
+index 4e05853..f9f0a7f 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\conftest.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\conftest.py"
+@@ -18,16 +18,33 @@ CONFIG = dict(network=dict(total_ramp_capacity=6000., freeway_links=["a"],
+     freeway_segments_per_link=1, freeway_segment_length_km=.5, freeway_lanes=2,
+     freeway_buffer_segments=1, off_ramp_storage_link={"r": "off"},
+     urban_link_storage_veh={"urban": 50., "off": 30.}))
+ CONTRACT = {"observation_schema": SCHEMA, "environment_contract": {"config_sha256": lr.digest(CONFIG)}}
+ IDENTITY = {"fixture": "isolated-static-data"}
+ TOKEN = "a" * 32
+ 
+ 
++def register_fake_coordinator(cohort, command, pid=500, parent_pid=999):
++    import coordinator_bootstrap as bootstrap
++    path = Path(command[-1])
++    assert cohort.root in path.parents
++    if not path.with_suffix(".coordinator.json").exists():
++        bootstrap.register(lr, wave, cohort.root, path,
++            dict(pid=pid, created=cohort.statuses[pid][1], command=command[3:]), parent_pid)
++
++
++def finish_fake_coordinator(cohort, command, pid=500):
++    attempt = lr.read(Path(command[-1]))
++    process = dict(pid=pid, command=attempt["runner_command"][3:], started=attempt["started"] + 1,
++                   attempt=str(cohort.root / "attempts" / attempt["id"]))
++    lr.save(cohort.root / "process.json", process)
++    lr.save(Path(process["attempt"]) / "process.json", process)
++
++
+ @dataclass
+ class StaticState:
+     time_sec: float = 14400.
+     freeway_density: dict = field(default_factory=lambda: {"a": [20.]})
+     freeway_speed: dict = field(default_factory=lambda: {"a": [50.]})
+     freeway_flow: dict = field(default_factory=lambda: {"a": [2000.]})
+     freeway_effective_lanes: dict = field(default_factory=lambda: {"a": [2.]})
+     ramp_queue: dict = field(default_factory=lambda: {"r": 3.})
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\coordinator_bootstrap.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\coordinator_bootstrap.py"
+new file mode 100644
+index 0000000..2882bce
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\coordinator_bootstrap.py"
+@@ -0,0 +1,124 @@
++"""Bind this process to one supervisor attempt, then delegate unchanged v2."""
++import argparse
++import os
++from pathlib import Path
++import sys
++import time
++
++import export_recovery as recovery
++
++
++def runner_command(root):
++    return [sys.executable, "-B", "-u", str(recovery.V2 / "run_wave.py"),
++            "--output", str(root), "--resume"]
++
++
++def read_attempt(lr, root, path):
++    path = Path(path).resolve()
++    attempt = lr.read(path)
++    token = attempt["id"]
++    expected = root / ".export-supervisor/attempts" / (token + ".json")
++    if (len(token) != 32 or any(c not in "0123456789abcdef" for c in token) or path != expected or
++            attempt["kind"] != "wave" or attempt["runner_command"] != runner_command(root) or
++            attempt["command"] != [sys.executable, "-B", "-u", str(Path(__file__).resolve()), "--attempt", str(path)] or
++            attempt["helper_sha256"] != recovery.helper_hashes(lr) or
++            attempt["source"] != lr.read(root / "plan.json")["identity"]):
++        raise ValueError("Coordinator bootstrap attempt/provenance differs")
++    return attempt
++
++
++def check_binding(lr, attempt, binding, live=False):
++    from launch_identity import verify_claim
++    if (binding["attempt_id"] != attempt["id"] or binding["owner"] != attempt["owner"] or
++            binding["launcher"] != attempt["process"] or
++            binding["runner_command"] != attempt["runner_command"] or
++            binding["helper_sha256"] != attempt["helper_sha256"] or
++            binding["actual"]["command"] != attempt["command"][3:]):
++        raise ValueError("Coordinator binding identity/provenance differs")
++    if live:
++        mode = verify_claim(binding["launcher"], binding["actual"], binding["owner"],
++                            binding["parent_pid"], probe=lr.probe_process)
++        if mode != binding["launch_mode"]:
++            raise ValueError("Coordinator binding launch mode differs")
++
++
++def register(lr, wave, root, path, actual, parent_pid):
++    from launch_identity import verify_claim
++    recovery.check_stops(lr, wave, root)
++    attempt = read_attempt(lr, root, path)
++    if recovery.authenticate(lr, wave, root) != attempt["source"]:
++        raise ValueError("Coordinator source changed")
++    mode = verify_claim(attempt["process"], actual, attempt["owner"], parent_pid, probe=lr.probe_process)
++    binding = dict(attempt_id=attempt["id"], owner=attempt["owner"], launcher=attempt["process"],
++        actual=actual, parent_pid=parent_pid, launch_mode=mode,
++        runner_command=attempt["runner_command"], helper_sha256=attempt["helper_sha256"])
++    check_binding(lr, attempt, binding, live=True)
++    recovery.publish_bytes(Path(path).with_suffix(".coordinator.json"), recovery.json_bytes(binding))
++    return binding
++
++
++def acknowledged(lr, root, path, binding_hash):
++    attempt = read_attempt(lr, root, path)
++    state = lr.read(root / ".export-supervisor/state.json")
++    return (attempt.get("binding_sha256") == binding_hash and
++            [a for a in state["attempts"] if a["id"] == attempt["id"]] == [attempt])
++
++
++def prove_bound_dead(lr, root, process):
++    """Use the live-verified, acknowledged binding even when no workers started."""
++    state_file = root / ".export-supervisor/state.json"
++    if not state_file.exists():
++        return False
++    state = lr.read(state_file)
++    matches = [a for a in state["attempts"] if a.get("coordinator_process") == process]
++    if not matches:
++        return False
++    if len(matches) != 1:
++        raise ValueError("Ambiguous coordinator attempt binding")
++    saved = matches[0]
++    path = root / ".export-supervisor/attempts" / (saved["id"] + ".json")
++    attempt = read_attempt(lr, root, path)
++    binding_file = path.with_suffix(".coordinator.json")
++    binding = lr.read(binding_file)
++    if (attempt != saved or attempt["binding_sha256"] != lr.file_hash(binding_file) or
++            binding["actual"] != attempt["coordinator"] or process["pid"] != binding["actual"]["pid"] or
++            process["command"] != attempt["runner_command"][3:] or process["started"] < attempt["started"]):
++        raise ValueError("Coordinator binding/hash/attempt differs")
++    check_binding(lr, attempt, binding)
++    recovery.require_dead(lr, binding["launcher"])
++    recovery.require_dead(lr, binding["actual"])
++    return True
++
++
++def run(path):
++    lr, _, _, wave = recovery.modules()
++    root = lr.canonical_root(lr.COHORT_ROOT)
++    # The supervisor publishes its launcher identity before the child can claim it.
++    for _ in range(201):
++        recovery.check_stops(lr, wave, root)
++        if read_attempt(lr, root, path).get("process") is not None:
++            break
++        time.sleep(.05)
++    else:
++        raise OSError("Coordinator launcher identity UNKNOWN")
++    register(lr, wave, root, path, lr.process_identity(command=sys.argv), os.getppid())
++    binding_hash = lr.file_hash(Path(path).with_suffix(".coordinator.json"))
++    for _ in range(201):
++        recovery.check_stops(lr, wave, root)
++        if acknowledged(lr, root, path, binding_hash):
++            attempt = read_attempt(lr, root, path)
++            lr.verify_identity(attempt["source"])
++            previous = sys.argv
++            try:
++                sys.argv = attempt["runner_command"][3:]
++                return wave.main(sys.argv[1:])
++            finally:
++                sys.argv = previous
++        time.sleep(.05)
++    raise OSError("Coordinator identity acknowledgement UNKNOWN")
++
++
++if __name__ == "__main__":
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--attempt", type=Path, required=True)
++    raise SystemExit(run(parser.parse_args().attempt))
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\export_recovery.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\export_recovery.py"
+index d5ac9b6..134fa7b 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\export_recovery.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\export_recovery.py"
+@@ -124,17 +124,19 @@ def prove_dead(lr, wave, root, honor_stop=True):
+         elif record["state"] == "reserved":
+             raise OSError("Unbound launch UNKNOWN")
+     process = lr.read(root / "process.json")
+     attempt = Path(process["attempt"]).resolve()
+     if attempt.parent != root / "attempts" or lr.read(attempt / "process.json") != process:
+         raise ValueError("Coordinator attempt identity differs")
+     owners = [r["owner"] for r in records if r["owner"]["pid"] == process["pid"] and
+               r["owner"]["command"] == process["command"]]
+-    if not owners or len({o["created"] for o in owners}) != 1:
++    from coordinator_bootstrap import prove_bound_dead
++    bound = prove_bound_dead(lr, root, process)
++    if not bound and (not owners or len({o["created"] for o in owners}) != 1):
+         raise OSError("Coordinator creation identity UNKNOWN")
+     for key in {r["key"] for r in records}:
+         current = [r for r in records if r["key"] == key][-1]
+         folder = root / key
+         worker = lr.read(folder / "process.json")
+         if any(worker.get(k) != current["worker"].get(k) for k in ("pid", "created", "command")):
+             raise OSError("Actual worker identity UNKNOWN")
+         if current["launcher"] is not None:
+@@ -186,22 +188,32 @@ def verify_complete(lr, validator, folder, source):
+         raise ValueError("Export current status changed")
+     inputs = dict(receipt["input_sha256"])
+     original = inputs.pop("status.json")
+     if (hashes(lr, folder, inputs) != inputs or
+             lr.file_hash(folder / STAGE / "original-status.json") != original or
+             hashes(lr, folder, OUTPUTS) != receipt["output_sha256"] or
+             completion["outputs_sha256"] != receipt["output_sha256"]):
+         raise ValueError("Export inputs/outputs changed")
+-    validator.load_completed(folder, source)
++    _, settings, _ = validator.load_completed(folder, source)
++    slot = f"{settings['behavior']}/{settings['scenario']}"
++    records = lr.read(lr.COHORT_ROOT / ".ownership/reservations.json")
++    retained = [r for r in records if r["token"] == receipt["token"]]
++    history = [r for r in records if r["key"] == slot]
++    if (Path(folder).resolve() != lr.COHORT_ROOT.resolve() / slot or receipt["slot"] != slot or
++            receipt["run_id"] != settings["run_id"] or len(retained) != 1 or not history or
++            retained[0] != history[-1] or retained[0]["key"] != slot or
++            retained[0]["run_id"] != settings["run_id"] or
++            retained[0]["control_steps"] != 75 or retained[0]["cohort_phase"] != "finished"):
++        raise ValueError("Completed export retained identity differs")
+     return receipt
+ 
+ 
+ def helper_hashes(lr):
+-    return hashes(lr, HERE, ("export_recovery.py", "supervise.py"))
++    return hashes(lr, HERE, ("export_recovery.py", "supervise.py", "coordinator_bootstrap.py"))
+ 
+ 
+ def export(folder):
+     started = time.perf_counter()
+     lr, collector, validator, wave = modules()
+     root, folder = lr.COHORT_ROOT.resolve(), Path(folder).resolve()
+     lr.canonical_root(root)
+     job = next((j for j in wave.jobs_for(root) if root / j["key"] == folder), None)
+@@ -209,21 +221,17 @@ def export(folder):
+         raise ValueError("Export requires a canonical v2 slot")
+     check_stops(lr, wave, root)
+     with ExitStack() as locks:
+         locks.enter_context(lr.exclusive_run(root))
+         locks.enter_context(lr.exclusive_run(folder))
+         records, attempt = prove_dead(lr, wave, root)
+         source = authenticate(lr, wave, root)
+         if (folder / "completion.json").exists():
+-            receipt = verify_complete(lr, validator, folder, source)
+-            retained = [r for r in records if r["key"] == job["key"]][-1]
+-            if retained["cohort_phase"] != "finished" or retained["control_steps"] != 75:
+-                raise ValueError("Completed export lost its retained cohort identity")
+-            return receipt
++            return verify_complete(lr, validator, folder, source)
+         stage = folder / STAGE
+         if stage.exists() or (folder / RECEIPT).exists():
+             raise FileExistsError("Interrupted export; preserve staging for review")
+         for name in ("trace.json", "summary.json", "experience.pt"):
+             if (folder / name).exists():
+                 raise FileExistsError("Conflicting preexisting output: " + name)
+         retained = [r for r in records if r["key"] == job["key"]][-1]
+         failure = known_failure(lr, folder, retained)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\run_tests.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\run_tests.py"
+index 45a5742..aae4b86 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\run_tests.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\run_tests.py"
+@@ -17,16 +17,16 @@ import pytest
+ if __name__ == "__main__":
+     run_id = uuid.uuid4().hex[:8]
+     run = HERE / "test-evidence" / run_id
+     run.mkdir(parents=True)
+     (HERE / "_t").mkdir(exist_ok=True)
+     sources = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(HERE.glob("*.py"))}
+     code = pytest.main(["-q", "--tb=short", "-p", "no:cacheprovider", "--confcutdir=" + str(HERE),
+         "--basetemp=" + str(HERE / "_t" / run_id), "--junitxml=" + str(run / "tests.xml")]
+-        + [str(p) for p in sorted(HERE.glob("test_*.py"))])
++        + [str(p) for p in sorted(HERE.glob("test_*.py"))] + sys.argv[1:])
+     after = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(HERE.glob("*.py"))}
+     if sources != after:
+         raise ValueError("Tested source changed during tests")
+     (run / "evidence.json").write_text(json.dumps(dict(exit_code=code, source_sha256=sources,
+         xml_sha256=hashlib.sha256((run / "tests.xml").read_bytes()).hexdigest(),
+         python=sys.version, isolated_fixtures=str(HERE / "_t" / run_id)), indent=2), encoding="utf-8")
+     raise SystemExit(code)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\supervise.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\supervise.py"
+index b807b37..cb811e3 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\supervise.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\supervise.py"
+@@ -4,26 +4,34 @@ from contextlib import ExitStack
+ import os
+ from pathlib import Path
+ import subprocess
+ import sys
+ import time
+ import uuid
+ 
+ import export_recovery as recovery
++import coordinator_bootstrap as bootstrap
+ 
+ MAX_REPAIRS = 10
+ MAX_WAVES = 11
+ 
+ 
+ def inspect(lr, validator, wave, root):
+     """No arbitrary retry: reconcile the exact primary error and drained siblings."""
+     records, attempt = recovery.prove_dead(lr, wave, root)
+     source = recovery.authenticate(lr, wave, root)
+     jobs = wave.jobs_for(root)
++    receipts = {}
++    for job in jobs:
++        folder = root / job["key"]
++        if (folder / "completion.json").exists():
++            result = wave.validate_job(root, job, source)
++            if "export_recovery" in result:
++                receipts[job["key"]] = recovery.verify_complete(lr, validator, folder, source)
+     status = lr.read(root / "status.json")
+     if (root / "completion.json").exists():
+         done = lr.read(root / "completion.json")
+         if (status != {"status": "completed"} or done["status"] != "completed" or
+                 done["plan"] != lr.read(root / "plan.json") or
+                 done["child_completion_sha256"] != {j["key"]: lr.file_hash(root / j["key"] / "completion.json") for j in jobs} or
+                 done["comparison_sha256"] != lr.file_hash(root / "comparison.json") or
+                 lr.read(root / "comparison.json") != validator.compare_pairs(root, source)):
+@@ -33,19 +41,18 @@ def inspect(lr, validator, wave, root):
+         error=f"RuntimeError: Child failed/stopped: {j['key']}, exit=1")), None)
+     if primary is None or lr.read(attempt / "failure.json") != {"error": status["error"]}:
+         raise ValueError("Coordinator failure is not the known recoverable child failure")
+     repairs = []
+     for job in jobs:
+         folder = root / job["key"]
+         history = [r for r in records if r["key"] == job["key"]]
+         if (folder / "completion.json").exists():
+-            wave.validate_job(root, job, source)
+-            if (folder / recovery.RECEIPT).exists():
+-                receipt = recovery.verify_complete(lr, validator, folder, source)
++            if job["key"] in receipts:
++                receipt = receipts[job["key"]]
+                 if job["key"] == primary and receipt["coordinator_attempt"] != str(attempt):
+                     raise ValueError("Primary repaired failure belongs to another attempt")
+             elif job["key"] == primary:
+                 raise ValueError("Primary failure lacks an export receipt")
+             continue
+         if (folder / recovery.STAGE).exists():
+             raise FileExistsError("Interrupted export; preserve staging for review")
+         if not history:
+@@ -81,38 +88,67 @@ def inspect(lr, validator, wave, root):
+ 
+ 
+ def launched(lr, wave, root, folder, state, command, kind):
+     """Persist launch intent first. An interrupted/ambiguous launch is never retried."""
+     recovery.check_stops(lr, wave, root)
+     if state["helper_sha256"] != recovery.helper_hashes(lr):
+         raise ValueError("Supervisor helper source changed")
+     attempt = dict(id=uuid.uuid4().hex, kind=kind, command=command, phase="launching", started=time.time())
++    path = folder / "attempts" / (attempt["id"] + ".json")
++    if kind == "wave":
++        attempt.update(runner_command=command, owner=lr.process_identity(),
++                       helper_sha256=state["helper_sha256"], source=state["source"])
++        command = [sys.executable, "-B", "-u", str(recovery.HERE / "coordinator_bootstrap.py"), "--attempt", str(path)]
++        attempt["command"] = command
+     state["attempts"].append(attempt)
+     lr.durable_save(folder / "state.json", state)
+-    path = folder / "attempts" / (attempt["id"] + ".json")
+     lr.durable_save(path, attempt)
+     env = os.environ.copy()
+     env.update(PYTHONDONTWRITEBYTECODE="1", PYTHONIOENCODING="utf-8",
+                OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
+     with (folder / "stdout.log").open("a", encoding="utf-8") as out, (folder / "stderr.log").open("a", encoding="utf-8") as err:
+         out.write(f"\n{attempt['id']} {kind} {command!r}\n")
+         out.flush()
+         child = subprocess.Popen(command, cwd=lr.REPO, env=env, stdout=out, stderr=err,
+                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+         try:
+             identity = lr.process_identity(child.pid, command)
+             attempt.update(phase="running", process=identity)
+             lr.durable_save(path, attempt)
+             lr.durable_save(folder / "state.json", state)
++            if kind == "wave":
++                binding_file = path.with_suffix(".coordinator.json")
++                for _ in range(201):
++                    recovery.check_stops(lr, wave, root)
++                    if binding_file.exists():
++                        binding = lr.read(binding_file)
++                        bootstrap.check_binding(lr, attempt, binding, live=True)
++                        attempt.update(coordinator=binding["actual"], binding_sha256=lr.file_hash(binding_file))
++                        lr.durable_save(path, attempt)
++                        lr.durable_save(folder / "state.json", state)
++                        break
++                    if child.poll() is not None:
++                        raise OSError("Coordinator exited without identity binding")
++                    if not binding_file.exists():
++                        time.sleep(.05)
++                else:
++                    raise OSError("Coordinator creation identity UNKNOWN")
+         finally:
+             # Even a bookkeeping failure after spawn must wait for the launched handle.
+             code = child.wait()
+     recovery.require_dead(lr, identity)
+     if kind == "wave":
++        process = lr.read(root / "process.json")
++        if (process["pid"] != attempt["coordinator"]["pid"] or
++                process["command"] != attempt["runner_command"][3:] or process["started"] < attempt["started"]):
++            raise OSError("Coordinator attempt identity UNKNOWN")
++        attempt["coordinator_process"] = process
++        lr.durable_save(path, attempt)
++        lr.durable_save(folder / "state.json", state)
+         while True:
+             try:
+                 # Wait for known actual identities even if their launcher already exited.
+                 # STOP prevents continuation, but must not bypass this draining proof.
+                 recovery.prove_dead(lr, wave, root, honor_stop=False)
+                 with lr.exclusive_run(root):
+                     recovery.prove_dead(lr, wave, root, honor_stop=False)
+                 break
+@@ -168,18 +204,17 @@ def supervise():
+                         raise RuntimeError("Export failed; no automatic retry")
+                     recovery.verify_complete(lr, validator, root / slot, source)
+                 if sum(a["kind"] == "wave" for a in state["attempts"]) >= MAX_WAVES:
+                     raise ValueError("Bounded coordinator continuation exhausted")
+                 recovery.check_stops(lr, wave, root)
+                 lr.verify_identity(source)
+                 previous = lr.file_hash(root / "process.json")
+                 code = launched(lr, wave, root, folder, state,
+-                    [sys.executable, "-B", "-u", str(recovery.V2 / "run_wave.py"),
+-                     "--output", str(root), "--resume"], "wave")
++                    bootstrap.runner_command(root), "wave")
+                 if lr.file_hash(root / "process.json") == previous:
+                     raise ValueError("Launched coordinator did not record a new attempt")
+                 if code == 0 and not (root / "completion.json").exists():
+                     raise ValueError("Coordinator exited without completion")
+                 if code not in (0, 1):
+                     raise RuntimeError("Coordinator stopped or exited unexpectedly")
+         except BaseException as exc:
+             state.update(status="failed", error=f"{type(exc).__name__}: {exc}")
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_fix1.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_fix1.py"
+new file mode 100644
+index 0000000..ed3eb81
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_fix1.py"
+@@ -0,0 +1,271 @@
++"""Accepted F1-F3 regressions; static fixtures and fake processes only."""
++import copy
++from pathlib import Path
++
++import pytest
++
++import export_recovery as recovery
++import supervise as supervisor
++from conftest import lr, validator, wave, IDENTITY, TOKEN, static_checkpoint
++from test_supervisor import ready_state
++
++
++def complete_other_slots(cohort):
++    for job in wave.jobs_for(cohort.root)[1:]:
++        folder = cohort.root / job["key"]
++        settings = dict(cohort.settings, run_id=job["key"],
++                        **{k: v for k, v in job.items() if k != "key"})
++        ck = static_checkpoint(settings)
++        for row in ck["trace"]:
++            row["candidates"] = []
++        for name, value in (("settings.json", settings), ("observation_schema.json", ck["schema"]),
++                            ("trace.json", ck["trace"]), ("status.json", {"status": "completed"})):
++            lr.save(folder / name, value)
++        start = folder / "sessions" / f"{TOKEN}.start.json"
++        lr.save(start, dict(session_id=TOKEN, started=1.))
++        lr.save(folder / "sessions" / f"{TOKEN}.end.json", dict(session_id=TOKEN,
++            start_sha256=lr.file_hash(start), outcome="completed", elapsed_wall_seconds=1.))
++        lr.save(folder / "timing.json", lr.session_timing(folder, [TOKEN]))
++        lr.save(folder / "summary.json", validator.summarize(ck["trace"], settings, "KNOWN"))
++        lr.checkpoint_save(lr.torch, folder / "experience.pt", dict(format=lr.FORMAT,
++            settings=settings, transitions=ck["transitions"]))
++        lr.save(folder / "completion.json", dict(format=lr.FORMAT, status="completed", settings=settings,
++            outputs_sha256=recovery.hashes(lr, folder, recovery.OUTPUTS)))
++
++
++def finish_root(cohort, process=None):
++    if process is not None:
++        lr.save(cohort.root / "process.json", process)
++        lr.save(Path(process["attempt"]) / "process.json", process)
++    lr.save(cohort.root / "status.json", dict(status="completed"))
++    lr.save(cohort.root / "comparison.json", validator.compare_pairs(cohort.root, IDENTITY))
++    lr.save(cohort.root / "completion.json", dict(status="completed", plan=lr.read(cohort.root / "plan.json"),
++        child_completion_sha256={j["key"]: lr.file_hash(cohort.root / j["key"] / "completion.json")
++                                 for j in wave.jobs_for(cohort.root)},
++        comparison_sha256=lr.file_hash(cohort.root / "comparison.json")))
++
++
++@pytest.mark.parametrize("redirector", [False, True])
++def test_fix1_f1_new_coordinator_no_reservations(cohort, monkeypatch, redirector):
++    launch_finalization(cohort, monkeypatch, redirector)
++
++
++def launch_finalization(cohort, monkeypatch, redirector=False):
++    recovery.export(cohort.folder)
++    complete_other_slots(cohort)
++    original_records = (cohort.root / ".ownership/reservations.json").read_bytes()
++    folder = cohort.root / ".export-supervisor"
++    folder.mkdir()
++    state = ready_state()
++    state["process"] = lr.process_identity()
++    actual_pid = 600 if redirector else 500
++    runner = [supervisor.sys.executable, "-B", "-u", str(recovery.V2 / "run_wave.py"),
++              "--output", str(cohort.root), "--resume"]
++
++    class Child:
++        pid = 500
++
++        def __init__(self, command, **kwargs):
++            self.command = command
++            cohort.statuses[500] = ("live", 10000)
++            cohort.statuses[actual_pid] = ("live", 10001 if redirector else 10000)
++
++        def poll(self):
++            # The new bootstrap's registration is exercised once it exists.
++            import coordinator_bootstrap as bootstrap
++            attempt_path = folder / "attempts" / (state["attempts"][-1]["id"] + ".json")
++            binding_path = attempt_path.with_suffix(".coordinator.json")
++            if not binding_path.exists():
++                bootstrap.register(lr, wave, cohort.root, attempt_path,
++                    dict(pid=actual_pid, created=cohort.statuses[actual_pid][1], command=self.command[3:]),
++                    500 if redirector else 999)
++            return None
++
++        def wait(self):
++            attempt = state["attempts"][-1]
++            process = dict(pid=actual_pid, command=runner[3:], started=attempt["started"] + 1,
++                           attempt=str(cohort.root / "attempts" / ("d" * 32)))
++            finish_root(cohort, process)
++            cohort.statuses[500] = ("dead", 10000)
++            cohort.statuses[actual_pid] = ("dead", 10001 if redirector else 10000)
++            return 0
++
++    monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
++    assert supervisor.launched(lr, wave, cohort.root, folder, state, runner, "wave") == 0
++    assert supervisor.inspect(lr, validator, wave, cohort.root) == (True, [])
++    assert (cohort.root / ".ownership/reservations.json").read_bytes() == original_records
++    assert state["attempts"][-1]["phase"] == "exited"
++    return state
++
++
++@pytest.mark.parametrize("fault", ["missing", "changed", "missing_ack", "process", "live", "unknown", "STOP"])
++def test_fix1_f1_invalid_binding_never_proves_completion(cohort, monkeypatch, fault):
++    state = launch_finalization(cohort, monkeypatch, redirector=True)
++    attempt = state["attempts"][-1]
++    path = cohort.root / ".export-supervisor/attempts" / (attempt["id"] + ".json")
++    binding = path.with_suffix(".coordinator.json")
++    if fault == "missing":
++        binding.unlink()
++    elif fault == "changed":
++        binding.write_bytes(binding.read_bytes() + b" ")
++    elif fault == "missing_ack":
++        attempt.pop("binding_sha256")
++        lr.save(path, attempt)
++        lr.save(cohort.root / ".export-supervisor/state.json", state)
++    elif fault == "process":
++        process = lr.read(cohort.root / "process.json")
++        process["pid"] = 777
++        lr.save(cohort.root / "process.json", process)
++        lr.save(Path(process["attempt"]) / "process.json", process)
++    elif fault in ("live", "unknown"):
++        cohort.statuses[600] = (fault, 10001 if fault == "live" else None)
++    else:
++        (cohort.root / "STOP").touch()
++    with pytest.raises((ValueError, OSError, KeyError, lr.Stopped)):
++        supervisor.inspect(lr, validator, wave, cohort.root)
++
++
++@pytest.mark.parametrize("field", ["token", "run_id"])
++@pytest.mark.parametrize("acceptance", ["export", "verify"])
++def test_fix1_f2_replaced_retained_identity(cohort, field, acceptance):
++    recovery.export(cohort.folder)
++    records = lr.read(cohort.root / ".ownership/reservations.json")
++    records[-1][field] = "f"*32 if field == "token" else "replacement-run"
++    lr.save(cohort.root / ".ownership/reservations.json", records)
++    with pytest.raises(ValueError, match="identity|retained"):
++        if acceptance == "export":
++            recovery.export(cohort.folder)
++        else:
++            recovery.verify_complete(lr, validator, cohort.folder, IDENTITY)
++
++
++def test_fix1_f2_legitimate_completed_bookkeeping(cohort):
++    receipt = recovery.export(cohort.folder)
++    lr.release_worker(TOKEN)
++    assert lr.read(cohort.root / ".ownership/reservations.json")[-1]["state"] == "completed"
++    assert recovery.export(cohort.folder) == receipt
++
++
++@pytest.mark.parametrize("fault", ["slot", "receipt_run_id", "appended_replacement"])
++def test_fix1_f2_receipt_and_record_must_identify_same_slot(cohort, fault):
++    receipt = recovery.export(cohort.folder)
++    if fault == "appended_replacement":
++        records = lr.read(cohort.root / ".ownership/reservations.json")
++        records.append(dict(records[-1], token="f"*32))
++        lr.save(cohort.root / ".ownership/reservations.json", records)
++    else:
++        receipt["slot" if fault == "slot" else "run_id"] = "replacement"
++        lr.save(cohort.folder / recovery.RECEIPT, receipt)
++        completion = lr.read(cohort.folder / "completion.json")
++        completion["export_recovery"]["sha256"] = lr.file_hash(cohort.folder / recovery.RECEIPT)
++        lr.save(cohort.folder / "completion.json", completion)
++        lr.save(cohort.folder / "status.json", dict(status="export-completed", control_steps=75,
++            export_receipt_sha256=completion["export_recovery"]["sha256"]))
++    with pytest.raises(ValueError, match="retained identity"):
++        recovery.verify_complete(lr, validator, cohort.folder, IDENTITY)
++
++
++def failed_other_slot(cohort):
++    job = wave.jobs_for(cohort.root)[1]
++    folder = cohort.root / job["key"]
++    folder.mkdir(parents=True)
++    settings = dict(cohort.settings, run_id="other-run",
++                    **{k: v for k, v in job.items() if k != "key"})
++    record = dict(copy.deepcopy(cohort.record), key=job["key"], token="e"*32, run_id="other-run")
++    records = lr.read(cohort.root / ".ownership/reservations.json")
++    lr.save(cohort.root / ".ownership/reservations.json", records + [record])
++    lr.save(folder / "settings.json", settings)
++    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", static_checkpoint(settings))
++    for name in ("process.json", "launcher.json", "status.json", "stderr.log"):
++        source = cohort.folder / (recovery.STAGE + "/original-status.json" if name == "status.json" else name)
++        (folder / name).write_bytes(source.read_bytes())
++    error = f"RuntimeError: Child failed/stopped: {job['key']}, exit=1"
++    lr.save(cohort.root / "status.json", dict(status="failed", error=error))
++    lr.save(cohort.attempt / "failure.json", dict(error=error))
++
++
++@pytest.mark.parametrize("completed", [False, True])
++@pytest.mark.parametrize("fault", ["missing", "changed", "input", "token", "run_id"])
++def test_fix1_f3_linked_receipt_required_on_every_inspect(cohort, completed, fault):
++    recovery.export(cohort.folder)
++    if completed:
++        complete_other_slots(cohort)
++        finish_root(cohort)
++    else:
++        failed_other_slot(cohort)
++    receipt = cohort.folder / recovery.RECEIPT
++    if fault == "missing":
++        receipt.unlink()
++    elif fault == "changed":
++        receipt.write_bytes(receipt.read_bytes() + b" ")
++    elif fault == "input":
++        path = cohort.folder / "checkpoint.pt"
++        path.write_bytes(path.read_bytes() + b" ")
++    else:
++        records = lr.read(cohort.root / ".ownership/reservations.json")
++        records[0][fault] = "replacement"
++        lr.save(cohort.root / ".ownership/reservations.json", records)
++    with pytest.raises((ValueError, FileNotFoundError)):
++        supervisor.inspect(lr, validator, wave, cohort.root)
++
++
++def bootstrap_intent(cohort):
++    import coordinator_bootstrap as bootstrap
++    folder = cohort.root / ".export-supervisor"
++    path = folder / "attempts" / ("9"*32 + ".json")
++    command = [supervisor.sys.executable, "-B", "-u", str(recovery.HERE / "coordinator_bootstrap.py"), "--attempt", str(path)]
++    actual = dict(pid=500, created=10000, command=command[3:])
++    cohort.statuses[500] = ("live", 10000)
++    attempt = dict(id="9"*32, kind="wave", phase="running", started=1., command=command,
++        runner_command=bootstrap.runner_command(cohort.root), owner=lr.process_identity(),
++        process=dict(pid=500, created=10000, command=command), helper_sha256=recovery.helper_hashes(lr), source=IDENTITY)
++    lr.save(path, attempt)
++    lr.save(folder / "state.json", dict(ready_state(), attempts=[attempt]))
++    return path, actual
++
++
++@pytest.mark.parametrize("fault", ["parent", "creation", "unknown", "command", "STOP"])
++def test_fix1_bootstrap_rejects_invalid_registration(cohort, fault):
++    import coordinator_bootstrap as bootstrap
++    path, actual = bootstrap_intent(cohort)
++    parent = 999
++    if fault == "parent":
++        parent = 123
++    elif fault == "creation":
++        actual["created"] += 1
++    elif fault == "unknown":
++        cohort.statuses[500] = ("unknown", None)
++    elif fault == "command":
++        actual["command"] = ["wrong"]
++    else:
++        (cohort.root / "STOP").touch()
++    with pytest.raises((ValueError, lr.Stopped)):
++        bootstrap.register(lr, wave, cohort.root, path, actual, parent)
++    assert not path.with_suffix(".coordinator.json").exists()
++
++
++def test_fix1_bootstrap_delegates_only_after_durable_ack(cohort, monkeypatch):
++    import coordinator_bootstrap as bootstrap
++    path, actual = bootstrap_intent(cohort)
++    original_ack = bootstrap.acknowledged
++    delegated = []
++
++    def ack(lr, root, path, binding_hash):
++        assert not original_ack(lr, root, path, binding_hash)
++        attempt = lr.read(path)
++        attempt.update(binding_sha256=binding_hash, coordinator=actual)
++        lr.save(path, attempt)
++        assert not original_ack(lr, root, path, binding_hash)
++        lr.save(root / ".export-supervisor/state.json", dict(ready_state(), attempts=[attempt]))
++        return original_ack(lr, root, path, binding_hash)
++
++    def delegate(args):
++        delegated.append((args, list(bootstrap.sys.argv)))
++        return 7
++
++    monkeypatch.setattr(bootstrap, "acknowledged", ack)
++    monkeypatch.setattr(bootstrap.os, "getppid", lambda: 999)
++    monkeypatch.setattr(lr, "process_identity", lambda **k: actual)
++    monkeypatch.setattr(wave, "main", delegate)
++    assert bootstrap.run(path) == 7
++    assert delegated == [(bootstrap.runner_command(cohort.root)[4:], bootstrap.runner_command(cohort.root)[3:])]
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\test_supervisor.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_supervisor.py"
+index d560294..c9d6bd0 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_local_collection_plan_20260930\\before-export-fix1\\test_supervisor.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_supervisor.py"
+@@ -1,16 +1,16 @@
+ import copy
+ from pathlib import Path
+ 
+ import pytest
+ 
+ import export_recovery as recovery
+ import supervise as supervisor
+-from conftest import lr, validator, wave, IDENTITY
++from conftest import lr, validator, wave, IDENTITY, register_fake_coordinator, finish_fake_coordinator
+ 
+ 
+ def test_inspect_only_exact_failure_and_skip_original_runner(cohort, monkeypatch):
+     assert supervisor.inspect(lr, validator, wave, cohort.root) == (False, [cohort.job["key"]])
+     abort = (cohort.attempt / "ABORT.json").read_bytes()
+     recovery.export(cohort.folder)
+     assert supervisor.inspect(lr, validator, wave, cohort.root) == (False, [])
+     monkeypatch.setattr(wave.subprocess, "Popen", lambda *a, **k: pytest.fail("completed slot relaunched"))
+@@ -68,46 +68,48 @@ def test_bounded_supervisor_exports_waits_and_resumes(cohort, monkeypatch):
+         return original_inspect(*args)
+ 
+     class Child:
+         pid = 500
+ 
+         def __init__(self, command, **kwargs):
+             assert len(launched) == len(waited)
+             assert kwargs["env"]["OMP_NUM_THREADS"] == kwargs["env"]["MKL_NUM_THREADS"] == kwargs["env"]["OPENBLAS_NUM_THREADS"] == "1"
+-            cohort.statuses[500] = ("live", 5000)
++            cohort.statuses[500] = ("live", 10000)
+             self.command = command
+             launched.append(command)
+ 
++        def poll(self):
++            register_fake_coordinator(cohort, self.command)
++            return None
++
+         def wait(self):
+             if Path(self.command[3]).name == "export_recovery.py":
+                 recovery.export(cohort.folder)
+             else:
+-                assert self.command[-1] == "--resume"
+-                assert Path(self.command[3]) == recovery.V2 / "run_wave.py"
++                assert Path(self.command[3]) == recovery.HERE / "coordinator_bootstrap.py"
++                attempt = lr.read(Path(self.command[-1]))
++                assert attempt["runner_command"] == supervisor.bootstrap.runner_command(cohort.root)
+                 # The original run_stage's completed-slot skip is exercised separately.
+-                process = lr.read(cohort.root / "process.json")
+-                process["started"] += 1
+-                lr.save(cohort.root / "process.json", process)
+-                lr.save(cohort.attempt / "process.json", process)
++                finish_fake_coordinator(cohort, self.command)
+                 lr.save(cohort.root / "completion.json", {"synthetic": True})
+                 done[0] = True
+-            cohort.statuses[500] = ("dead", 5000)
++            cohort.statuses[500] = ("dead", 10000)
+             waited.append(self.command)
+             return 0
+ 
+     monkeypatch.setattr(supervisor, "inspect", inspect)
+     monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
+     before_abort = (cohort.attempt / "ABORT.json").read_bytes()
+     assert supervisor.supervise() == "completed"
+     assert len(launched) == len(waited) == 2
+     state = lr.read(cohort.root / ".export-supervisor/state.json")
+     assert state["repairs"] == [cohort.job["key"]] and state["status"] == "completed"
+     assert [a["kind"] for a in state["attempts"]] == ["export", "wave"]
+-    assert all(a["phase"] == "exited" and a["exit_code"] == 0 and a["process"]["created"] == 5000 for a in state["attempts"])
++    assert all(a["phase"] == "exited" and a["exit_code"] == 0 and a["process"]["created"] == 10000 for a in state["attempts"])
+     assert (cohort.root / ".export-supervisor/stdout.log").stat().st_size > 0
+     assert (cohort.attempt / "ABORT.json").read_bytes() == before_abort
+ 
+ 
+ @pytest.mark.parametrize("prior", ["same_slot", "ten_repairs", "eleven_waves"])
+ def test_durable_bounds_block_new_launch(cohort, monkeypatch, prior):
+     state = ready_state()
+     if prior == "same_slot":
+@@ -191,57 +193,69 @@ def test_stop_after_export_prevents_resume(cohort, monkeypatch):
+ def test_launched_waits_before_stop_exception(cohort, monkeypatch):
+     waited = []
+     folder = cohort.root / ".export-supervisor"
+     folder.mkdir()
+ 
+     class Child:
+         pid = 500
+ 
+-        def __init__(self, *a, **k):
+-            cohort.statuses[500] = ("live", 5000)
++        def __init__(self, command, **k):
++            self.command = command
++            cohort.statuses[500] = ("live", 10000)
++
++        def poll(self):
++            register_fake_coordinator(cohort, self.command)
++            return None
+ 
+         def wait(self):
+             waited.append(True)
+-            cohort.statuses[500] = ("dead", 5000)
++            finish_fake_coordinator(cohort, self.command)
++            cohort.statuses[500] = ("dead", 10000)
+             (cohort.root / "STOP").touch()
+             return 2
+ 
+     monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
+     with pytest.raises(lr.Stopped):
+-        supervisor.launched(lr, wave, cohort.root, folder, ready_state(), ["synthetic"], "wave")
++        supervisor.launched(lr, wave, cohort.root, folder, ready_state(), supervisor.bootstrap.runner_command(cohort.root), "wave")
+     assert waited == [True]
+ 
+ 
+ @pytest.mark.parametrize("after_launcher", ["live", "unknown"])
+ def test_actual_children_drained_or_unknown_blocks(cohort, monkeypatch, after_launcher):
+     folder = cohort.root / ".export-supervisor"
+     folder.mkdir()
+     sleeps = []
+ 
+     class Child:
+         pid = 500
+ 
+-        def __init__(self, *a, **k):
+-            cohort.statuses[500] = ("live", 5000)
++        def __init__(self, command, **k):
++            self.command = command
++            cohort.statuses[500] = ("live", 10000)
++
++        def poll(self):
++            register_fake_coordinator(cohort, self.command)
++            return None
+ 
+         def wait(self):
+-            cohort.statuses[500] = ("dead", 5000)
++            finish_fake_coordinator(cohort, self.command)
++            cohort.statuses[500] = ("dead", 10000)
+             cohort.statuses[300] = (after_launcher, 3000 if after_launcher == "live" else None)
+             (cohort.root / "STOP").touch()
+             return 2
+ 
+     def drained(seconds):
+         sleeps.append(seconds)
+         cohort.statuses[300] = ("dead", 3000)
+ 
+     monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
+     monkeypatch.setattr(supervisor.time, "sleep", drained)
+     with pytest.raises(lr.Stopped if after_launcher == "live" else OSError):
+-        supervisor.launched(lr, wave, cohort.root, folder, ready_state(), ["synthetic"], "wave")
++        supervisor.launched(lr, wave, cohort.root, folder, ready_state(), supervisor.bootstrap.runner_command(cohort.root), "wave")
+     assert sleeps == ([1] if after_launcher == "live" else [])
+ 
+ 
+ def test_spawn_bookkeeping_failure_still_waits(cohort, monkeypatch):
+     folder = cohort.root / ".export-supervisor"
+     folder.mkdir()
+     waits = []
+     save = lr.durable_save

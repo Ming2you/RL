@@ -1,0 +1,2699 @@
+[
+  {
+    "time_sec": 0.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 180.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 360.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 540.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 720.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 900.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 1080.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 1260.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 1440.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 1620.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 1800.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 1980.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 2160.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 2340.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 2520.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 2700.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 2880.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 3060.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 3240.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 3420.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 3600.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 3780.0,
+    "freeway_mainline": {
+      "FW_W": 2210.9999999999995,
+      "FW_E": 2321.5499999999997
+    },
+    "urban_boundary": {
+      "in_A_top": 669.9999999999999,
+      "in_A_left": 736.9999999999999,
+      "in_B_top": 803.9999999999999,
+      "in_C_top": 870.9999999999999,
+      "in_C_right": 937.9999999999998,
+      "in_D_left": 1004.9999999999998,
+      "in_F_right": 1071.9999999999998,
+      "out_A_top": 549.3999999999999,
+      "out_A_left": 602.9999999999999,
+      "out_B_top": 656.5999999999999,
+      "out_C_top": 710.1999999999999,
+      "out_C_right": 763.7999999999998,
+      "out_D_left": 817.3999999999999,
+      "out_F_right": 870.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 750.3999999999999,
+      "R_F_W": 787.9199999999998,
+      "R_D_E": 825.4399999999999,
+      "R_F_E": 862.9599999999998
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 3960.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 4140.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 4320.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 4500.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 4680.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 4860.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 5040.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 5220.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 5400.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 5580.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 5760.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 5940.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 6120.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 6300.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 6480.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 6660.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 6840.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 7020.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 7200.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 7380.0,
+    "freeway_mainline": {
+      "FW_W": 3135.0,
+      "FW_E": 3291.75
+    },
+    "urban_boundary": {
+      "in_A_top": 950.0,
+      "in_A_left": 1045.0,
+      "in_B_top": 1140.0,
+      "in_C_top": 1235.0,
+      "in_C_right": 1330.0,
+      "in_D_left": 1425.0,
+      "in_F_right": 1520.0,
+      "out_A_top": 779.0,
+      "out_A_left": 854.9999999999999,
+      "out_B_top": 931.0,
+      "out_C_top": 1007.0,
+      "out_C_right": 1083.0,
+      "out_D_left": 1159.0,
+      "out_F_right": 1234.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 1064.0,
+      "R_F_W": 1117.2,
+      "R_D_E": 1170.4,
+      "R_F_E": 1223.6
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 7560.0,
+    "freeway_mainline": {
+      "FW_W": 2673.0,
+      "FW_E": 2806.65
+    },
+    "urban_boundary": {
+      "in_A_top": 809.9999999999999,
+      "in_A_left": 891.0,
+      "in_B_top": 971.9999999999998,
+      "in_C_top": 1053.0,
+      "in_C_right": 1133.9999999999998,
+      "in_D_left": 1214.9999999999998,
+      "in_F_right": 1296.0,
+      "out_A_top": 664.1999999999998,
+      "out_A_left": 728.9999999999998,
+      "out_B_top": 793.7999999999998,
+      "out_C_top": 858.5999999999999,
+      "out_C_right": 923.3999999999997,
+      "out_D_left": 988.1999999999998,
+      "out_F_right": 1052.9999999999998
+    },
+    "ramp_arrival": {
+      "R_D_W": 907.1999999999999,
+      "R_F_W": 952.56,
+      "R_D_E": 997.92,
+      "R_F_E": 1043.2799999999997
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 7740.0,
+    "freeway_mainline": {
+      "FW_W": 1286.9999999999998,
+      "FW_E": 1351.35
+    },
+    "urban_boundary": {
+      "in_A_top": 389.99999999999994,
+      "in_A_left": 429.0,
+      "in_B_top": 467.9999999999999,
+      "in_C_top": 506.99999999999994,
+      "in_C_right": 545.9999999999999,
+      "in_D_left": 584.9999999999999,
+      "in_F_right": 624.0,
+      "out_A_top": 319.79999999999995,
+      "out_A_left": 350.9999999999999,
+      "out_B_top": 382.19999999999993,
+      "out_C_top": 413.4,
+      "out_C_right": 444.5999999999999,
+      "out_D_left": 475.7999999999999,
+      "out_F_right": 506.99999999999983
+    },
+    "ramp_arrival": {
+      "R_D_W": 436.79999999999995,
+      "R_F_W": 458.64,
+      "R_D_E": 480.47999999999996,
+      "R_F_E": 502.31999999999994
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 7920.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 8100.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 8280.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 8460.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 8640.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 8820.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 9000.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 9180.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 9360.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 9540.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 9720.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 9900.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 10080.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 10260.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 10440.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 10620.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 10800.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 10980.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 11160.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 11340.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 11520.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 11700.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 11880.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 12060.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 12240.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 12420.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 12600.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 12780.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 12960.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 13140.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 13320.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 13500.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 13680.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 13860.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 14040.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 14220.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 14400.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 14580.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 14760.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 14940.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 15120.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 15300.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  },
+  {
+    "time_sec": 15480.0,
+    "freeway_mainline": {
+      "FW_W": 825.0,
+      "FW_E": 866.25
+    },
+    "urban_boundary": {
+      "in_A_top": 250.0,
+      "in_A_left": 275.0,
+      "in_B_top": 300.0,
+      "in_C_top": 325.0,
+      "in_C_right": 350.0,
+      "in_D_left": 375.0,
+      "in_F_right": 400.0,
+      "out_A_top": 205.0,
+      "out_A_left": 224.99999999999997,
+      "out_B_top": 245.0,
+      "out_C_top": 265.0,
+      "out_C_right": 285.0,
+      "out_D_left": 305.0,
+      "out_F_right": 324.99999999999994
+    },
+    "ramp_arrival": {
+      "R_D_W": 280.0,
+      "R_F_W": 294.0,
+      "R_D_E": 308.0,
+      "R_F_E": 322.0
+    },
+    "incident_capacity_factor": 1.0,
+    "freeway_lane_loss": {}
+  }
+]

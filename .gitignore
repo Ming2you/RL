@@ -10,6 +10,9 @@ logs/
 # Raw research artifacts are preserved in the verified split snapshot bundle.
 # Previously tracked historical data remains tracked.
 /.venv*/
+/.deps-budget/
+!/artifacts/sdmpc_budget_baseline_20260929/source/outputs/
+!/artifacts/sdmpc_budget_baseline_20260929/source/outputs/**
 /data/
 /results/
 /models/

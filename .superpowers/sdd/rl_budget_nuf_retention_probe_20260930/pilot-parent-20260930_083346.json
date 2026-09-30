@@ -1,0 +1,16 @@
+{
+  "pid": 11036,
+  "created": "2026-09-30T08:33:46.4117701+09:00",
+  "created_filetime": 134351984264117701,
+  "executable": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+  "arguments": [
+    "-B",
+    "-u",
+    "work/sdmpc_rl_nuf_retention_20260930/run_wave.py",
+    "--stage",
+    "pilot"
+  ],
+  "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\pilot-parent-20260930_083346.stdout.log",
+  "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\pilot-parent-20260930_083346.stderr.log",
+  "purpose": "one new 170 NUF-retention training-profile causal probe; no learner or repeated collection"
+}

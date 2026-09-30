@@ -1,0 +1,23 @@
+{
+  "status": "approved",
+  "reviewer": "Bacon/01a0f04c-3e29-7f30-ac5d-35945b4ab004",
+  "source_sha256": {
+    "work/sdmpc_rl_multi_20260929/budget_runtime.py": "6ae552bad2c092af9d2ab55b0c81e34558754861217fe427788820689800e9a6",
+    "work/sdmpc_rl_nuf_retention_20260930/launch_identity.py": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+    "work/sdmpc_rl_return_init_20260930/authenticate.py": "747ca1b8e1e2f8787e3fe368f0a190f2c9874cba9c04e85df073269b336063a5",
+    "work/sdmpc_rl_return_init_20260930/data.py": "10a8e894cd6c54a77fe26ed96bd314026e9390a6674b7ad64960fb82c9102cdb",
+    "work/sdmpc_rl_return_init_20260930/learner.py": "b667bcf8accbcc5ed105a4c2069017e1d29f73274826d5052590fb804a912ebe",
+    "work/sdmpc_rl_return_init_20260930/run.py": "f1019cc867c074810493024e40716cf801cde4987c172dbbf85bde1c966ef5d6",
+    "work/sdmpc_rl_return_init_20260930/run_tests.py": "7b395f1352bf0a6070c73ce8bcd5605c385f5b400b8565583940524d280949c2",
+    "work/sdmpc_rl_return_init_20260930/runtime.py": "8663b77b76abeb3777c827470491bfb14ab332f2523ee044e7348ecdd9af4975",
+    "work/sdmpc_rl_return_init_20260930/test_return_init.py": "13a1689aeaa708c1538b29f9555bd6cd209f98ef3d959a7570391c2b671ec016",
+    "work/sdmpc_rl_return_mc_20260930/authenticate.py": "c3c99bd02566d4a540cb091a2b58692901d0097348ece3a1011f154de21437e4",
+    "work/sdmpc_rl_return_mc_20260930/mc_common.py": "8a4f76d37a7f6682a61d5c2224fac948bd68a35fc670e0b64f617ca0eb1219bd",
+    "work/sdmpc_rl_return_mc_20260930/mc_data.py": "755e79a2d7288b10fa2c51a7005913b141384fd79b288ccd6acc98327bdeca92",
+    "work/sdmpc_rl_return_mc_20260930/mc_learner.py": "d4d8038163f7a1d52fdbdb20c0d98280fc745ec4e9719eab2a541766e055752d",
+    "work/sdmpc_rl_return_mc_20260930/run.py": "3469ed66acec337fce43202dc5e26d03eb39bc08b9af6cdec3450f0c0829d39a",
+    "work/sdmpc_rl_return_mc_20260930/run_tests.py": "a4a35467c77834ce9d515e96831d7f9d5816664e88e6e8ec6d9e6b2df4a5f6cd",
+    "work/sdmpc_rl_return_mc_20260930/test_mc.py": "2507b7c98d311bdd077a35f01ac61a5d8c58dc2150b592a5d1cf2be90d5edcc8"
+  },
+  "spec_sha256": "3610bb43c22430a3fb9ba95f7f14175b2b29b68a2000d6bfe1af04ec4c8ff811"
+}

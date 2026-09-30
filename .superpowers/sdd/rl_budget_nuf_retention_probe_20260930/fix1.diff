@@ -1,0 +1,193 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\before-fix1\\run_wave.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\run_wave.py"
+index ea35eb4..20afb69 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\before-fix1\\run_wave.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\run_wave.py"
+@@ -45,34 +45,36 @@ def validate_job(output, job, expected):
+ 
+ 
+ def check_all_stops(output, jobs):
+     check_stop(output)
+     for job in jobs:
+         check_stop(output / job["key"])
+ 
+ 
+-def wait_worker_exit(output, token):
++def worker_exited(output, token):
+     # A redirector's exit is not the actual worker's exit, including after completion.
+-    while True:
+-        record = next(r for r in read(output / ".ownership/reservations.json") if r["token"] == token)
+-        pending = False
+-        for name in ("worker", "launcher"):
+-            process = record[name]
+-            if process is None:
+-                if name == "worker":
+-                    raise OSError("Unclaimed actual worker identity UNKNOWN")
+-                continue
+-            if process_dead(process):
+-                continue
+-            if probe_process(process["pid"]) != ("live", process["created"]):
+-                raise OSError("Actual worker/launcher identity UNKNOWN")
+-            pending = True
+-        if not pending:
+-            return
++    record = next(r for r in read(output / ".ownership/reservations.json") if r["token"] == token)
++    pending = False
++    for name in ("worker", "launcher"):
++        process = record[name]
++        if process is None:
++            if name == "worker":
++                raise OSError("Unclaimed actual worker identity UNKNOWN")
++            continue
++        if process_dead(process):
++            continue
++        if probe_process(process["pid"]) != ("live", process["created"]):
++            raise OSError("Actual worker/launcher identity UNKNOWN")
++        pending = True
++    return not pending
++
++
++def wait_worker_exit(output, token):
++    while not worker_exited(output, token):
+         time.sleep(.1)
+ 
+ 
+ def run_stage(output, jobs, expected, abort, all_jobs):
+     active = {}
+     try:
+         for job in jobs:
+             check_all_stops(output, all_jobs)
+@@ -103,23 +105,25 @@ def run_stage(output, jobs, expected, abort, all_jobs):
+             save(folder / "launcher.json", dict(**process_identity(child.pid, command), started=time.time(),
+                                                 attempt=str(abort.parent)))
+         while active:
+             check_all_stops(output, all_jobs)
+             for key, (child, out, err, job, token) in list(active.items()):
+                 code = child.poll()
+                 if code is None:
+                     continue
++                if code != 0:
++                    # Keep this child active so finally publishes ABORT before draining it.
++                    raise RuntimeError(f"Child failed/stopped: {key}, exit={code}")
++                if not worker_exited(output, token):
++                    continue
+                 out.close()
+                 err.close()
+-                wait_worker_exit(output, token)
+                 release_worker(token)
+                 del active[key]
+-                if code != 0:
+-                    raise RuntimeError(f"Child failed/stopped: {key}, exit={code}")
+                 validate_job(output, job, expected)
+                 print("COLLECTION_COMPLETED", key, flush=True)
+             save(output / "status.json", dict(status="running", behavior=jobs[0]["behavior"],
+                                               children={k: v[0].pid for k, v in active.items()}))
+             if active:
+                 time.sleep(5)
+     finally:
+         if active:
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\before-fix1\\test_workflow.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\test_workflow.py"
+index 6190a75..72cbde7 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\before-fix1\\test_workflow.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\test_workflow.py"
+@@ -212,8 +212,101 @@ def test_spawn_intent_is_retained_and_unknown_never_relaunched(tmp_path, synthet
+ def test_stop_any_slot_blocks_pilot_before_spawn(tmp_path, synthetic):
+     jobs = run_wave.jobs_for(tmp_path)
+     stopped = tmp_path / jobs[-1]["key"] / "STOP"
+     stopped.parent.mkdir(parents=True)
+     stopped.touch()
+     synthetic.patch.setattr(run_wave.subprocess, "Popen", lambda *a, **k: pytest.fail("STOP ignored"))
+     with pytest.raises(lr.Stopped):
+         run_wave.run_stage(tmp_path, [jobs[1]], IDENTITY, tmp_path / "attempt/ABORT.json", jobs)
++
++
++@pytest.mark.parametrize("trigger", ["nonzero_exit", "sibling_stop", "sibling_failure"])
++def test_fix1_abort_precedes_actual_worker_death(tmp_path, synthetic, trigger, record_property):
++    jobs = run_wave.jobs_for(tmp_path)
++    abort = tmp_path / "attempt/ABORT.json"
++    stop = tmp_path / jobs[-1]["key"] / "STOP"
++    children, released, validated, aborts = [], [], [], []
++    processes, ticks = {}, [0]
++    original_probe = lr.probe_process
++    original_bind, original_release, original_save = run_wave.bind_launch, run_wave.release_worker, run_wave.save
++
++    def process_probe(pid):
++        return processes[pid] if pid in processes else original_probe(pid)
++
++    class Child:
++        def __init__(self, command):
++            self.index, self.pid = len(children), 1000001+len(children)
++            self.worker_pid, self.waited = self.pid+100, False
++            self.token = command[command.index("--reservation")+1]
++            processes[self.pid] = ("live", self.pid*10)
++            processes[self.worker_pid] = ("live", self.worker_pid*10)
++        def poll(self):
++            if self.index == 0 or trigger == "sibling_failure" and ticks[0] >= 1:
++                processes[self.pid] = ("dead", self.pid*10)
++                return int(trigger == "nonzero_exit" if self.index == 0 else True)
++            return None
++        def wait(self):
++            assert abort.exists(), "launcher drain must follow shared ABORT"
++            self.waited = True
++            processes[self.pid] = ("dead", self.pid*10)
++            return 0
++
++    def spawn(command, **kwargs):
++        child = Child(command)
++        children.append(child)
++        return child
++
++    def bind(token, pid, command):
++        original_bind(token, pid, command)
++        child = next(c for c in children if c.pid == pid)
++        with lr.ownership() as records:
++            record = next(r for r in records if r["token"] == token)
++            record.update(state="active", worker=dict(pid=child.worker_pid,
++                created=child.worker_pid*10, command=command))
++
++    def save(path, value):
++        if path == abort:
++            aborts.append(dict(tick=ticks[0], first_worker=processes[children[0].worker_pid][0],
++                               released=list(released)))
++        original_save(path, value)
++
++    def release(token):
++        child = next(c for c in children if c.token == token)
++        assert processes[child.pid][0] == processes[child.worker_pid][0] == "dead"
++        original_release(token)
++        released.append(child.index)
++
++    def tick(delay):
++        ticks[0] += 1
++        assert ticks[0] <= 5, "bounded synthetic drain must terminate"
++        if trigger == "sibling_stop" and ticks[0] == 1:
++            stop.parent.mkdir(parents=True, exist_ok=True)
++            stop.touch()
++        if abort.exists():
++            for child in children:
++                processes[child.worker_pid] = ("dead", child.worker_pid*10)
++        elif ticks[0] == 3:
++            # Bound the reviewed bug: let its blocking wait finish so evidence is saved.
++            for child in children:
++                processes[child.worker_pid] = ("dead", child.worker_pid*10)
++
++    synthetic.patch.setattr(lr, "probe_process", process_probe)
++    synthetic.patch.setattr(run_wave, "probe_process", process_probe)
++    synthetic.patch.setattr(run_wave.subprocess, "Popen", spawn)
++    synthetic.patch.setattr(run_wave, "bind_launch", bind)
++    synthetic.patch.setattr(run_wave, "release_worker", release)
++    synthetic.patch.setattr(run_wave, "save", save)
++    synthetic.patch.setattr(run_wave, "validate_job", lambda *args: validated.append(args[1]["key"]))
++    synthetic.patch.setattr(run_wave.time, "sleep", tick)
++    error = lr.Stopped if trigger == "sibling_stop" else RuntimeError
++    with pytest.raises(error):
++        run_wave.run_stage(tmp_path, jobs[:2], IDENTITY, abort, jobs)
++    import json
++    record_property("abort_observations", json.dumps(aborts, sort_keys=True))
++    record_property("launchers_drained", json.dumps([c.waited for c in children]))
++    assert aborts == [dict(tick=0 if trigger == "nonzero_exit" else 1,
++                          first_worker="live", released=[])]
++    assert len(children) == 2 and all(c.waited for c in children)
++    assert released == [0, 1] and not validated
++    assert all(r["state"] == "exited" for r in lr.read(tmp_path / ".ownership/reservations.json"))
++    if trigger == "sibling_stop":
++        assert stop.exists()

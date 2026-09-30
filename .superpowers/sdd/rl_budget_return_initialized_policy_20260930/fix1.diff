@@ -1,0 +1,84 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-fix1\\run.py" "b/work\\sdmpc_rl_return_init_20260930\\run.py"
+index bf3744a..8113f8b 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-fix1\\run.py"
++++ "b/work\\sdmpc_rl_return_init_20260930\\run.py"
+@@ -91,7 +91,9 @@ def execute(output, data, settings, resume=False):
+             save(output / "status.json", dict(status=outcome, phase=learner.phase, counters=learner.counts))
+             return outcome
+         except Stopped:
+-            persist()
++            # The durable done checkpoint may already be the immutable candidate.
++            if learner.phase != "done":
++                persist()
+             outcome = "stopped"
+             save(output / "status.json", dict(status=outcome, phase=learner.phase, counters=learner.counts))
+             return outcome
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-fix1\\test_return_init.py" "b/work\\sdmpc_rl_return_init_20260930\\test_return_init.py"
+index 684adda..a68f49f 100644
+--- "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-fix1\\test_return_init.py"
++++ "b/work\\sdmpc_rl_return_init_20260930\\test_return_init.py"
+@@ -389,6 +389,64 @@ def test_runner_stop_resume_no_overwrite(small, tmp_path, monkeypatch):
+     assert final["critic_continuation"] == "carry"
+ 
+ 
++def test_final_publication_stop_resume_changed_process(small, tmp_path, monkeypatch):
++    config = settings()
++    completed = finish(learning.Learner(small)).state()
++    identities = [dict(pid=pid, created=pid*100, parent_pid=1, executable="synthetic-test",
++                       command=["synthetic-publication-resume"], session_id=f"publication-{pid}")
++                  for pid in (101, 202, 303)]
++    rt.save(tmp_path / "settings.json", config)
++    original = rt.checkpoint(tmp_path, dict(settings=config, learner=completed,
++        process=identities[0], critic_continuation="carry", candidate=True))
++    pointer_hash = rt.sha(tmp_path / "latest.json")
++    resumed_identities = iter(identities[1:])
++    monkeypatch.setattr(runner, "process_identity", lambda: next(resumed_identities))
++    updates = []
++
++    def forbidden_update(model):
++        updates.append(model.phase)
++        raise AssertionError("Completed phases must not retrain during publication")
++
++    monkeypatch.setattr(learning.Learner, "update", forbidden_update)
++    stop = tmp_path / "STOP"
++    link = runner.os.link
++
++    def stop_after_link(source, candidate):
++        link(source, candidate)
++        stop.touch()
++
++    monkeypatch.setattr(runner.os, "link", stop_after_link)
++    assert runner.execute(tmp_path, small, config, True) == "stopped"
++    assert not (tmp_path / "completion.json").exists()
++    candidate_hash = rt.sha(tmp_path / "model_final.pt")
++    evidence = dict(original_checkpoint=original,
++        latest_after_stop=rt.read(tmp_path / "latest.json"), candidate_sha256=candidate_hash,
++        process_identities=identities, counters=completed["counts"], resumed_optimizer_updates=len(updates))
++    stop.unlink()
++    try:
++        outcome = runner.execute(tmp_path, small, config, True)
++    except BaseException as exc:
++        rt.save(tmp_path / "r1-publication.json", dict(evidence, second_resume=f"{type(exc).__name__}: {exc}"))
++        raise
++    rt.save(tmp_path / "r1-publication.json", dict(evidence, second_resume=outcome))
++    assert outcome == "completed" and updates == []
++    assert rt.sha(tmp_path / "latest.json") == pointer_hash
++    assert rt.read(tmp_path / "latest.json") == original
++    assert rt.sha(tmp_path / "model_final.pt") == candidate_hash == original["sha256"]
++    assert list((tmp_path / "checkpoints").glob("*.pt")) == [tmp_path / original["path"]]
++    restored = rt.restore(tmp_path)
++    assert restored["process"] == identities[0]
++    equal(restored["learner"], completed)
++    done = rt.read(tmp_path / "completion.json")
++    assert done["counters"] == completed["counts"]
++    for name, expected in done["outputs_sha256"].items():
++        assert rt.sha(tmp_path / name) == expected
++    for identity, event in zip(identities[1:], ("stopped", "completed")):
++        session = rt.read(tmp_path / "sessions" / (identity["session_id"] + ".end.json"))
++        assert session["pid"] == identity["pid"] and session["created"] == identity["created"]
++        assert session["event"] == event
++
++
+ def test_runner_gate_failed_no_candidate(small, tmp_path, monkeypatch):
+     monkeypatch.setattr(learning, "numerical_gate", lambda *a: dict(passed=False))
+     assert runner.execute(tmp_path, small, settings()) == "numerical_fit_failed"

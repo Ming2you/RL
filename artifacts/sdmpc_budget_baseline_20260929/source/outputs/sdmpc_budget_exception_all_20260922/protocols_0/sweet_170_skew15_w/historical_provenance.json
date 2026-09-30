@@ -1,0 +1,130 @@
+{
+  "protocol": "final-r23-14400",
+  "anchor_commit": "d6241bb",
+  "controller_id": "P-STACK-WU-FAITHFUL-ALLPRICE-JOINT",
+  "scenario_id": "sweet_170_skew15_w",
+  "historical_root": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree",
+  "duration_sec": 14400.0,
+  "control_interval_sec": 180.0,
+  "executed_steps": 80,
+  "warmup_nc_steps": 5,
+  "control_start_sec": 900.0,
+  "random_seed": 42,
+  "launch_environment": {
+    "set": {
+      "WARMUP_NC_STEPS": "5",
+      "FW_BUFFER": "8",
+      "TERM_ZG": "1",
+      "VFREE": "115",
+      "RHO_CRIT": "31.5",
+      "TAU_H": "0.0056111",
+      "NU_BASE": "22.5",
+      "KAPPA": "10",
+      "MERGE_DELTA": "0.9",
+      "BOX_WALK": "1",
+      "BOX_WALK_VG": "1",
+      "NP_PD_ITER": "4",
+      "NP_BIAS": "1",
+      "CROSS_OFF": "1",
+      "FAR_STATE_AWARE": "1",
+      "FAR_REAL_V": "1",
+      "FAR_GATE": "3",
+      "BASELINE_BOX": "1",
+      "BIAS_SAMPLE": "1",
+      "BIAS_POW": "0.4",
+      "NASH_SMAX": "10",
+      "PFO_SPLIT": "2",
+      "PYTHONIOENCODING": "utf-8",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "SPILLBACK": "1",
+      "SPILLBACK_WU": "2",
+      "SPILLBACK_NREF_U": "800",
+      "SPILLBACK_LEAD": "0.5",
+      "AUTH_ADAPT": "1",
+      "SUP_PFO": "1",
+      "AUTH_DEM_HIGH": "23900",
+      "AUTH_HIGH_WF": "0.25",
+      "AUTH_TRUST_BIG": "6.0",
+      "AUTH_DEM_LOW": "0"
+    },
+    "explicit_unset": [
+      "SEG13",
+      "METER_BOX",
+      "VSL_BOX",
+      "SUP_GATE"
+    ]
+  },
+  "runtime_only": {
+    "far_gate_mode": 3,
+    "nash_smax": 10,
+    "pfo_split": "2 (truthy; activates two regional agents per freeway link)",
+    "auth_adapt": true,
+    "supervisor_pfo": true,
+    "cross_prices_forced_off": true,
+    "biased_sampling_patch_required_from_factory": true
+  },
+  "effective_config_sha256": "2943be1704e96e92aec3c9e0ff751fae3f9fc9a7114ffed863acea4a5a162e2f",
+  "initial_state_sha256": "1adfa79e4043141121b062f833b0a48d5eb2636235d8dac4811591d08d1fbb3e",
+  "runtime_added_config_fields": {
+    "network.terminal_zero_gradient": true,
+    "mpc.leader_skip_local_refinement": true,
+    "mpc.leader_rollout_early_stop": true
+  },
+  "source_sha256": {
+    "src/config/default.yaml": "23304dac6823b133bbd79fa495726b1b208da0c21f195b6dad3b1ba85617130c",
+    "src/config/scenarios.yaml": "1974a29820eba3886efb66975de1dfe68d96317ee402ccd72b0f897b55735874",
+    "src/models/demand.py": "b7f9a23ce351297169972a3534cc4c318c92e13f79758b502e9ae448269c24b4",
+    "src/models/state.py": "8d02c1d227f1c93271494fdc6e78f37901cee51876589c02b2d1a1640c28ed2a",
+    "src/models/metanet.py": "064ddc76e325c377853f2ac0cf84de8340cda663af7eb5d067b7ec582feaac69",
+    "src/simulation/simulator.py": "34ff26420e4160b13adcef34bf17533756a787c245744ee44a35707af89003dc",
+    "src/simulation/coupling.py": "f44f721c85035049882402fd79ea9dcab31188ce7aeeb8573566e2f30891820a",
+    "src/controllers/f1_wu_faithful_follower.py": "9af39c6ec39d9442e909df969166b3a14d0eb0f4cbb0c19999ae6792e768e05b",
+    "src/controllers/stackelberg_wu_metered.py": "41e8dcd2c783dfe9f0dbde119614ddd6f78f1b1b6963f125d2c7c1002a012769",
+    "work/run_claude_style_five_controller.py": "ea5d7d89a93dc13b646651bafc4764abada5d7852501f05df40ec394ce20f64f",
+    "work/launch_final_r23.sh": "ffd39aa81d2c14a18ca2ea0baf401abd031f707f93a9f1d39384391aafdc0fec"
+  },
+  "origin_source_sha256": {
+    "src/config/default.yaml": "23304dac6823b133bbd79fa495726b1b208da0c21f195b6dad3b1ba85617130c",
+    "src/config/scenarios.yaml": "1974a29820eba3886efb66975de1dfe68d96317ee402ccd72b0f897b55735874",
+    "src/models/demand.py": "b7f9a23ce351297169972a3534cc4c318c92e13f79758b502e9ae448269c24b4",
+    "src/models/state.py": "8d02c1d227f1c93271494fdc6e78f37901cee51876589c02b2d1a1640c28ed2a",
+    "src/models/metanet.py": "064ddc76e325c377853f2ac0cf84de8340cda663af7eb5d067b7ec582feaac69",
+    "src/simulation/simulator.py": "34ff26420e4160b13adcef34bf17533756a787c245744ee44a35707af89003dc",
+    "src/simulation/coupling.py": "b042fef7c89db1a68e234fc21921a219fc3f4cc950fd75494e6c235a74703f73",
+    "src/controllers/f1_wu_faithful_follower.py": "9af39c6ec39d9442e909df969166b3a14d0eb0f4cbb0c19999ae6792e768e05b",
+    "src/controllers/stackelberg_wu_metered.py": "41e8dcd2c783dfe9f0dbde119614ddd6f78f1b1b6963f125d2c7c1002a012769",
+    "work/run_claude_style_five_controller.py": "ea5d7d89a93dc13b646651bafc4764abada5d7852501f05df40ec394ce20f64f",
+    "work/launch_final_r23.sh": "ffd39aa81d2c14a18ca2ea0baf401abd031f707f93a9f1d39384391aafdc0fec"
+  },
+  "declared_compatibility_patches": {
+    "src/simulation/coupling.py": "optional cost_observer callback only"
+  },
+  "compatibility_evidence": {
+    "path": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_compatibility_check.json",
+    "sha256": "e55ca08e9f34a15a3d01f0894d367bf8d45205571ef6d293b8611554c2879e29",
+    "pass": true,
+    "scope": "8 NC intervals original/observer-off/observer-on exact equality; H3 evaluation only, no optimization",
+    "ledger_max_substep_residual": 5.551115123125783e-16
+  },
+  "source_paths": {
+    "src/config/default.yaml": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\config\\default.yaml",
+    "src/config/scenarios.yaml": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\config\\scenarios.yaml",
+    "src/models/demand.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\models\\demand.py",
+    "src/models/state.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\models\\state.py",
+    "src/models/metanet.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\models\\metanet.py",
+    "src/simulation/simulator.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\simulation\\simulator.py",
+    "src/simulation/coupling.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\simulation\\coupling.py",
+    "src/controllers/f1_wu_faithful_follower.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\controllers\\f1_wu_faithful_follower.py",
+    "src/controllers/stackelberg_wu_metered.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\src\\controllers\\stackelberg_wu_metered.py",
+    "work/run_claude_style_five_controller.py": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\work\\run_claude_style_five_controller.py",
+    "work/launch_final_r23.sh": "C:\\Users\\alsrj\\Documents\\Numerical Simulation\\work\\sdmpc_matrix_14400_20260912\\historical_tree\\work\\launch_final_r23.sh"
+  },
+  "notes": [
+    "Use historical_environment() while constructing and running the old factory.",
+    "TrafficState.initial leaves buffer maps empty; metanet.py initializes each 8-cell buffer to density 0 and speed 115 on the first step.",
+    "AUTH_ADAPT, FAR_GATE, SUP_PFO, NASH_SMAX, PFO_SPLIT, and warmup behavior are runtime logic, not fully representable in ExperimentConfig."
+  ]
+}

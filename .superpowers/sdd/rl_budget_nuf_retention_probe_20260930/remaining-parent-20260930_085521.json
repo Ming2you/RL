@@ -1,0 +1,17 @@
+{
+  "pid": 47208,
+  "created": "2026-09-30T08:55:21.1002005+09:00",
+  "created_filetime": 134351997211002005,
+  "executable": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+  "arguments": [
+    "-B",
+    "-u",
+    "work/sdmpc_rl_nuf_retention_20260930/run_wave.py",
+    "--stage",
+    "remaining",
+    "--resume"
+  ],
+  "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\remaining-parent-20260930_085521.stdout.log",
+  "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_nuf_retention_probe_20260930\\remaining-parent-20260930_085521.stderr.log",
+  "purpose": "four remaining NUF-retention local scenarios after verified pilot pass; reuse completed170 and oldcarry references"
+}

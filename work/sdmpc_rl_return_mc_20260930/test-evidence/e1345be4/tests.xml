@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.329" timestamp="2026-09-30T12:04:02.861688+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_return_mc_20260930.test_mc" name="test_atomic_json_keeps_prior_orphan" time="0.106"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\synthetic-fixtures\\541ff1b84a524012b7abf5dd105cb04f\\latest.json.tmp'">work\sdmpc_rl_return_mc_20260930\test_mc.py:324: in test_atomic_json_keeps_prior_orphan
+    assert orphan.read_bytes() == b"interrupted previous write"
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\synthetic-fixtures\\541ff1b84a524012b7abf5dd105cb04f\\latest.json.tmp'</failure></testcase></testsuite></testsuites>

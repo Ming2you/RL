@@ -1,0 +1,1202 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\actor_repair.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\actor_repair.py"
+new file mode 100644
+index 0000000..03b1f51
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\actor_repair.py"
+@@ -0,0 +1,139 @@
++"""Three controlled, balanced actor-only fits against one frozen critic."""
++import argparse
++from copy import deepcopy
++from pathlib import Path
++import time
++from common import (torch, TD3, SCENARIOS, BASE_HASH, load_base, sources, stopped,
++                    save, read, runtime_versions, exclusive_run, checkpoint_save)
++
++VARIANTS = ("continue", "reset_optimizer", "reset_head")
++SOURCE_NAMES = ("common.py", "actor_repair.py")
++FORMAT = "sdmpc-recovery-actor-v1"
++SEED = 7100
++UPDATES = 375
++
++
++def state_batch(replay, generator):
++    return torch.cat([data["observations"][torch.randint(len(data["observations"]), (8,), generator=generator)]
++                      for s in SCENARIOS for data in (replay[s],)])
++
++
++def prepare(base, variant):
++    if variant not in VARIANTS:
++        raise ValueError("Unknown actor treatment")
++    learner = deepcopy(base)
++    learner.critics.requires_grad_(False)
++    if variant == "reset_head":
++        torch.nn.init.zeros_(learner.actor[-2].weight)
++        torch.nn.init.zeros_(learner.actor[-2].bias)
++    learner.actor.requires_grad_(False)
++    learner.actor[-2].requires_grad_(True)
++    if variant != "continue":
++        learner.actor_optimizer = torch.optim.Adam(learner.actor.parameters(), lr=learner.learning_rate)
++    return learner
++
++
++def actor_step(learner, observations):
++    action = learner.actor(observations)
++    loss = -learner.critics[0](torch.cat((observations, action), dim=1)).mean()
++    if not torch.isfinite(loss):
++        raise ValueError("Nonfinite actor objective")
++    learner.actor_optimizer.zero_grad(set_to_none=True)
++    loss.backward()
++    learner.actor_optimizer.step()
++    return float(loss.detach())
++
++
++@torch.no_grad()
++def measure(learner, replay):
++    rows = {}
++    grid = torch.cartesian_prod(torch.tensor([-1., 0., 1.]), torch.tensor([-1., 0., 1.]))
++    for scenario in SCENARIOS:
++        obs = replay[scenario]["observations"]
++        action = learner.actor(obs)
++        q = learner.critics[0](torch.cat((obs, action), dim=1)).ravel()
++        inputs = torch.cat((obs[:, None].expand(-1, 9, -1), grid[None].expand(len(obs), -1, -1)), dim=2)
++        best = learner.critics[0](inputs.reshape(-1, inputs.shape[-1])).reshape(len(obs), 9).max(dim=1).values
++        rows[scenario] = dict(q_mean=float(q.mean()), mean_grid_gap=float((best-q).mean()),
++            action_mean=action.mean(dim=0).tolist(),
++            saturation=(action.abs() >= .95).float().mean(dim=0).tolist(),
++            nuf_positive_fraction=float((action[:, 1] > 0).float().mean()),
++            tanh_slope_mean=(1-action.square()).mean(dim=0).tolist())
++    return dict(equal_scenario_q=sum(r["q_mean"] for r in rows.values())/5,
++                mean_grid_gap=sum(r["mean_grid_gap"] for r in rows.values())/5, scenarios=rows)
++
++
++def select_variant(initial, completed):
++    # Select before seeing any physical evaluation; Q fit is not traffic acceptance.
++    winner = max(VARIANTS, key=lambda name: completed[name]["equal_scenario_q"])
++    result = completed[winner]
++    admitted = (result["equal_scenario_q"] > initial["equal_scenario_q"] + 1e-4 and
++                result["mean_grid_gap"] < .75 * initial["mean_grid_gap"])
++    return winner if admitted else None
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    output = args.output.resolve()
++    if output.exists():
++        raise FileExistsError(output)
++    with exclusive_run(output):
++        if stopped(output):
++            save(output / "partial.json", dict(status="paused", completed_update=0))
++            return
++        model, base = load_base()
++        replay = model["learner"]["replay"]
++        source = sources(*SOURCE_NAMES)
++        settings = dict(format=FORMAT, base_sha256=BASE_HASH, variants=list(VARIANTS),
++            source_sha256=source, runtime=runtime_versions(), seed=SEED,
++            actor_updates=UPDATES, batch_size=40, samples_per_scenario=8,
++            trainable_parameters="actor_output_head_only",
++            objective="Q1_only_fixed_final_critic", new_plant_transitions=0,
++            scope="actor_repair_ablation_not_joint_TD3_training")
++        save(output / "settings.json", settings)
++        baseline = measure(base, replay)
++        completed, records = {}, {}
++        for variant in VARIANTS:
++            learner = prepare(base, variant)
++            generator = torch.Generator().manual_seed(SEED)
++            metrics = [dict(update=0, **measure(learner, replay))]
++            started = time.perf_counter()
++            for update in range(1, UPDATES + 1):
++                if stopped(output):
++                    save(output / "partial.json", dict(status="paused", variant=variant,
++                        completed_update=update-1, metrics=metrics, completed=records))
++                    return
++                loss = actor_step(learner, state_batch(replay, generator))
++                if update % 25 == 0:
++                    metrics.append(dict(update=update, actor_loss=loss, **measure(learner, replay)))
++            if sources(*SOURCE_NAMES) != source:
++                raise ValueError("Actor experiment source changed")
++            for name, value in learner.critics.state_dict().items():
++                torch.testing.assert_close(value, base.critics.state_dict()[name], rtol=0, atol=0)
++            for name, value in learner.actor.state_dict().items():
++                if not name.startswith("4."):
++                    torch.testing.assert_close(value, base.actor.state_dict()[name], rtol=0, atol=0)
++            completed[variant] = metrics[-1]
++            payload = dict(format=FORMAT, settings=settings, variant=variant,
++                base_contract=model["contract"], base_training_profiles=model["training_profiles"],
++                actor_state=learner.actor.state_dict(), actor_optimizer=learner.actor_optimizer.state_dict(),
++                sampled_per_scenario=dict.fromkeys(SCENARIOS, UPDATES*8),
++                metrics=metrics, wall_seconds=time.perf_counter()-started)
++            checkpoint_save(torch, output / f"{variant}.pt", payload)
++            records[variant] = {k: v for k, v in payload.items()
++                                if k not in ("actor_state", "actor_optimizer", "base_contract", "base_training_profiles")}
++            save(output / f"{variant}.json", records[variant])
++        selected = select_variant(baseline, completed)
++        from common import file_hash
++        save(output / "completion.json", dict(status="completed", settings=settings,
++            baseline=baseline, final_metrics=completed, selected=selected,
++            exports={name: file_hash(output / f"{name}.pt") for name in VARIANTS},
++            selection_rule="greatest_equal_scenario_Q1_then_variant_order; Q_gain>1e-4_and_grid_gap_reduced_25pct",
++            traffic_performance_claim=False))
++        print("ACTOR_REPAIR_COMPLETE", selected, flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\common.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\common.py"
+new file mode 100644
+index 0000000..6128a6d
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\common.py"
+@@ -0,0 +1,44 @@
++"""Read-only access to the completed balanced pilot and its physical runtime."""
++import os
++from pathlib import Path
++import sys
++
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
++    os.environ[name] = "1"
++sys.path[:0] = [str(REPO / ".deps-budget"), str(REPO / "work/sdmpc_rl_multi_20260929")]
++import torch
++from td3 import TD3, SCENARIOS
++from budget_runtime import DEFAULT_SNAPSHOT, read, save, plain
++from run_budget import file_hash, pins, verify_pins, runtime_versions, exclusive_run, checkpoint_save
++
++BASE = REPO / "results/sdmpc_rl_multi_20260929/pilot_v1"
++BASE_HASH = "3dd1c06786e8d9ee62da355bdb17ac025290bef8b6d20c863b421a86488d5650"
++
++
++def load_base():
++    path = BASE / "train_round1/model_final.pt"
++    if file_hash(path) != BASE_HASH or read(BASE / "completion.json")["status"] != "completed":
++        raise ValueError("Frozen base pilot identity differs")
++    model = torch.load(path, map_location="cpu", weights_only=False)
++    verify_pins(DEFAULT_SNAPSHOT, model["contract"]["source_pins"])
++    if runtime_versions() != model["contract"]["runtime_versions"]:
++        raise ValueError("Runtime differs from the baseline")
++    state = model["learner"]
++    learner = TD3(state["observation_dim"], state["spec"]["seed"], state["spec"]["hidden"])
++    learner.load_state_dict(state)
++    if learner.replay_counts() != dict.fromkeys(SCENARIOS, 150):
++        raise ValueError("Expected balanced completed training replay")
++    for data in state["replay"].values():
++        if data["terminated"].nonzero().ravel().tolist() != [74, 149]:
++            raise ValueError("Episode boundaries differ")
++    return model, learner
++
++
++def sources(*names):
++    return {name: file_hash(HERE / name) for name in names}
++
++
++def stopped(folder):
++    return any((p / "STOP").exists() for p in (folder, folder.parent, folder.parent.parent))
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\critic_diagnostic.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\critic_diagnostic.py"
+new file mode 100644
+index 0000000..c5dd074
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\critic_diagnostic.py"
+@@ -0,0 +1,293 @@
++"""Paired critic-only replay diagnostic; never exports or evaluates a policy."""
++
++import argparse
++from copy import deepcopy
++import hashlib
++from importlib.util import module_from_spec, spec_from_file_location
++from io import BytesIO
++import json
++import os
++from pathlib import Path
++import platform
++import sys
++import time
++
++ROOT = Path(__file__).resolve().parents[2]
++TD3_SOURCE = ROOT / "work/sdmpc_rl_multi_20260929/td3.py"
++MODEL = ROOT / "results/sdmpc_rl_multi_20260929/pilot_v1/train_round1/model_final.pt"
++MODEL_SHA256 = "3dd1c06786e8d9ee62da355bdb17ac025290bef8b6d20c863b421a86488d5650"
++UPDATES = 3750
++LOG_UPDATES = (0, 375, 750, 1500, 3750)
++ARMS = {"A_tau_0.005": 0.005, "B_tau_1": 1.0}
++CAVEAT = (
++    "Behavior reward-to-go uses exploratory stored actions and is explicitly not "
++    "current-policy Q truth. Terminal errors have no continuation ambiguity. "
++    "This fixed-replay diagnostic does not establish causal policy superiority."
++)
++
++sys.dont_write_bytecode = True
++for _key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
++    os.environ[_key] = "1"
++sys.path.insert(0, str(ROOT / ".deps-budget"))
++
++import numpy as np
++import torch
++from torch.nn import functional as F
++
++# Resolve the old implementation by file, independent of other tasks' td3 imports.
++_spec = spec_from_file_location("critic_diagnostic_original_td3", TD3_SOURCE)
++_td3 = module_from_spec(_spec)
++_spec.loader.exec_module(_td3)
++TD3, SCENARIOS = _td3.TD3, _td3.SCENARIOS
++
++
++def file_hash(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def load_frozen_model(path=MODEL):
++    payload = Path(path).read_bytes()
++    digest = hashlib.sha256(payload).hexdigest()
++    if digest != MODEL_SHA256:
++        raise ValueError("Frozen final model SHA-256 mismatch")
++    # Deserialize precisely the bytes verified above, without reopening the input.
++    return torch.load(BytesIO(payload), map_location="cpu", weights_only=False)["learner"], digest
++
++
++def clone_arms(state):
++    arms = {}
++    for name in ARMS:
++        learner = TD3(state["observation_dim"], state["spec"]["seed"], state["spec"]["hidden"])
++        learner.load_state_dict(state)
++        learner.actor_target.load_state_dict(state["actor"])
++        learner.actor.requires_grad_(False).eval()
++        learner.actor_target.requires_grad_(False).eval()
++        arms[name] = learner
++    return arms
++
++
++def behavior_returns(rewards, terminated):
++    """Undiscounted observed reward-to-go, resetting only at true terminals."""
++    result = torch.empty_like(rewards)
++    value = 0.0
++    for index in range(len(rewards) - 1, -1, -1):
++        value = float(rewards[index]) + (0.0 if terminated[index] else value)
++        result[index] = value
++    return result
++
++
++def replay_tensors(state):
++    groups = state["replay"]
++    if set(groups) != set(SCENARIOS):
++        raise ValueError("Replay must contain the five training scenarios")
++    for scenario in SCENARIOS:
++        group = groups[scenario]
++        done = group["terminated"]
++        if (len(group["rewards"]) != 150 or done.dtype != torch.bool
++                or done.nonzero().flatten().tolist() != [74, 149]):
++            raise ValueError("Need 150 transitions and two complete 75-step episodes per scenario")
++        if not torch.equal(group["next_observations"][:-1][~done[:-1]],
++                           group["observations"][1:][~done[:-1]]):
++            raise ValueError("Stored training episode continuity differs")
++    data = {key: torch.cat([groups[s][key] for s in SCENARIOS]).clone()
++            for key in groups[SCENARIOS[0]]}
++    data["behavior_returns"] = torch.cat([
++        behavior_returns(groups[s]["rewards"], groups[s]["terminated"]) for s in SCENARIOS
++    ])
++    return data
++
++
++def draw_batch(data, numpy_rng, torch_rng):
++    indices = torch.from_numpy(np.concatenate([
++        numpy_rng.integers(150, size=8) + 150 * i for i in range(len(SCENARIOS))
++    ]))
++    batch = {key: value[indices] for key, value in data.items()}
++    noise = torch.randn((40, 2), generator=torch_rng, device="cpu", dtype=torch.float32).mul(TD3.policy_noise).clamp(
++        -TD3.noise_clip, TD3.noise_clip)
++    return indices, batch, noise
++
++
++@torch.no_grad()
++def target_values(learner, batch, noise):
++    actions = (learner.actor_target(batch["next_observations"]) + noise).clamp(-1.0, 1.0)
++    inputs = torch.cat((batch["next_observations"], actions), dim=1)
++    minimum_q = torch.minimum(*(critic(inputs).flatten() for critic in learner.critic_targets))
++    return batch["rewards"] + TD3.gamma * torch.where(
++        batch["terminated"], torch.zeros_like(minimum_q), minimum_q)
++
++
++def critic_step(learner, batch, noise, tau, update):
++    targets = target_values(learner, batch, noise)
++    inputs = torch.cat((batch["observations"], batch["actions"]), dim=1)
++    loss = sum(F.mse_loss(critic(inputs).flatten(), targets) for critic in learner.critics)
++    if not torch.isfinite(loss):
++        raise ValueError("Nonfinite critic loss")
++    learner.critic_optimizer.zero_grad(set_to_none=True)
++    loss.backward()
++    learner.critic_optimizer.step()
++    if update % 2 == 0:
++        with torch.no_grad():
++            for online, target in zip(learner.critics.parameters(), learner.critic_targets.parameters()):
++                target.mul_(1.0 - tau).add_(online, alpha=tau)
++    return float(loss.detach())
++
++
++@torch.no_grad()
++def diagnostics(learner, data, noise):
++    inputs = torch.cat((data["observations"], data["actions"]), dim=1)
++    q1, q2 = [critic(inputs).flatten() for critic in learner.critics]
++    targets = target_values(learner, data, noise)
++
++    def summarize(mask):
++        terminal = mask & data["terminated"]
++        heads = {}
++        for name, q in (("q1", q1), ("q2", q2), ("minimum_q", torch.minimum(q1, q2))):
++            gap = q[mask] - data["behavior_returns"][mask]
++            error = (q[terminal] - data["rewards"][terminal]).abs()
++            heads[name] = dict(
++                q_mean=float(q[mask].mean()), behavior_return_gap_mean=float(gap.mean()),
++                behavior_return_gap_rmse=float(gap.square().mean().sqrt()),
++                terminal_abs_error_mean=float(error.mean()) if len(error) else None,
++                terminal_abs_error_max=float(error.max()) if len(error) else None)
++        return dict(transitions=int(mask.sum()), true_terminals=int(terminal.sum()),
++                    total_td_loss=float(sum((q[mask] - targets[mask]).square().mean() for q in (q1, q2))),
++                    behavior_return_mean=float(data["behavior_returns"][mask].mean()), critics=heads)
++
++    index = torch.arange(len(q1))
++    local_index = index % 150
++    time_index = local_index % 75
++    per_scenario = {}
++    for i, scenario in enumerate(SCENARIOS):
++        mask = index // 150 == i
++        row = summarize(mask)
++        row["time_slices"] = {
++            name: summarize(mask & (time_index >= start) & (time_index < stop))
++            for name, start, stop in (("early_0_24", 0, 25), ("middle_25_49", 25, 50), ("late_50_74", 50, 75))
++        }
++        row["episodes"] = {str(ep): summarize(mask & (local_index // 75 == ep)) for ep in (0, 1)}
++        per_scenario[scenario] = row
++    return dict(total=summarize(torch.ones_like(index, dtype=torch.bool)), per_scenario=per_scenario)
++
++
++def runtime_record():
++    return dict(python=platform.python_version(), executable=sys.executable,
++                platform=platform.platform(), numpy=np.__version__, torch=torch.__version__,
++                numpy_path=np.__file__, torch_path=torch.__file__, device="cpu", dtype="float32",
++                torch_threads=torch.get_num_threads(), torch_interop_threads=torch.get_num_interop_threads(),
++                thread_environment={key: os.environ[key] for key in
++                                    ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")})
++
++
++def run_diagnostic(state, output, seed=6529, stop_paths=(), *, updates=UPDATES,
++                   log_updates=LOG_UPDATES, provenance=None):
++    """The CLI fixes the full budget; shorter budgets exist only for synthetic tests."""
++    if type(seed) is not int or not 0 <= seed < 2**63:
++        raise ValueError("seed must be an integer in [0, 2**63)")
++    torch.set_num_threads(1)
++    if torch.get_num_interop_threads() != 1:
++        torch.set_num_interop_threads(1)
++    output = Path(output).resolve()
++    output.mkdir(parents=True, exist_ok=False)
++    state = deepcopy(state)
++    arms = clone_arms(state)
++    data = replay_tensors(state)
++    numpy_rng = np.random.default_rng(seed)
++    torch_rng = torch.Generator(device="cpu").manual_seed(seed)
++    # Fixed evaluation noise uses its own stream and never consumes training RNG.
++    eval_rng = torch.Generator(device="cpu").manual_seed(seed + 1)
++    eval_noise = torch.randn((750, 2), generator=eval_rng, device="cpu", dtype=torch.float32).mul(TD3.policy_noise).clamp(
++        -TD3.noise_clip, TD3.noise_clip)
++    source_hashes = {str(path.resolve()): file_hash(path) for path in (Path(__file__), TD3_SOURCE)}
++    metadata = dict(
++        format="sdmpc-critic-temporal-diagnostic-v1", input=provenance, source_sha256=source_hashes,
++        runtime=runtime_record(), seed=seed, evaluation_noise_seed=seed + 1,
++        parameters=dict(updates=updates, log_updates=list(log_updates), batch_size=40,
++                        samples_per_scenario_per_batch=8, sampling="with replacement",
++                        gamma=TD3.gamma, learning_rate=TD3.learning_rate,
++                        policy_noise=TD3.policy_noise, noise_clip=TD3.noise_clip,
++                        arms=ARMS, critic_target_period=2, actor_updates=0, actor_target_updates=0,
++                        actor_target_initialization="final actor in both arms",
++                        critic_optimizer_initialization="frozen final checkpoint in both arms",
++                        initial_learner_updates=state["updates"], original_td3_spec=state["spec"]),
++        replay_counts=dict.fromkeys(SCENARIOS, 150), true_terminals=dict.fromkeys(SCENARIOS, 2),
++        td_loss_definition="Sum of twin-critic MSEs over all 750 transitions with one fixed shared smoothing-noise draw.",
++        time_slices="Zero-based control index within each 75-step episode, pooled over both collection rounds.",
++        caveat=CAVEAT)
++    stop_paths = tuple(map(Path, stop_paths)) + tuple(
++        folder / "STOP" for folder in (output, output.parent, output.parent.parent))
++    completed, last_logged = 0, -1
++    losses = dict.fromkeys(ARMS, None)
++    loss_sums = dict.fromkeys(ARMS, 0.0)
++    batch_digest = hashlib.sha256()
++    started = time.perf_counter()
++    with (output / "diagnostics.jsonl").open("x", encoding="utf-8") as stream:
++        def write(row):
++            stream.write(json.dumps(row, allow_nan=False) + "\n")
++            stream.flush()
++
++        def snapshot():
++            nonlocal last_logged
++            row = dict(kind="checkpoint", updates=completed, target_updates=completed // 2,
++                       sample_counts=dict.fromkeys(SCENARIOS, completed * 8),
++                       total_samples=completed * 40, paired_batch_sha256=batch_digest.hexdigest(), arms={})
++            for name, learner in arms.items():
++                row["arms"][name] = dict(
++                    **diagnostics(learner, data, eval_noise), last_batch_td_loss=losses[name],
++                    mean_training_td_loss=loss_sums[name] / completed if completed else None)
++            write(row)
++            last_logged = completed
++
++        write(dict(kind="metadata", **metadata))
++        snapshot()
++        status = "completed"
++        while completed < updates:
++            if any(path.exists() for path in stop_paths):
++                status = "stopped"
++                break
++            indices, batch, noise = draw_batch(data, numpy_rng, torch_rng)
++            for name, tau in ARMS.items():
++                losses[name] = critic_step(arms[name], batch, noise, tau, completed + 1)
++                loss_sums[name] += losses[name]
++            completed += 1
++            batch_digest.update(indices.numpy().tobytes())
++            batch_digest.update(noise.numpy().tobytes())
++            if completed in log_updates:
++                snapshot()
++        if completed != last_logged:
++            snapshot()
++        for learner in arms.values():
++            for module in (learner.actor, learner.actor_target):
++                if any(not torch.equal(value, state["actor"][key]) for key, value in module.state_dict().items()):
++                    raise ValueError("Fixed actor changed")
++        if source_hashes != {path: file_hash(path) for path in source_hashes}:
++            raise ValueError("Diagnostic source changed during execution")
++        if provenance and file_hash(provenance["path"]) != provenance["sha256"]:
++            raise ValueError("Frozen model changed during execution")
++        summary = dict(status=status, updates=completed, target_updates=completed // 2,
++                       sample_counts=dict.fromkeys(SCENARIOS, completed * 8), total_samples=completed * 40,
++                       paired_batch_sha256=batch_digest.hexdigest(), actors_unchanged=True,
++                       source_unchanged=True, input_unchanged=True if provenance else None,
++                       elapsed_wall_seconds=time.perf_counter() - started, caveat=CAVEAT)
++        write(dict(kind="summary", **summary))
++    with (output / "summary.json").open("x", encoding="utf-8") as stream:
++        json.dump(summary, stream, indent=2, allow_nan=False)
++    return summary
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--seed", type=int, default=6529)
++    parser.add_argument("--stop-file", type=Path)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise FileExistsError(args.output)
++    state, digest = load_frozen_model()
++    result = run_diagnostic(state, args.output, args.seed,
++                            stop_paths=() if args.stop_file is None else (args.stop_file,),
++                            provenance=dict(path=str(MODEL.resolve()), sha256=digest))
++    print(json.dumps(result, allow_nan=False))
++
++
++if __name__ == "__main__":
++    main()
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\evaluate.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\evaluate.py"
+new file mode 100644
+index 0000000..f37699e
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\evaluate.py"
+@@ -0,0 +1,185 @@
++"""Resumable canonical evaluation of a transparent actor-only repair export."""
++import argparse
++import copy
++import os
++from pathlib import Path
++import sys
++import time
++import traceback
++import uuid
++from common import (torch, SCENARIOS, BASE_HASH, DEFAULT_SNAPSHOT, load_base,
++                    sources, stopped, read, save, plain, file_hash, runtime_versions,
++                    exclusive_run, checkpoint_save, verify_pins)
++from actor_repair import FORMAT as ACTOR_FORMAT, SOURCE_NAMES, VARIANTS, select_variant
++from budget_runtime import boot, digest
++from run_budget import observation_schema, policy_contract, scenario_manifest
++from compare_runs import validate_episode
++
++FORMAT = "sdmpc-actor-repair-eval-v1"
++EVAL_SOURCES = (*SOURCE_NAMES, "evaluate.py")
++
++
++def load_actor(path, base_model, learner):
++    completion = read(path.parent / "completion.json")
++    if completion["status"] != "completed":
++        raise ValueError("Actor fit incomplete")
++    selected = select_variant(completion["baseline"], completion["final_metrics"])
++    if selected is None or completion["selected"] != selected or path.name != selected + ".pt":
++        raise ValueError("Not the pre-evaluation selected actor")
++    if file_hash(path) != completion["exports"][selected]:
++        raise ValueError("Actor export hash changed")
++    payload = torch.load(path, map_location="cpu", weights_only=False)
++    settings = payload["settings"]
++    if (payload["format"] != ACTOR_FORMAT or payload["variant"] != selected or
++            settings != completion["settings"] or settings["base_sha256"] != BASE_HASH or
++            settings["source_sha256"] != sources(*SOURCE_NAMES) or
++            settings["runtime"] != runtime_versions() or settings["actor_updates"] != 375 or
++            settings["seed"] != 7100 or settings["batch_size"] != 40 or settings["samples_per_scenario"] != 8 or
++            settings["variants"] != list(VARIANTS) or settings["new_plant_transitions"] != 0 or
++            settings["objective"] != "Q1_only_fixed_final_critic" or
++            settings["scope"] != "actor_repair_ablation_not_joint_TD3_training" or
++            settings["trainable_parameters"] != "actor_output_head_only" or
++            payload["base_contract"] != base_model["contract"] or
++            payload["base_training_profiles"] != base_model["training_profiles"] or
++            payload["sampled_per_scenario"] != dict.fromkeys(SCENARIOS, 3000) or
++            payload["metrics"][-1] != completion["final_metrics"][selected]):
++        raise ValueError("Actor repair provenance differs")
++    if any(not torch.isfinite(tensor).all() for tensor in payload["actor_state"].values()):
++        raise ValueError("Nonfinite actor weights")
++    learner.actor.load_state_dict(payload["actor_state"], strict=True)
++    return payload
++
++
++def validate_checkpoint(checkpoint, settings):
++    if checkpoint["format"] != FORMAT or checkpoint["settings"] != settings:
++        raise ValueError("Resume identity changed")
++    k = checkpoint["environment"]["k"]
++    if (type(k) is not int or not 5 <= k <= 80 or len(checkpoint["trace"]) != k-5 or
++            len(checkpoint["observations"]) != k-5 or
++            checkpoint["environment"]["profile_hash"] != settings["profile_sha256"][0]):
++        raise ValueError("Resume boundaries changed")
++
++
++def summarize(env, trace, scenario):
++    import numpy as np
++    times = [row["decision_wall_seconds"] for row in trace]
++    return dict(episode=0, scenario=scenario, training_seed=None, profile_sha256=env.profile_hash,
++        ttt=env.sim.total_ttt, freeway_ttt=trace[-1]["freeway_ttt"], urban_ttt=trace[-1]["urban_ttt"],
++        warmup_ttt=env.warmup_ttt, full_run=True, control_steps=len(trace),
++        simulation_seconds=env.sim.state.time_sec, terminal_inventory=trace[-1]["inventory"],
++        decision_wall_seconds=sum(times), decision_cpu_seconds=sum(r["decision_cpu_seconds"] for r in trace),
++        decision_p50=float(np.median(times)), decision_p95=float(np.percentile(times, 95)),
++        decision_max=max(times), fallback_count=sum(r["selection_source"] == "reference_fallback" for r in trace),
++        pfo_calls=sum(r["pfo_calls"] for r in trace), pfo_recovery_count=sum(r["reference_recovery"] for r in trace),
++        lower_candidate_solves=sum(r["lower_candidate_count"] for r in trace),
++        converged_count=sum(r["converged"] for r in trace), controller_acceptance=False,
++        evaluation=True, exploration=False, base_learner_updates=750, actor_repair_updates=375)
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--actor", type=Path, required=True)
++    parser.add_argument("--scenario", choices=SCENARIOS, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--cpu-mask", type=int, default=1)
++    parser.add_argument("--resume", action="store_true")
++    parser.add_argument("--stop-after", type=int, default=75)
++    args = parser.parse_args()
++    if not 1 <= args.stop_after <= 75:
++        parser.error("stop-after must be 1..75; partial runs never emit completion")
++    output, actor_path = args.output.resolve(), args.actor.resolve()
++    with exclusive_run(output):
++        if (output / "completion.json").exists():
++            raise ValueError("Already completed, refusing duplicate evaluation")
++        if (output / "checkpoint.pt").exists() != args.resume:
++            raise ValueError("Checkpoint exists iff --resume is supplied")
++        if stopped(output):
++            save(output / "status.json", dict(status="paused", before_environment_initialization=True))
++            return
++        rt = boot(DEFAULT_SNAPSHOT, args.cpu_mask)
++        from budget_env import BudgetEnv
++        model, learner = load_base()
++        load_actor(actor_path, model, learner)
++        env = BudgetEnv(rt, scenario=args.scenario, guard_mode="physical")
++        settings = dict(format=FORMAT,
++            run_id=read(output / "settings.json")["run_id"] if (output / "settings.json").exists() else uuid.uuid4().hex,
++            mode="rl", scenario=args.scenario, seeds=[None], profile_sha256=[env.profile_hash],
++            base_model_sha256=BASE_HASH, model_sha256=file_hash(actor_path), actor_path=str(actor_path),
++            actor_fit_completion_sha256=file_hash(actor_path.parent / "completion.json"),
++            source_pins=model["contract"]["source_pins"], eval_source_sha256=sources(*EVAL_SOURCES),
++            runtime_versions=runtime_versions(), cpu_mask=args.cpu_mask, reward_divisor=100., gamma=1.,
++            total_seconds=14400, warmup_steps=5, controlled_steps=75, guard_mode="physical",
++            environment_contract=dict(config_sha256=digest(rt["rc"].to_plain_dict(rt["cfg"])),
++                options_sha256=digest(rt["rc"].to_plain_dict(rt["options"])), scenarios=scenario_manifest(rt),
++                coordinator={k: v for k, v in env.contract().items()
++                             if k not in ("cfg", "options", "observation", "source_snapshot")}),
++            scope="actor_only_repair_ablation_not_joint_TD3_or_critic_recalibration")
++        if (output / "settings.json").exists() and read(output / "settings.json") != settings:
++            raise ValueError("Existing evaluation settings differ")
++        save(output / "settings.json", settings)
++        save(output / "process.json", dict(pid=os.getpid(), command=sys.argv, started=time.time()))
++        trace, observations, elapsed = [], [], 0.
++        started = time.perf_counter()
++        try:
++            if args.resume:
++                checkpoint = torch.load(output / "checkpoint.pt", map_location="cpu", weights_only=False)
++                validate_checkpoint(checkpoint, settings)
++                obs = env.restore(checkpoint["environment"])
++                trace, observations, elapsed = checkpoint["trace"], checkpoint["observations"], checkpoint["elapsed"]
++            else:
++                obs = env.reset()
++            if policy_contract(env, settings) != model["contract"]:
++                raise ValueError("Physical observation/policy contract changed")
++            save(output / "observation_schema.json", observation_schema(env))
++
++            def checkpoint_now():
++                checkpoint_save(torch, output / "checkpoint.pt", dict(format=FORMAT, settings=settings,
++                    environment=env.checkpoint(), trace=trace, observations=observations,
++                    elapsed=elapsed+time.perf_counter()-started))
++
++            checkpoint_now()
++            while env.k < 80:
++                if stopped(output) or len(trace) >= args.stop_after:
++                    save(output / "status.json", dict(status="paused", control_steps=len(trace)))
++                    return
++                verify_pins(DEFAULT_SNAPSHOT, settings["source_pins"])
++                if sources(*EVAL_SOURCES) != settings["eval_source_sha256"] or file_hash(actor_path) != settings["model_sha256"]:
++                    raise ValueError("Frozen evaluator or actor changed")
++                tick, cpu = time.perf_counter(), time.process_time()
++                with torch.no_grad():
++                    action = learner.act(obs)
++                    inputs = torch.cat((torch.from_numpy(obs), torch.from_numpy(action))).unsqueeze(0)
++                    q = [float(c(inputs).item()) for c in learner.critics]
++                wall, cpu_seconds = time.perf_counter()-tick, time.process_time()-cpu
++                observations.append(obs.copy())
++                next_obs, reward, terminal, row = env.step(action, "rl", wall, actor_cpu_seconds=cpu_seconds)
++                row.update(reward=reward, episode=0, scenario=args.scenario, profile_sha256=env.profile_hash,
++                           policy_q=q, learning=[], learning_wall_seconds=0.)
++                trace.append(plain(row))
++                obs = next_obs
++                checkpoint_now()
++                save(output / "status.json", dict(status="running", control_steps=len(trace),
++                    simulation_seconds=env.sim.state.time_sec, ttt=env.sim.total_ttt))
++                print(args.scenario, f"{len(trace)}/75", env.sim.total_ttt, flush=True)
++            summary = summarize(env, trace, args.scenario)
++            validate_episode(summary, trace, settings, 0)
++            if sources(*EVAL_SOURCES) != settings["eval_source_sha256"] or file_hash(actor_path) != settings["model_sha256"]:
++                raise ValueError("Evaluator or actor changed at completion")
++            verify_pins(DEFAULT_SNAPSHOT, settings["source_pins"])
++            save(output / "episode_00_summary.json", summary)
++            save(output / "episode_00_trace.json", trace)
++            checkpoint_save(torch, output / "evaluation_observations.pt", dict(settings=settings, observations=observations))
++            save(output / "completion.json", dict(format=FORMAT, status="completed", settings=settings,
++                summary=summary, elapsed_wall_seconds=elapsed+time.perf_counter()-started,
++                observations_sha256=file_hash(output / "evaluation_observations.pt"),
++                performance_claim=False))
++            save(output / "status.json", dict(status="completed"))
++        except BaseException:
++            save(output / "failure.json", dict(traceback=traceback.format_exc(), step=env.k))
++            raise
++        finally:
++            env.close()
++
++
++if __name__ == "__main__":
++    main()
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_actor_repair.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_actor_repair.py"
+new file mode 100644
+index 0000000..a43b21f
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_actor_repair.py"
+@@ -0,0 +1,79 @@
++from copy import deepcopy
++import pytest
++from actor_repair import (torch, TD3, SCENARIOS, VARIANTS, prepare, actor_step,
++                          state_batch, select_variant)
++
++
++def test_balanced_batch_and_repeated_schedule():
++    data = {s: {"observations": torch.stack((torch.full((150,), float(i)),
++            torch.arange(150).float(), torch.arange(150).float()+100), dim=1)} for i, s in enumerate(SCENARIOS)}
++    a, b = torch.Generator().manual_seed(7100), torch.Generator().manual_seed(7100)
++    for _ in range(5):
++        first, second = state_batch(data, a), state_batch(data, b)
++        assert torch.equal(first, second)
++        assert first.shape == (40, 3)
++        for i in range(5):
++            assert int((first[:, 0] == i).sum()) == 8
++
++
++@pytest.mark.parametrize("variant", VARIANTS)
++def test_frozen_critic_no_base_mutation_and_head_policy(variant):
++    base = TD3(3, 6300, 8)
++    with torch.no_grad():
++        base.actor[-2].bias[:] = torch.tensor([3., -3.])
++    before = deepcopy(base.actor.state_dict())
++    learner = prepare(base, variant)
++    if variant == "reset_head":
++        assert torch.equal(torch.from_numpy(learner.act([0., 0., 0.])), torch.zeros(2))
++    else:
++        assert all(torch.equal(v, before[k]) for k, v in learner.actor.state_dict().items())
++    critic = deepcopy(learner.critics.state_dict())
++    actor_step(learner, torch.ones((40, 3)))
++    assert all(torch.equal(v, critic[k]) for k, v in learner.critics.state_dict().items())
++    assert all(torch.equal(v, before[k]) for k, v in base.actor.state_dict().items())
++    assert all(torch.equal(v, before[k]) for k, v in learner.actor.state_dict().items()
++               if not k.startswith("4."))
++    assert all(p.requires_grad == name.startswith("4.") for name, p in learner.actor.named_parameters())
++    assert learner.updates == 0
++
++
++def test_reject_unknown_variant():
++    with pytest.raises(ValueError):
++        prepare(TD3(3, 1, 8), "wrong")
++
++
++def test_selection_requires_gain_and_gap_reduction_and_stable_tie():
++    initial = dict(equal_scenario_q=-10., mean_grid_gap=1.)
++    complete = {s: dict(equal_scenario_q=-9., mean_grid_gap=.5) for s in VARIANTS}
++    assert select_variant(initial, complete) == "continue"
++    complete["reset_head"]["equal_scenario_q"] = -8.
++    assert select_variant(initial, complete) == "reset_head"
++    complete["reset_head"]["mean_grid_gap"] = .8
++    assert select_variant(initial, complete) is None
++
++
++def test_preexisting_stop_prevents_model_load(tmp_path, monkeypatch):
++    import actor_repair
++    out = tmp_path / "fit"
++    (tmp_path / "STOP").touch()
++    monkeypatch.setattr("sys.argv", ["actor_repair.py", "--output", str(out)])
++    monkeypatch.setattr(actor_repair, "load_base", lambda: pytest.fail("model load after STOP"))
++    actor_repair.main()
++    assert actor_repair.read(out / "partial.json")["status"] == "paused"
++
++
++@pytest.mark.parametrize("variant", VARIANTS)
++def test_hidden_weights_with_populated_adam_history_remain_fixed(variant):
++    base = TD3(3, 6300, 8)
++    for _ in range(3):
++        actor_step(base, torch.ones((40, 3)))
++    with torch.no_grad():
++        base.actor[-2].bias[:] = torch.tensor([3., -3.])
++    learner = prepare(base, variant)
++    initial = deepcopy(learner.actor.state_dict())
++    for _ in range(5):
++        actor_step(learner, torch.ones((40, 3)))
++    assert all(torch.equal(v, initial[k]) for k, v in learner.actor.state_dict().items()
++               if not k.startswith("4."))
++    assert any(not torch.equal(v, initial[k]) for k, v in learner.actor.state_dict().items()
++               if k.startswith("4."))
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_critic_diagnostic.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_critic_diagnostic.py"
+new file mode 100644
+index 0000000..5707d62
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_critic_diagnostic.py"
+@@ -0,0 +1,272 @@
++"""Focused synthetic tests only: no production model, plant, or numerical run."""
++
++from copy import deepcopy
++import json
++
++import critic_diagnostic as diagnostic
++import numpy as np
++import pytest
++import torch
++
++
++def equal(left, right):
++    if isinstance(left, torch.Tensor):
++        assert torch.equal(left, right)
++    elif isinstance(left, np.ndarray):
++        np.testing.assert_array_equal(left, right)
++    elif isinstance(left, dict):
++        assert left.keys() == right.keys()
++        for key in left:
++            equal(left[key], right[key])
++    elif isinstance(left, (tuple, list)):
++        assert len(left) == len(right)
++        for a, b in zip(left, right):
++            equal(a, b)
++    else:
++        assert left == right
++
++
++@pytest.fixture(scope="module")
++def state():
++    learner = diagnostic.TD3(3, seed=23, hidden=8)
++    rng = np.random.default_rng(17)
++    for scenario in diagnostic.SCENARIOS:
++        for episode in range(2):
++            observations = rng.normal(size=(76, 3))
++            for i in range(75):
++                learner.add(observations[i], rng.uniform(-1, 1, 2), -float(episode + 1),
++                            observations[i + 1], i == 74, scenario)
++    learner.update()
++    learner.update()
++    return learner.state_dict()
++
++
++def sample(state, seed=72):
++    return diagnostic.draw_batch(diagnostic.replay_tensors(state), np.random.default_rng(seed),
++                                 torch.Generator().manual_seed(seed))
++
++
++def records(output):
++    return [json.loads(line) for line in (output / "diagnostics.jsonl").read_text().splitlines()]
++
++
++def test_clones_preserve_critics_optimizer_and_replace_stale_target_actor(state):
++    assert any(not torch.equal(value, state["actor_target"][key]) for key, value in state["actor"].items())
++    arms = diagnostic.clone_arms(state)
++    for learner in arms.values():
++        equal(learner.critics.state_dict(), state["critics"])
++        equal(learner.critic_targets.state_dict(), state["critic_targets"])
++        equal(learner.critic_optimizer.state_dict(), state["critic_optimizer"])
++        equal(learner.actor.state_dict(), state["actor"])
++        equal(learner.actor_target.state_dict(), state["actor"])
++        assert all(not p.requires_grad for p in learner.actor.parameters())
++        assert all(not p.requires_grad for p in learner.actor_target.parameters())
++    a, b = arms.values()
++    assert {p.data_ptr() for p in a.critics.parameters()}.isdisjoint(p.data_ptr() for p in b.critics.parameters())
++    a_moments = a.critic_optimizer.state_dict()["state"]
++    b_moments = b.critic_optimizer.state_dict()["state"]
++    assert all(a_moments[k]["exp_avg"].data_ptr() != b_moments[k]["exp_avg"].data_ptr() for k in a_moments)
++
++
++def test_true_terminal_targets_and_nonterminal_bootstrap(state):
++    learner = next(iter(diagnostic.clone_arms(state).values()))
++    with torch.no_grad():
++        for critic, bias in zip(learner.critic_targets, (7.0, 9.0)):
++            for parameter in critic.parameters():
++                parameter.zero_()
++            critic[-1].bias.fill_(bias)
++    _, batch, noise = sample(state)
++    batch["terminated"][::2] = True
++    batch["terminated"][1::2] = False
++    targets = diagnostic.target_values(learner, batch, noise)
++    assert torch.equal(targets[::2], batch["rewards"][::2])
++    assert torch.equal(targets[1::2], batch["rewards"][1::2] + 7)
++
++
++def test_exact_balance_and_reproducible_shared_draws(state):
++    data = diagnostic.replay_tensors(state)
++    rng_a, rng_b = np.random.default_rng(42), np.random.default_rng(42)
++    noise_a, noise_b = torch.Generator().manual_seed(42), torch.Generator().manual_seed(42)
++    for _ in range(7):
++        indices, batch, noise = diagnostic.draw_batch(data, rng_a, noise_a)
++        equal((indices, batch, noise), diagnostic.draw_batch(data, rng_b, noise_b))
++        assert torch.bincount(indices // 150, minlength=5).tolist() == [8] * 5
++        assert len(indices) == 40 and noise.shape == (40, 2)
++        assert float(noise.abs().max()) <= diagnostic.TD3.noise_clip
++
++
++def test_smoothing_is_applied_to_target_actor_and_actions_are_clipped(state):
++    learner = next(iter(diagnostic.clone_arms(state).values()))
++    _, batch, _ = sample(state)
++    with torch.no_grad():
++        learner.actor_target[-2].bias.copy_(torch.tensor([2.0, -2.0]))
++    noise = torch.tensor([[0.5, -0.5]]).repeat(40, 1)
++    captured = []
++    hook = learner.critic_targets[0].register_forward_pre_hook(
++        lambda module, args: captured.append(args[0].clone()))
++    try:
++        diagnostic.target_values(learner, batch, noise)
++    finally:
++        hook.remove()
++    expected_actions = (learner.actor_target(batch["next_observations"]) + noise).clamp(-1, 1)
++    equal(captured[0], torch.cat((batch["next_observations"], expected_actions), dim=1))
++    assert torch.all(expected_actions[:, 0] == 1) and torch.all(expected_actions[:, 1] == -1)
++
++
++def test_noise_and_diagnostic_remain_cpu_float32_with_changed_torch_default(state, tmp_path):
++    previous = torch.get_default_dtype()
++    try:
++        torch.set_default_dtype(torch.float64)
++        _, _, noise = sample(state)
++        assert noise.dtype == torch.float32 and noise.device.type == "cpu"
++        result = diagnostic.run_diagnostic(state, tmp_path / "float32", updates=1)
++        assert result["updates"] == 1
++    finally:
++        torch.set_default_dtype(previous)
++
++
++def test_actor_optimizer_replay_and_input_unchanged_after_critic_steps(state):
++    before = deepcopy(state)
++    _, batch, noise = sample(state)
++    batch_before, noise_before = deepcopy(batch), noise.clone()
++    arms = diagnostic.clone_arms(state)
++    for name, learner in arms.items():
++        for update in range(1, 5):
++            diagnostic.critic_step(learner, batch, noise, diagnostic.ARMS[name], update)
++        equal(learner.actor.state_dict(), before["actor"])
++        equal(learner.actor_target.state_dict(), before["actor"])
++        equal(learner.actor_optimizer.state_dict(), before["actor_optimizer"])
++        equal(learner.state_dict()["replay"], before["replay"])
++        assert any(not torch.equal(value, before["critics"][key]) for key, value in learner.critics.state_dict().items())
++    equal(state, before)
++    equal(batch, batch_before)
++    equal(noise, noise_before)
++
++
++@pytest.mark.parametrize("tau", [0.005, 1.0])
++def test_critic_target_schedule_and_exact_rate(state, tau):
++    learner = next(iter(diagnostic.clone_arms(state).values()))
++    _, batch, noise = sample(state)
++    for update in range(1, 5):
++        before = [p.clone() for p in learner.critic_targets.parameters()]
++        diagnostic.critic_step(learner, batch, noise, tau, update)
++        for old, online, target in zip(before, learner.critics.parameters(), learner.critic_targets.parameters()):
++            expected = old.mul(1.0 - tau).add(online, alpha=tau) if update % 2 == 0 else old
++            assert torch.equal(target, expected)
++
++
++def test_behavior_returns_reset_at_both_true_terminals(state):
++    data = diagnostic.replay_tensors(state)
++    expected = torch.cat((torch.arange(75, 0, -1) * -1.0, torch.arange(75, 0, -1) * -2.0))
++    assert torch.equal(data["behavior_returns"], expected.repeat(5))
++
++
++@pytest.mark.parametrize("invalid", ["missing_terminal", "misplaced_terminal", "short_replay", "discontinuous"])
++def test_rejects_incomplete_or_misordered_training_episodes(state, invalid):
++    broken = deepcopy(state)
++    group = broken["replay"][diagnostic.SCENARIOS[0]]
++    if invalid == "missing_terminal":
++        group["terminated"][149] = False
++    elif invalid == "misplaced_terminal":
++        group["terminated"][74] = False
++        group["terminated"][73] = True
++    elif invalid == "short_replay":
++        group["rewards"] = group["rewards"][:-1]
++    else:
++        group["next_observations"][0] += 1
++    with pytest.raises(ValueError):
++        diagnostic.replay_tensors(broken)
++
++
++def test_runner_passes_identical_samples_and_noise_and_logs_metrics(state, tmp_path, monkeypatch):
++    original = diagnostic.critic_step
++    calls = []
++
++    def observe(learner, batch, noise, tau, update):
++        calls.append((update, tau, deepcopy(batch), noise.clone(), id(batch), id(noise)))
++        return original(learner, batch, noise, tau, update)
++
++    monkeypatch.setattr(diagnostic, "critic_step", observe)
++    output = tmp_path / "paired"
++    result = diagnostic.run_diagnostic(state, output, updates=4, log_updates=(0, 2, 4))
++    assert result["status"] == "completed" and result["target_updates"] == 2
++    assert result["sample_counts"] == dict.fromkeys(diagnostic.SCENARIOS, 32)
++    for a, b in zip(calls[::2], calls[1::2]):
++        assert a[0] == b[0] and (a[1], b[1]) == (0.005, 1.0)
++        equal(a[2:], b[2:])
++    rows = records(output)
++    assert rows[0]["runtime"]["torch_threads"] == rows[0]["runtime"]["torch_interop_threads"] == 1
++    assert "not current-policy Q truth" in rows[0]["caveat"]
++    checkpoints = [r for r in rows if r["kind"] == "checkpoint"]
++    assert [r["updates"] for r in checkpoints] == [0, 2, 4]
++    equal(*checkpoints[0]["arms"].values())
++    for row in checkpoints:
++        for arm in row["arms"].values():
++            assert arm["total"]["total_td_loss"] >= 0
++            for scenario in arm["per_scenario"].values():
++                assert scenario["transitions"] == 150 and scenario["true_terminals"] == 2
++                assert [s["transitions"] for s in scenario["time_slices"].values()] == [50] * 3
++                assert scenario["time_slices"]["early_0_24"]["critics"]["q1"]["terminal_abs_error_mean"] is None
++                assert scenario["time_slices"]["late_50_74"]["true_terminals"] == 2
++                assert all(ep["true_terminals"] == 1 for ep in scenario["episodes"].values())
++    assert {p.name for p in output.iterdir()} == {"diagnostics.jsonl", "summary.json"}
++
++
++def test_stop_between_paired_batches_saves_partial_and_refuses_overwrite(state, tmp_path, monkeypatch):
++    original = diagnostic.critic_step
++    stop = tmp_path / "STOP"
++
++    def stop_after_pair(learner, batch, noise, tau, update):
++        loss = original(learner, batch, noise, tau, update)
++        if update == 3 and tau == 1.0:
++            stop.touch()
++        return loss
++
++    monkeypatch.setattr(diagnostic, "critic_step", stop_after_pair)
++    output = tmp_path / "partial"
++    result = diagnostic.run_diagnostic(state, output, updates=6, log_updates=(0, 6))
++    assert result["status"] == "stopped" and result["updates"] == 3
++    assert result["sample_counts"] == dict.fromkeys(diagnostic.SCENARIOS, 24)
++    assert [r["updates"] for r in records(output) if r["kind"] == "checkpoint"] == [0, 3]
++    before = {p.name: p.read_bytes() for p in output.iterdir()}
++    with pytest.raises(FileExistsError):
++        diagnostic.run_diagnostic(state, output, updates=1)
++    assert before == {p.name: p.read_bytes() for p in output.iterdir()}
++
++
++def test_preexisting_stop_exits_without_updates(state, tmp_path):
++    stop = tmp_path / "manual.stop"
++    stop.touch()
++    result = diagnostic.run_diagnostic(state, tmp_path / "stopped", stop_paths=(stop,), updates=2)
++    assert result["status"] == "stopped" and result["updates"] == 0
++
++
++def test_reproducibility_and_evaluation_does_not_consume_training_rng(state, tmp_path):
++    outputs = [tmp_path / "first", tmp_path / "second"]
++    results = [diagnostic.run_diagnostic(state, output, seed=81, updates=4, log_updates=logs)
++               for output, logs in zip(outputs, ((0, 4), (0, 1, 2, 3, 4)))]
++    assert results[0]["paired_batch_sha256"] == results[1]["paired_batch_sha256"]
++    final = [[r for r in records(output) if r["kind"] == "checkpoint"][-1] for output in outputs]
++    equal(*final)
++
++
++def test_input_hash_pin_and_no_file_mutation(state, tmp_path, monkeypatch):
++    path = tmp_path / "synthetic.pt"
++    torch.save({"learner": state}, path)
++    before = path.read_bytes()
++    digest = diagnostic.file_hash(path)
++    with pytest.raises(ValueError, match="SHA-256"):
++        diagnostic.load_frozen_model(path)
++    monkeypatch.setattr(diagnostic, "MODEL_SHA256", digest)
++    loaded, actual = diagnostic.load_frozen_model(path)
++    equal(loaded, state)
++    result = diagnostic.run_diagnostic(loaded, tmp_path / "input_check", updates=2,
++                                       provenance=dict(path=str(path), sha256=actual))
++    assert result["input_unchanged"] is True and path.read_bytes() == before
++
++
++def test_production_budget_and_checkpoint_constants():
++    assert diagnostic.UPDATES == 3750
++    assert diagnostic.LOG_UPDATES == (0, 375, 750, 1500, 3750)
++    assert diagnostic.TD3.gamma == 1.0
++    assert diagnostic.ARMS == {"A_tau_0.005": 0.005, "B_tau_1": 1.0}
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_evaluate.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_evaluate.py"
+new file mode 100644
+index 0000000..1098783
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_recovery_20260929\\test_evaluate.py"
+@@ -0,0 +1,51 @@
++from copy import deepcopy
++import pytest
++from evaluate import FORMAT, validate_checkpoint
++
++
++def fixture():
++    settings = dict(model_sha256="actor-a", scenario="s", profile_sha256=["p"])
++    checkpoint = dict(format=FORMAT, settings=deepcopy(settings), environment=dict(k=7, profile_hash="p"),
++                      trace=[{}, {}], observations=[[], []])
++    return checkpoint, settings
++
++
++def test_resume_identity():
++    ck, settings = fixture()
++    validate_checkpoint(ck, settings)
++    settings["model_sha256"] = "actor-b"
++    with pytest.raises(ValueError):
++        validate_checkpoint(ck, settings)
++
++
++@pytest.mark.parametrize("resume", [False, True])
++def test_preexisting_stop_prevents_boot_and_model_load(tmp_path, monkeypatch, resume):
++    import evaluate
++    out = tmp_path / "scenario"
++    (tmp_path / "STOP").touch()
++    if resume:
++        out.mkdir()
++        (out / "checkpoint.pt").write_bytes(b"preserve-checkpoint")
++    monkeypatch.setattr("sys.argv", ["evaluate.py", "--actor", str(tmp_path / "actor.pt"),
++        "--scenario", evaluate.SCENARIOS[0], "--output", str(out)] + (["--resume"] if resume else []))
++    monkeypatch.setattr(evaluate, "boot", lambda *args: pytest.fail("environment boot after STOP"))
++    monkeypatch.setattr(evaluate, "load_base", lambda: pytest.fail("model load after STOP"))
++    evaluate.main()
++    assert evaluate.read(out / "status.json")["before_environment_initialization"] is True
++    if resume:
++        assert (out / "checkpoint.pt").read_bytes() == b"preserve-checkpoint"
++
++
++@pytest.mark.parametrize("field,value", [("k", 81), ("k", True), ("k", 6), ("profile_hash", "other")])
++def test_resume_boundaries(field, value):
++    ck, settings = fixture()
++    ck["environment"][field] = value
++    with pytest.raises(ValueError):
++        validate_checkpoint(ck, settings)
++
++
++def test_observation_count():
++    ck, settings = fixture()
++    ck["observations"].pop()
++    with pytest.raises(ValueError):
++        validate_checkpoint(ck, settings)
+diff --git a/work/analyze_sdmpc_recovery_20260929.py b/work/analyze_sdmpc_recovery_20260929.py
+new file mode 100644
+index 0000000..ed59770
+--- /dev/null
++++ b/work/analyze_sdmpc_recovery_20260929.py
+@@ -0,0 +1,91 @@
++"""Reconcile the five actor-repair ablations against preserved carry centers."""
++import argparse
++from pathlib import Path
++import sys
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT / "work/sdmpc_rl_recovery_20260929"))
++from common import (torch, BASE, SCENARIOS, BASE_HASH, DEFAULT_SNAPSHOT, load_base,
++                    read, save, file_hash, sources, verify_pins, runtime_versions)
++from evaluate import FORMAT, EVAL_SOURCES, load_actor
++from compare_runs import load_completed_run, validate_episode
++from analyze_sdmpc_multi_20260929 import trajectory_diagnostics
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--evaluations", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise FileExistsError(args.output)
++    model, learner = load_base()
++    rows, diagnostics, actor_hash = [], [], None
++    for scenario in SCENARIOS:
++        folder = args.evaluations / scenario
++        result, settings = read(folder / "completion.json"), read(folder / "settings.json")
++        if (result["format"] != FORMAT or settings["format"] != FORMAT or result["status"] != "completed" or
++                settings != result["settings"] or settings["scenario"] != scenario or settings["seeds"] != [None] or
++                settings["base_model_sha256"] != BASE_HASH or settings["runtime_versions"] != runtime_versions() or
++                settings["eval_source_sha256"] != sources(*EVAL_SOURCES)):
++            raise ValueError("Evaluation identity differs")
++        verify_pins(DEFAULT_SNAPSHOT, settings["source_pins"])
++        path = Path(settings["actor_path"])
++        if (file_hash(path) != settings["model_sha256"] or
++                file_hash(path.parent / "completion.json") != settings["actor_fit_completion_sha256"]):
++            raise ValueError("Actor fit changed")
++        load_actor(path, model, learner)
++        actor_hash = settings["model_sha256"] if actor_hash is None else actor_hash
++        if settings["model_sha256"] != actor_hash:
++            raise ValueError("Must use one shared actor for all scenarios")
++        summary = read(folder / "episode_00_summary.json")
++        trace = read(folder / "episode_00_trace.json")
++        if summary != result["summary"]:
++            raise ValueError("Summary changed")
++        validate_episode(summary, trace, settings, 0)
++        original, center_settings, _, schema = load_completed_run(BASE / "center" / scenario, "center", [None],
++            settings["source_pins"], settings["runtime_versions"], scenario=scenario)
++        center = original["episodes"][0]
++        if (center_settings["environment_contract"] != settings["environment_contract"] or
++                center_settings["profile_sha256"] != settings["profile_sha256"] or
++                center["warmup_ttt"] != summary["warmup_ttt"] or
++                schema != read(folder / "observation_schema.json")):
++            raise ValueError("Physical/canonical comparison differs")
++        if file_hash(folder / "evaluation_observations.pt") != result["observations_sha256"]:
++            raise ValueError("Observation archive changed")
++        archive = torch.load(folder / "evaluation_observations.pt", map_location="cpu", weights_only=False)
++        if archive["settings"] != settings or len(archive["observations"]) != 75:
++            raise ValueError("Evaluation observation provenance differs")
++        with torch.no_grad():
++            for obs, row in zip(archive["observations"], trace):
++                tensor = torch.from_numpy(obs)
++                if tensor.shape != (len(schema["names"]),) or not torch.isfinite(tensor).all():
++                    raise ValueError("Invalid evaluation observation")
++                action = learner.act(obs)
++                torch.testing.assert_close(torch.from_numpy(action), torch.tensor(row["action_requested"]), rtol=0, atol=0)
++                inputs = torch.cat((tensor, torch.from_numpy(action))).unsqueeze(0)
++                q = torch.tensor([float(c(inputs).item()) for c in learner.critics])
++                torch.testing.assert_close(q, torch.tensor(row["policy_q"]), rtol=0, atol=1e-6)
++        failed = read(BASE / "rl" / scenario / "episode_00_summary.json")
++        rows.append(dict(scenario=scenario, center_ttt=center["ttt"], failed_rl_ttt=failed["ttt"],
++            repaired_ttt=summary["ttt"], improvement_vs_center_pct=100*(1-summary["ttt"]/center["ttt"]),
++            improvement_vs_failed_rl_pct=100*(1-summary["ttt"]/failed["ttt"]),
++            center_mean_decision_seconds=center["decision_wall_seconds"]/75,
++            repaired_mean_decision_seconds=summary["decision_wall_seconds"]/75,
++            terminal_inventory=summary["terminal_inventory"], fallback_count=summary["fallback_count"],
++            pfo_calls=summary["pfo_calls"], elapsed_wall_seconds=result["elapsed_wall_seconds"]))
++        diagnostic = trajectory_diagnostics(trace, "rl")
++        diagnostic["value_diagnostics"]["caveat"] = (
++            "Original critic, repaired actor continuation. Operational prediction error on the new policy; "
++            "not a separately fitted policy evaluation or evidence of optimal action ordering.")
++        diagnostics.append(dict(scenario=scenario, **diagnostic))
++    save(args.output, dict(status="reconciled", shared_actor_sha256=actor_hash, base_model_sha256=BASE_HASH,
++        analysis_sha256=file_hash(__file__), rows=rows, diagnostics=diagnostics,
++        all_scenarios_improve_vs_center=all(r["improvement_vs_center_pct"] > 0 for r in rows),
++        scope="five_canonical_development_scenarios_actor_only_repair_ablation",
++        generalization_claim=False, pstack_claim=False, controller_acceptance=False))
++    print("RECOVERY_ANALYSIS_PASS", actor_hash, flush=True)
++
++
++if __name__ == "__main__":
++    main()

@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-09-30T12:25:45.1211088+09:00",
+  "launcher_pid": 43944,
+  "arguments": [
+    "-B",
+    "-u",
+    "work/sdmpc_rl_return_mc_20260930/run.py",
+    "--review",
+    ".superpowers/sdd/rl_budget_return_initialized_policy_20260930/task-3-review.json",
+    "--output",
+    "results/sdmpc_rl_balanced_goal_20260930/return_mc_v1"
+  ],
+  "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\mc-20260930_122545.stdout.log",
+  "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\mc-20260930_122545.stderr.log",
+  "review_sha256": "49da246247fefcd1471015e6f2d6c8d94ed56727fd40d504e2ae606a2ff33697",
+  "external_jobs_left_untouched": true,
+  "admitted_numerical_threads": 1
+}

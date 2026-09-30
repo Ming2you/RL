@@ -1,0 +1,21 @@
+{
+  "experiment_complete": true,
+  "source_input_integrity": true,
+  "steps": 80,
+  "elapsed_seconds": 14400.0,
+  "ttt": 5508.864413550166,
+  "nc_ttt": 5942.46103800661,
+  "improvement_pct": 7.296583379903703,
+  "mean_decision_seconds": 45.91456277866305,
+  "wall_seconds": 3461.987263999996,
+  "parent_cpu_seconds": 3344.265625,
+  "feasible_count": 75,
+  "budget_exception_count": 0,
+  "max_scaled_band_excess": 0.0,
+  "converged_count": 0,
+  "PFO_reference_selected_count": 0,
+  "TTT_guard_pass_count": 75,
+  "budget_variant": "upper",
+  "controller_acceptance": false,
+  "timing_comparable": false
+}

@@ -1,0 +1,29 @@
+# Projection audit scoped re-review 1
+
+SPEC: PASS
+
+QUALITY: PASS
+
+No actionable introduced breakage found. All four findings in `projection-review.md` are resolved within the requested scope.
+
+Scope: read `projection-brief.md`, `projection-review.md`, `projection-fix-report.md`, and `projection-fix1.diff`; inspect the corresponding implementation/tests and source dependencies needed to assess these four fixes. These verdicts apply to the fixes in the supplied diff, not a new review of unrelated behavior or a production execution result.
+
+## Finding disposition
+
+1. **Before/after consumed input manifest: resolved.** [Manifest construction](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:26) includes 73 files: the pilot completion record, both models, and completion/settings/experience/trace/summary/schema/runtime files for all five scenarios in both rounds. This matches the reads in `load_base`, `load_collections`, and `load_completed_run`. [Capture](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:166) precedes model loading and runtime boot; settings and the nested completion settings retain the manifest. The round-0 predecessor identity comes from that capture. [Final verification](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:226) retains source/model/runtime checks and rehashes every manifest entry before completion is published; missing or changed inputs cannot reach the completion write. The [orchestration and mutation regressions](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py:198) cover capture ordering, persistence, all 750 comparisons/Q dispatches, and 17 post-load input changes.
+
+2. **Final-model training provenance binding: resolved.** [The new comparison](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:48) requires ten profiles and exact equality between each ordered five-entry round slice and the loaded provenance dictionaries. It includes scenario, seed, profile hash, run ID, and experience hash, and [runs before that round's transition comparisons and Q calls](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:192). The order matches [training_inputs](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_multi_20260929/train_round.py:109): retain predecessor profiles, then append the next round in SCENARIOS order. The model is authenticated by the existing fixed-hash loader. [Regressions](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py:236) reject changes to each field in either round and a repackaged collection with unchanged transition values.
+
+3. **Lock-held STOP/overwrite checks: resolved.** [The acquired-lock block](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:158) rechecks output/goal/repository STOP and output entries before process metadata, input loading, or runtime boot. Only `runner.lock` is exempt, matching the file opened and held by [exclusive_run](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_multi_20260929/run_budget.py:25). A delayed invocation now rejects a completed output after acquiring the lock. Early checks remain, and a final STOP check precedes completion. [Four controlled race cases](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py:261) inject a completion file or one of the three STOP locations before yielding the lock; they check refusal and preservation.
+
+4. **Distinct float32 alias candidates: resolved.** [Candidate construction](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:102) now uses float32 actions, tests the rounded boundary through the physical transform, and advances toward 1 with `nextafter` when needed. It deduplicates actions while grouping exactly equal requests. [Critic dispatch](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/projection_audit.py:131) deduplicates again after tensor conversion, requires at least two distinct inputs, and rechecks exact projection equality. Predictions remain aligned with the logged actions. [Boundary regressions](C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py:292) cover the original `5000.00012` counterexample and the `5000.00001` case with no distinct upper-clipping pair; retained groups must have distinct actions, equal requests, and positive spread under synthetic action-sensitive critics.
+
+## Evidence and limits
+
+Accepted supplied verification: **48 synthetic tests passed in 22.78 s**, exit code 0. Tests were not rerun. Static inspection confirms the 35 added regression cases target the four fixes and use isolated fixture inputs and stubbed orchestration dependencies.
+
+Read-only SHA-256 checks matched all four hashes in `projection-fix-report.md`, including both before-fix snapshots. Reviewed implementation SHA-256: `ab3787b94c8bbc4a1e76a9d04b942159a01c6753b292b6d6f5d9c21a256b86db`. Reviewed test SHA-256: `b0b20654d616b2e5c44c61d3689490254497fa10bbf55350071fe3fa72eb808a`.
+
+The supplied lock tests establish guard ordering through controlled contexts; they do not exercise actual interprocess Windows locking. Production loader/runtime integration remains unexecuted during this review. These are verification limits, not newly identified defects.
+
+No tests, production diagnostics, model loading/inference, simulation, training, policy export, or commits were performed. Only this report was created; implementation, tests, preserved artifacts, and existing reports were not edited.

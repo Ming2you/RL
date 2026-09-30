@@ -1,0 +1,17 @@
+{
+  "scenario": "sweet_155_w",
+  "launcher_pid": 23928,
+  "created_filetime": 134352083089421698,
+  "started": "2026-09-30T11:18:28.9421698+09:00",
+  "command": [
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+    "-B",
+    "-u",
+    "work/sdmpc_rl_return_wave_20260930/worker.py",
+    "--scenario",
+    "sweet_155_w",
+    "--resume"
+  ],
+  "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_155_w.stdout.log",
+  "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_155_w.stderr.log"
+}

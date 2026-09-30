@@ -1,0 +1,1646 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\actor.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\actor.py"
+new file mode 100644
+index 0000000..96f9792
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\actor.py"
+@@ -0,0 +1,125 @@
++"""Strict admitted actor authentication and inference; never import a learner."""
++import wave_support as w
++
++COUNTS = dict(phi=1000, critic=250, actor=10, polyak=125)
++
++
++class FrozenActor(w.torch.nn.Module):
++    def __init__(self, state):
++        super().__init__()
++        shapes = {"net.0.weight": (64, 2367), "net.0.bias": (64,),
++                  "net.2.weight": (64, 64), "net.2.bias": (64,),
++                  "net.4.weight": (2, 64), "net.4.bias": (2,), "bounds": (2,)}
++        if set(state) != set(shapes):
++            raise ValueError("Incomplete/extra actor weights")
++        for key, shape in shapes.items():
++            t = state[key]
++            if not isinstance(t, w.torch.Tensor) or tuple(t.shape) != shape or t.dtype != w.torch.float32:
++                raise ValueError("Actor shape/dtype differs: " + key)
++        w.finite_tree(state)
++        if not w.torch.equal(state["bounds"], w.torch.tensor([.2, .1], dtype=w.torch.float32)):
++            raise ValueError("Actor bounds differ")
++        # Meta construction allocates no random replacement weights or RNG draws.
++        with w.torch.device("meta"):
++            self.net = w.torch.nn.Sequential(w.torch.nn.Linear(2367, 64), w.torch.nn.ReLU(),
++                w.torch.nn.Linear(64, 64), w.torch.nn.ReLU(), w.torch.nn.Linear(64, 2))
++            self.register_buffer("bounds", w.torch.empty(2, dtype=w.torch.float32))
++        self.load_state_dict(state, strict=True, assign=True)
++        self.requires_grad_(False)
++        self.eval()
++
++    def forward(self, obs):
++        return self.bounds * w.torch.tanh(self.net(obs))
++
++    @w.torch.no_grad()
++    def act(self, obs):
++        if not isinstance(obs, w.np.ndarray) or obs.dtype != w.np.float32 or obs.shape != (2367,):
++            raise ValueError("Native float32 observation required")
++        w.finite_tree(obs)
++        action = self(w.torch.from_numpy(obs)).numpy().copy()
++        w.finite_tree(action)
++        if action.dtype != w.np.float32 or action.shape != (2,):
++            raise ValueError("Native float32 action required")
++        return action
++
++
++def validate_candidate(payload, settings, completion):
++    w.finite_tree(payload)
++    learner = payload["learner"]
++    if (payload["settings"] != settings or w.digest(settings["spec"]) != w.SPEC_SHA or
++            learner["spec"] != settings["spec"] or learner["phase"] != "done" or
++            learner["counts"] != COUNTS or completion["counters"] != COUNTS or
++            payload["candidate"] is not True or payload["critic_continuation"] != "carry" or
++            learner["critic_continuation"] != "carry" or settings["critic_continuation"] != "carry" or
++            completion["status"] != "completed" or completion["candidate_admitted"] is not True or
++            completion["critic_continuation"] != "carry" or completion["canonical_evaluation"] is not False or
++            completion["traffic_improvement_claim"] is not False):
++        raise ValueError("Admitted model specification/phase/counters differ")
++    gate = learner["metrics"]["gate"]
++    initial, final = gate["initial"], gate["final"]
++    checks = dict(pooled_halved=final["pooled"] <= .5 * initial["pooled"],
++        each_scenario_decreased=all(final["per_scenario"][s] < initial["per_scenario"][s] for s in w.SCENARIOS))
++    if gate["passed"] is not True or gate["checks"] != checks or not all(checks.values()):
++        raise ValueError("Admitted numerical fit gate differs")
++    for key in ("phi", "critic", "actor"):
++        if len(learner["losses"][key]) != COUNTS[key]:
++            raise ValueError("Admitted loss/counter mismatch")
++    return FrozenActor(learner["models"]["actor"])
++
++
++def authenticate():
++    w.import_boundary()
++    w.check_hash(w.PREDECESSOR / "completion.json", w.COMPLETION_SHA)
++    done = w.read(w.PREDECESSOR / "completion.json")
++    settings = w.read(w.PREDECESSOR / "settings.json")
++    if settings != done["settings"] or w.digest(settings["spec"]) != w.SPEC_SHA:
++        raise ValueError("Predecessor settings/specification differ")
++    w.verify_files(settings["sources"])
++    w.verify_files(settings["data"]["files"])
++    for name, expected in done["outputs_sha256"].items():
++        path = (w.PREDECESSOR / name).resolve()
++        if not path.is_relative_to(w.PREDECESSOR.resolve()):
++            raise ValueError("Predecessor output path escaped")
++        w.check_hash(path, expected)
++    w.check_hash(w.PREDECESSOR / "model_final.pt", w.MODEL_SHA)
++    w.check_hash(w.GATE, w.GATE_SHA)
++    gate = w.read(w.GATE)
++    contract = gate["settings"]["contract"]
++    identity = settings["data"]["frozen_identity"]
++    if (gate["status"] != "completed" or w.digest(contract) != identity["contract_sha256"] or
++            contract["source_pins"] != identity["physical"] or
++            contract["runtime_versions"] != identity["runtime"] or identity["gate_sha256"] != w.GATE_SHA):
++        raise ValueError("Physical predecessor contract differs")
++    w.verify_files(gate["settings"]["source_sha256"])
++    w.verify_pins(w.DEFAULT_SNAPSHOT, contract["source_pins"])
++    if w.runtime_versions() != contract["runtime_versions"]:
++        raise ValueError("Frozen runtime versions differ")
++    payload = w.torch.load(w.PREDECESSOR / "model_final.pt", map_location="cpu", weights_only=False)
++    actor = validate_candidate(payload, settings, done)
++    if payload["learner"]["metrics"] != w.read(w.PREDECESSOR / "metrics.json"):
++        raise ValueError("Admitted model metrics differ")
++    w.import_boundary()
++    snapshot = w.read(w.DEFAULT_SNAPSHOT.parent / "manifest.json")
++    return actor, dict(model_sha256=w.MODEL_SHA, predecessor_completion_sha256=w.COMPLETION_SHA,
++        predecessor_settings_digest=w.digest(settings), spec_sha256=w.SPEC_SHA, contract=contract,
++        physical_snapshot=dict(manifest_sha256=contract["source_pins"]["snapshot_manifest_sha256"],
++                               file_count=snapshot["file_count"], total_bytes=snapshot["total_bytes"]),
++        helper_sources=identity["local_sources"], profiles={s: w.expected_profile(s) for s in w.SCENARIOS},
++        critic_continuation="carry")
++
++
++def verify_live(authentication, sources):
++    w.import_boundary()
++    if w.sources() != sources:
++        raise ValueError("Worker source changed")
++    w.check_hash(w.PREDECESSOR / "completion.json", w.COMPLETION_SHA)
++    w.check_hash(w.PREDECESSOR / "model_final.pt", authentication["model_sha256"])
++    w.check_hash(w.GATE, w.GATE_SHA)
++    settings = w.read(w.PREDECESSOR / "settings.json")
++    if w.digest(settings) != authentication["predecessor_settings_digest"]:
++        raise ValueError("Predecessor settings changed")
++    w.verify_files(settings["sources"])
++    w.verify_files(authentication["helper_sources"])
++    w.verify_pins(w.DEFAULT_SNAPSHOT, authentication["contract"]["source_pins"])
++    if w.runtime_versions() != authentication["contract"]["runtime_versions"]:
++        raise ValueError("Runtime changed")
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\checks.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\checks.py"
+new file mode 100644
+index 0000000..18a51d0
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\checks.py"
+@@ -0,0 +1,224 @@
++"""Pure frozen accounting reuse, actor replay and diagnostic-only trace export."""
++import hashlib
++import json
++from functools import lru_cache
++from types import SimpleNamespace
++import wave_support as w
++
++CONTROL_FIELDS = ("ramp_metering", "vsl", "green_times", "offsets", "inflow_outflow_allocation")
++
++
++@lru_cache(maxsize=1)
++def helpers():
++    inv = w.module("wave_frozen_inventory", w.NUF / "frozen_inventory.py",
++        "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa")
++    ns = dict(np=w.np, plain=w.plain, digest=w.digest, finite=w.finite, same_cost=w.same_cost,
++        residual_budget=w.residual_budget, inventory=inv.inventory, complete_config=inv.complete_config,
++        queue_exposure=w.queue_exposure, observation_schema=w.observation_schema)
++    inv.accounting()
++    state = w.sys.modules["local_frozen_state"]
++    ns.update(ControlAction=state.ControlAction, segment_vsl=state.segment_vsl,
++              NetworkConfig=state.NetworkConfig)
++    w.definitions(w.DEFAULT_SNAPSHOT / "work/sdmpc_externality_ablation_20260923/prox_controller.py",
++        ("Coordinates",), ns, "89a57ae4311a7ec5e27aa97d4c2b7ac78375fddbef8926ce4609cf59c1a9161f")
++    w.definitions(w.REPO / "work/sdmpc_rl_value_audit_20260930/projection_audit.py",
++        ("column", "validate_sequence"), ns,
++        "ab3787b94c8bbc4a1e76a9d04b942159a01c6753b292b6d6f5d9c21a256b86db")
++    ns["sequence_validator"] = lambda: ns["validate_sequence"]
++    w.definitions(w.NUF / "validate.py", ("validate_observation", "physical_config", "validate_boundary", "validate_rows"),
++        ns, "7110993c8dff56ff399f0f843d23d64854a6800f099d8ccc7c4716c34086567f")
++    w.definitions(w.NUF / "local_runtime.py", ("verify_environment",), ns,
++        "1cf91506f5f3d4ec209854b46d5318a06ba27f1983259f859d1d658622bbf4e1")
++    w.import_boundary()
++    return SimpleNamespace(**{k: v for k, v in ns.items() if not k.startswith("__")})
++
++
++def control_context(settings):
++    h = helpers()
++    config = settings["physical_config"]
++    values = config["network"]
++    network = SimpleNamespace(**values)
++    network.effective_green_total = h.NetworkConfig.effective_green_total.fget(network)
++    cfg = SimpleNamespace(network=network,
++        freeway_follower=SimpleNamespace(**config["freeway_follower"]),
++        urban_follower=SimpleNamespace(**config["urban_follower"]))
++    options = settings["physical_options"]
++    if w.digest(options) != settings["contract"]["environment_contract"]["options_sha256"]:
++        raise ValueError("Physical options differ")
++    return cfg, SimpleNamespace(**options), h.ControlAction.uncontrolled(cfg)
++
++
++def validate_controls(trace, settings):
++    h = helpers()
++    cfg, options, previous = control_context(settings)
++    for row in trace:
++        control = h.ControlAction(**row["control"])
++        checked = h.Coordinates(cfg, options, previous).validate(control, discrete=True)
++        if checked["valid"] is not True:
++            raise ValueError("Frozen physical control constraints failed: " + str(checked["violations"]))
++        previous = control
++
++
++def tag(trace):
++    helper = w.module("wave_diagnostic_tagger", w.TAG_PATH, w.TAG_SHA)
++    return helper.tag_diagnostics(trace)
++
++
++def raw_trace(tagged):
++    if isinstance(tagged, dict):
++        if "nonfinite_float" in tagged:
++            if tagged != {"nonfinite_float": "+inf"}:
++                raise ValueError("Unknown diagnostic tag")
++            return float("inf")
++        return {k: raw_trace(v) for k, v in tagged.items()}
++    if isinstance(tagged, list):
++        return [raw_trace(v) for v in tagged]
++    return tagged
++
++
++def validate_settings(settings, authentication, sources, scenario):
++    expected = dict(format=w.FORMAT, scenario=scenario, behavior="frozen_shared_actor",
++        mode="training_wave", training_seed=7301+w.SCENARIOS.index(scenario),
++        profile_sha256=authentication["profiles"][scenario], evaluation=False, exploration=False,
++        policy_improvement_claim=False, model_sha256=w.MODEL_SHA, authentication=authentication,
++        sources=sources, contract=authentication["contract"], capacity=6000.,
++        cpu_mask=w.MASKS[w.SCENARIOS.index(scenario)], reward_divisor=100., gamma=1.,
++        warmup_steps=5, controlled_steps=75, total_seconds=14400, critic_continuation="carry",
++        updates_per_interval=0, threads=1)
++    if any(settings.get(k) != v for k, v in expected.items()):
++        raise ValueError("Wave settings/profile/model/contract mismatch")
++    rid = settings["run_id"]
++    if len(rid) != 32 or any(c not in "0123456789abcdef" for c in rid):
++        raise ValueError("Invalid run identity")
++    w.finite(settings["warmup_ttt"], "warmup TTT")
++    helpers().physical_config(settings)
++    control_context(settings)
++    canonical = next(r for r in settings["contract"]["environment_contract"]["scenarios"]
++                     if r["scenario"] == scenario)
++    if settings["profile_sha256"] == canonical["profile_sha256"]:
++        raise ValueError("Canonical evaluation data forbidden")
++
++
++def validate_rows(trace, transitions, settings, schema, actor, complete=True):
++    tag(trace)  # Only the pinned diagnostic paths may contain +Inf.
++    w.finite_tree(transitions)
++    total = helpers().validate_rows(trace, transitions, settings, schema, settings["capacity"], complete)
++    validate_controls(trace, settings)
++    for row, (obs, action, reward, nxt, done) in zip(trace, transitions):
++        if any(not isinstance(a, w.np.ndarray) or a.dtype != w.np.float32 for a in (obs, action, nxt)):
++            raise ValueError("Experience must preserve native float32 arrays")
++        w.np.testing.assert_array_equal(actor.act(obs), action)
++        if (row["model_sha256"] != settings["model_sha256"] or row["mode"] != "training_wave" or
++                row["evaluation"] is not False or row["exploration"] is not False or
++                row["selection_source"] not in ("lower_solution", "reference_fallback") or
++                len(row["B_requested"]) != 1 or len(row["candidates"]) != 1 or
++                "H3_TTT_guard" in row["fallback_reasons"]):
++            raise ValueError("Frozen actor/physical guard/one-candidate contract differs")
++        for key in ("interval_ttt", "total_ttt", "freeway_ttt", "urban_ttt", "inventory",
++                    "selected_TTT", "reference_TTT", "plant_wall_seconds", "plant_cpu_seconds"):
++            w.finite(row[key], key)
++        check = row["execution_check"]
++        for left, right in ((row["B_executed"], check["budget"]),
++                            (row["G_achieved"], check["achieved"]),
++                            (row["selected_identity"]["point"], check["point"])):
++            w.np.testing.assert_array_equal(left, right)
++        w.same_cost(row["selected_TTT"], check["ttt"], "selected prediction")
++        if w.np.any(w.np.asarray(check["achieved"]) > w.np.asarray(check["budget"])):
++            raise ValueError("Executed upper budget violated")
++        w.np.testing.assert_array_equal(check["band_excess"], [0., 0.])
++        if not 0 <= row["B_executed"][1] <= settings["capacity"]:
++            raise ValueError("Executed NUF outside capacity")
++        control = row["control"]
++        for key in CONTROL_FIELDS:
++            w.finite_tree(control[key])
++        w.np.testing.assert_array_equal([control["N_P_star"], control["N_UF_star"]], row["B_executed"])
++        for key, values in row["queue_state"].items():
++            if values != row["plant_state"][key]:
++                raise ValueError("Queue state/physical state mismatch")
++    if trace:
++        w.queue_exposure(trace)
++    return total
++
++
++def validate_checkpoint(ck, settings, actor):
++    if (ck["format"] != w.FORMAT or ck["settings"] != settings or ck["model_sha256"] != w.MODEL_SHA or
++            ck["schema"] != settings["contract"]["observation_schema"]):
++        raise ValueError("Checkpoint identity/schema differs")
++    env = ck["environment"]
++    expected_contract = dict(settings["contract"]["environment_contract"]["coordinator"],
++        cfg=settings["physical_config"], options=settings["physical_options"],
++        observation=settings["contract"]["observation_schema"]["normalization"],
++        source_snapshot=settings["authentication"]["physical_snapshot"])
++    if env["contract"] != expected_contract or ck["observation"].dtype != w.np.float32:
++        raise ValueError("Checkpoint environment/normalization/options contract differs")
++    n = len(ck["trace"])
++    if (env["k"] != n+5 or env["profile_hash"] != settings["profile_sha256"] or
++            env["sim"].state.time_sec != (n+5)*180):
++        raise ValueError("Checkpoint physical clock/profile boundary differs")
++    w.finite_tree(w.plain(env["sim"].state))
++    w.finite_tree(w.plain(env["previous"]))
++    for key in ("dual", "last_requested", "last_executed", "last_slack", "last_budget",
++                "reference_timing", "observation_timing"):
++        w.finite_tree(env[key])
++    total = validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], actor, complete=False)
++    w.same_cost(env["sim"].total_ttt, total, "checkpoint cumulative TTT")
++    helpers().validate_boundary(ck, settings)
++    if n:
++        w.np.testing.assert_array_equal(ck["observation"], ck["transitions"][-1][3])
++    return ck
++
++
++def audit_receipt(output, trace, payload):
++    tagged, changes = tag(trace)
++    w.finite_tree(payload)
++    record, _ = w.checkpoint_record(output)
++    return dict(format=w.FORMAT+"-diagnostic-audit", run_id=payload["settings"]["run_id"],
++        helper_sha256=w.TAG_SHA, changed_paths=changes, checkpoint=record,
++        trace_sha256=w.file_hash(output / "trace.json"),
++        raw_trace_digest=hashlib.sha256(json.dumps(trace, sort_keys=True, allow_nan=True).encode()).hexdigest(),
++        experience_sha256=w.file_hash(output / "experience.pt"), experience_digest=w.digest(payload),
++        settings_digest=w.digest(payload["settings"]), core_experience_unchanged=True,
++        convergence_claim=False, physical_or_training_change=False)
++
++
++def summarize(trace, settings, timing):
++    requests = w.np.array([r["B_requested"][0] for r in trace])
++    executed = w.np.array([r["B_executed"] for r in trace])
++    actions = w.np.array([r["action_requested"] for r in trace], dtype=w.np.float32)
++    anchor0 = w.np.array(trace[0]["action_anchor"])
++    inventories = [r["inventory"] for r in trace]
++    fallback = [i for i, r in enumerate(trace) if r["selection_source"] == "reference_fallback"]
++    closures = [i for i, r in enumerate(trace) if all(k in r["control"]["ramp_metering"] and
++        r["control"]["ramp_metering"][k] <= 1e-6 for k in ("R_D_W", "R_D_E"))]
++    times = {}
++    for part in ("actor", "decision", "plant"):
++        for kind in ("wall", "cpu"):
++            values = w.np.array([r[f"{part}_{kind}_seconds"] for r in trace])
++            times[f"{part}_{kind}"] = dict(sum_seconds=float(values.sum()),
++                p50_seconds=float(w.np.median(values)), p95_seconds=float(w.np.quantile(values, .95)),
++                max_seconds=float(values.max()))
++    zero = int((requests[:, 1] == 0).sum())
++    return dict(format=w.FORMAT, run_id=settings["run_id"], scenario=settings["scenario"],
++        mode="training_wave", training_seed=settings["training_seed"], profile_sha256=settings["profile_sha256"],
++        model_sha256=settings["model_sha256"], evaluation=False, exploration=False, policy_improvement_claim=False,
++        critic_continuation="carry", q_present=False, training_performed=False, control_steps=len(trace),
++        simulation_seconds=trace[-1]["time_sec"], warmup_ttt=settings["warmup_ttt"], ttt=trace[-1]["total_ttt"],
++        freeway_ttt=trace[-1]["freeway_ttt"], urban_ttt=trace[-1]["urban_ttt"],
++        interval_ttt=[r["interval_ttt"] for r in trace], inventories=inventories,
++        terminal_inventory=inventories[-1], peak_inventory=max(inventories), zero_nuf_requests=zero,
++        nuf_cap_requests=int((requests[:, 1] == settings["capacity"]).sum()),
++        action_exact_saturation_count=(abs(actions) == w.np.array([.2, .1], dtype=w.np.float32)).sum(axis=0).tolist(),
++        action_99pct_saturation_count=(abs(actions) >= .99*w.np.array([.2, .1], dtype=w.np.float32)).sum(axis=0).tolist(),
++        projected_request_unique=len({tuple(r) for r in requests}),
++        executed_budget_unique=len({tuple(r) for r in executed}),
++        physical_control_unique=len({w.digest({k: r["control"][k] for k in CONTROL_FIELDS}) for r in trace}),
++        requested_drift_max_abs=abs(requests-anchor0).max(axis=0).tolist(),
++        executed_drift_max_abs=abs(executed-anchor0).max(axis=0).tolist(),
++        requested_min=requests.min(axis=0).tolist(), requested_max=requests.max(axis=0).tolist(),
++        fallback_count=len(fallback), fallback_steps=fallback, d_ramp_closure_steps=closures,
++        pfo_calls=sum(r["pfo_calls"] for r in trace), pfo_recovery_count=sum(r["reference_recovery"] for r in trace),
++        lower_candidate_solves=sum(r["lower_candidate_count"] for r in trace),
++        queue_exposure=w.queue_exposure(trace), timing=times, worker_sessions=timing,
++        health=dict(zero_nuf_requests_le_5=zero <= 5, terminal_inventory_le_550=inventories[-1] <= 550),
++        timing_note="Actor inference is one component of full decision latency. No wave elapsed wall estimate.",
++        comparison_note="New training profiles have no paired carry; no traffic improvement comparison.")
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\conftest.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\conftest.py"
+new file mode 100644
+index 0000000..696435d
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\conftest.py"
+@@ -0,0 +1,180 @@
++"""Synthetic ledger environment only; actual boot/reset/step is forbidden here."""
++import copy
++from dataclasses import dataclass, field, asdict
++from types import SimpleNamespace as NS
++import pytest
++import wave_support as w
++import worker
++import readout
++import checks
++from actor import authenticate
++
++HELPERS = checks.helpers()
++ACTOR, AUTH = authenticate()
++SCHEMA = AUTH["contract"]["observation_schema"]
++CONFIG = dict(network=dict(total_ramp_capacity=6000., freeway_links=["a"],
++    freeway_segments_per_link=8, freeway_segment_length_km=.5, freeway_lanes=2,
++    freeway_buffer_segments=1, off_ramp_storage_link={"r": "off"},
++    urban_link_storage_veh={"urban": 50., "off": 30.}, ramps=["r"],
++    ramp_to_freeway={"r": "a"}, ramp_merge_segment_index={"r": 0}, ramp_capacity_veh_h={"r": 6000.},
++    signals=["A"], cycle_length=120., lost_time=8., green_min=20., green_max=92.),
++    freeway_follower=dict(vsl_set=[60., 80., 100.], max_vsl_step=20.),
++    urban_follower=dict(max_offset_step=15.))
++OPTIONS = dict(fd_metering_veh_h=10., fd_green_sec=.5, fd_offset_sec=.5)
++
++
++@dataclass
++class State:
++    time_sec: float = 900.
++    freeway_density: dict = field(default_factory=lambda: {"a": [20.]})
++    freeway_speed: dict = field(default_factory=lambda: {"a": [50.]})
++    freeway_flow: dict = field(default_factory=lambda: {"a": [2000.]})
++    freeway_effective_lanes: dict = field(default_factory=lambda: {"a": [2.]})
++    ramp_queue: dict = field(default_factory=lambda: {"r": 3.})
++    mainline_origin_queue: dict = field(default_factory=lambda: {"a": 4.})
++    urban_queue: dict = field(default_factory=lambda: {"legacy": 999.})
++    boundary_queue: dict = field(default_factory=lambda: {"legacy": 999.})
++    urban_movement_queue: dict = field(default_factory=lambda: {"m": 5.})
++    urban_link_storage: dict = field(default_factory=lambda: {"urban": 40., "off": 23.})
++    freeway_buffer_up_density: dict = field(default_factory=lambda: {"a": [6.]})
++    freeway_buffer_down_density: dict = field(default_factory=lambda: {"a": [8.]})
++
++
++class FakeEnv:
++    resets = 0
++    restores = 0
++    steps = 0
++    contract_value = None
++
++    def __init__(self, rt, scenario, training_seed, guard_mode):
++        assert guard_mode == "physical" and training_seed == 7301+w.SCENARIOS.index(scenario)
++        self.profile_hash = AUTH["profiles"][scenario]
++
++    def observe(self):
++        obs = w.np.zeros(2367, dtype=w.np.float32)
++        if self.k == 80:
++            return obs
++        values = {"state/time_sec": self.k/80., "memory/remaining/0": (80-self.k)/75.}
++        for key, budget in (("action_anchor", self.controller.action_anchor),
++                            ("previous_requested", self.last_requested), ("previous_executed", self.last_executed)):
++            values.update({f"memory/{key}/{i}": v for i, v in enumerate(budget/[1000., 10000.])})
++        for name, value in values.items():
++            obs[SCHEMA["names"].index(name)] = value
++        return obs
++
++    def reset(self):
++        type(self).resets += 1
++        self.k, self.warmup_ttt = 5, 5.
++        self.sim = NS(total_ttt=5., freeway_ttt=5., urban_ttt=0., state=State(), cfg=copy.deepcopy(CONFIG))
++        self.controller = NS(action_anchor=w.np.array([-10., 5000.]))
++        self.last_requested = w.np.zeros(2)
++        self.last_executed = w.np.zeros(2)
++        self.previous = dict(ramp_metering={"r": 100.}, vsl={"a": 100., **{f"a__seg{i}": 100. for i in range(8)}},
++            green_times={"A_p1": 56., "A_p2": 56.}, offsets={"A": 0.}, inflow_outflow_allocation={},
++            N_P_star=-10., N_UF_star=5000.)
++        return self.observe()
++
++    def step(self, action, mode, actor_wall, actor_cpu_seconds):
++        assert mode == "rl"
++        type(self).steps += 1
++        anchor = self.controller.action_anchor.copy()
++        raw, request = w.residual_budget(action, anchor, 6000.)
++        i = self.k-5
++        self.k += 1
++        self.sim.total_ttt += 1.
++        self.sim.freeway_ttt += 1.
++        self.sim.state.time_sec += 180.
++        self.controller.action_anchor = request.copy()
++        self.last_requested, self.last_executed = request.copy(), request.copy()
++        self.previous.update(N_P_star=request[0], N_UF_star=request[1])
++        state = asdict(self.sim.state)
++        queues = {k: state[k] for k in ("ramp_queue", "mainline_origin_queue", "boundary_queue", "urban_movement_queue")}
++        exposure = dict(method="interval_endpoint_sampled", exact_substep_exposure=False,
++            threshold_fraction=.9, interval_seconds=180., duration_units="s", capacity_units="veh")
++        for kind in ("ramp_queue", "boundary_queue"):
++            exposure[kind] = {k: dict(queue_veh=v, capacity_veh=180., near_capacity_seconds=180.*(v>=162.))
++                              for k, v in queues[kind].items()}
++        row = dict(action_anchor=anchor, action_requested=action, B_requested=[request], B_executed=request,
++            B_raw=raw, G_achieved=request, selection_source="lower_solution", fallback_reasons=[],
++            reference_source="pfo_initial" if i == 0 else "previous", reference_recovery=False,
++            guard_mode="physical", h3_guard_enabled=False,
++            execution_check=dict(physical_control_valid=True, budget_feasible=True, budget=request,
++                                 achieved=request, point=[1.], ttt=3., band_excess=[0., 0.]),
++            selected_identity=dict(point=[1.]), selected_TTT=3., reference_TTT=4.,
++            lower_candidate_count=1, pfo_calls=int(i == 0), step=i+5, control_step=i,
++            time_sec=self.sim.state.time_sec, terminated=self.k == 80, truncated=False,
++            interval_ttt=1., total_ttt=self.sim.total_ttt, freeway_ttt=self.sim.total_ttt, urban_ttt=0.,
++            inventory=63., plant_state=state, control=copy.deepcopy(self.previous), queue_state=queues,
++            queue_near_capacity_estimate=exposure,
++            candidates=[dict(stationarity=float("inf"), rows=[dict(primal_stationarity=float("inf"))])])
++        for part in ("forecast", "observation", "pfo", "reference", "lower", "guard", "plant"):
++            row[part+"_wall_seconds"] = row[part+"_cpu_seconds"] = .1
++        row.update(actor_wall_seconds=actor_wall, actor_cpu_seconds=actor_cpu_seconds,
++                   decision_wall_seconds=.6+actor_wall, decision_cpu_seconds=.6+actor_cpu_seconds)
++        return self.observe(), -.01, self.k == 80, row
++
++    def checkpoint(self):
++        return dict(k=self.k, profile_hash=self.profile_hash, sim=copy.deepcopy(self.sim),
++            contract=copy.deepcopy(self.contract_value),
++            anchor=self.controller.action_anchor.copy(), warmup_ttt=self.warmup_ttt,
++            previous=copy.deepcopy(self.previous), last_requested=self.last_requested.copy(),
++            last_executed=self.last_executed.copy(), last_budget=self.last_executed.copy() if self.k>5 else None,
++            dual=w.np.zeros((2, 2)), last_slack=w.np.zeros(2), reference_timing={}, observation_timing={},
++            prepared=dict(budget=self.controller.action_anchor.copy(),
++                          action_anchor=self.controller.action_anchor.copy()) if self.k<80 else None)
++
++    def restore(self, ck):
++        type(self).restores += 1
++        self.k, self.sim, self.warmup_ttt = ck["k"], copy.deepcopy(ck["sim"]), ck["warmup_ttt"]
++        self.controller = NS(action_anchor=ck["anchor"].copy())
++        self.previous = copy.deepcopy(ck["previous"])
++        self.last_requested, self.last_executed = ck["last_requested"].copy(), ck["last_executed"].copy()
++        return self.observe()
++
++    def close(self):
++        pass
++
++
++@pytest.fixture(autouse=True)
++def forbid_real(monkeypatch):
++    def forbidden(*args, **kwargs):
++        pytest.fail("Real environment execution forbidden in synthetic tests")
++    monkeypatch.setattr(w, "boot", forbidden)
++    monkeypatch.setattr(worker, "BudgetEnv", forbidden)
++
++
++@pytest.fixture
++def synthetic(monkeypatch, tmp_path):
++    auth = copy.deepcopy(AUTH)
++    auth["contract"]["environment_contract"]["config_sha256"] = w.digest(CONFIG)
++    auth["contract"]["environment_contract"]["options_sha256"] = w.digest(OPTIONS)
++    root = tmp_path / "repo"
++    root.mkdir()
++    monkeypatch.setattr(w, "REPO", root)
++    monkeypatch.setattr(w, "GOAL", root / "goal")
++    monkeypatch.setattr(w, "WAVE", root / "goal/wave")
++    source = {"synthetic": "unchanged"}
++    monkeypatch.setattr(w, "sources", lambda: source.copy())
++    monkeypatch.setattr(w, "import_boundary", lambda **kwargs: None)
++    monkeypatch.setattr(w, "process_identity", lambda: dict(pid=123, created=456, parent_pid=12,
++                                                           command=["synthetic"], executable="synthetic"))
++    def verify(authentication, sources):
++        if authentication != auth or sources != source:
++            raise ValueError("Synthetic source/model mutation")
++    for mod in (worker, readout):
++        monkeypatch.setattr(mod, "authenticate", lambda: (ACTOR, copy.deepcopy(auth)))
++        monkeypatch.setattr(mod, "verify_live", verify)
++    cfg = NS(network=NS(total_ramp_capacity=6000.))
++    monkeypatch.setattr(w, "boot", lambda *args: dict(cfg=cfg, options=OPTIONS,
++        rc=NS(to_plain_dict=lambda value: copy.deepcopy(CONFIG if value is cfg else OPTIONS))))
++    monkeypatch.setattr(w, "observation_schema", lambda env: copy.deepcopy(SCHEMA))
++    monkeypatch.setattr(HELPERS, "verify_environment", lambda *args, **kwargs: None)
++    monkeypatch.setattr(worker, "BudgetEnv", FakeEnv)
++    FakeEnv.contract_value = dict(auth["contract"]["environment_contract"]["coordinator"],
++        cfg=CONFIG, options=OPTIONS, observation=SCHEMA["normalization"], source_snapshot=auth["physical_snapshot"])
++    FakeEnv.resets = FakeEnv.steps = FakeEnv.restores = 0
++    return NS(auth=auth, actor=ACTOR, source=source, patch=monkeypatch)
++
++
++def request(scenario=None, resume=False, limit=None):
++    return NS(scenario=scenario or w.SCENARIOS[0], resume=resume, max_new_steps=limit)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\parity.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\parity.py"
+new file mode 100644
+index 0000000..4f38cf4
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\parity.py"
+@@ -0,0 +1,106 @@
++"""Isolated read-only parity with the original Actor on authenticated saved observations."""
++import hashlib
++import json
++from pathlib import Path
++import subprocess
++import sys
++
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++
++
++def observations(settings, np, torch):
++    arrays = []
++    for episode in settings["data"]["episodes"]:
++        payload = torch.load(REPO / episode["path"] / "experience.pt", map_location="cpu", weights_only=False)
++        for obs, _, _, nxt, _ in payload["transitions"]:
++            arrays.extend((obs, nxt))
++    return np.stack(arrays)
++
++
++def original():
++    sys.path.insert(0, str(REPO / "work/sdmpc_rl_return_init_20260930"))
++    from runtime import OUTPUT, read, sha, verify, np, torch
++    from learner import Actor
++    settings = read(OUTPUT / "settings.json")
++    verify(settings["sources"])
++    verify(settings["data"]["files"])
++    if sha(OUTPUT / "model_final.pt") != "7723bad496cd2e2b5f9a8f52b74ac8f65f021ccff42635d396e9f3b248b23904":
++        raise ValueError("Original actor checkpoint changed")
++    state = torch.load(OUTPUT / "model_final.pt", map_location="cpu", weights_only=False)
++    actor = Actor()
++    actor.load_state_dict(state["learner"]["models"]["actor"], strict=True)
++    actor.eval().requires_grad_(False)
++    obs = observations(settings, np, torch)
++    with torch.no_grad():
++        actions = np.stack([actor(torch.from_numpy(row)).numpy() for row in obs])
++    print(json.dumps(dict(observations_sha256=hashlib.sha256(obs.tobytes()).hexdigest(),
++                         actions=actions.tolist(), original_runtime=sys.modules["runtime"].__file__)))
++
++
++def physical_import():
++    import wave_support as w
++    from actor import authenticate
++    from checks import helpers, validate_controls
++    from budget_env import BudgetEnv
++    _, auth = authenticate()
++    rt = w.boot(w.DEFAULT_SNAPSHOT, w.MASKS[0])
++    w.import_boundary(physical=True)
++    for i, scenario in enumerate(w.SCENARIOS):
++        env = BudgetEnv(rt, scenario=scenario, training_seed=7301+i, guard_mode="physical")
++        helpers().verify_environment(env, rt, auth["contract"])
++        if env.profile_hash != auth["profiles"][scenario]:
++            raise ValueError("Original BudgetEnv profile differs")
++    old_settings = w.read(w.PREDECESSOR / "settings.json")
++    control_rows = 0
++    for episode in old_settings["data"]["episodes"]:
++        folder = REPO / episode["path"]
++        settings = w.read(folder / "settings.json")
++        settings["physical_options"] = w.plain(rt["rc"].to_plain_dict(rt["options"]))
++        trace = w.read(folder / "trace.json")
++        validate_controls(trace, settings)
++        control_rows += len(trace)
++    print(json.dumps(dict(physical_runtime=sys.modules["runtime"].__file__, profiles=auth["profiles"],
++        forbidden_modules_present=sorted({"learner", "data", "td3", "train_round"}.intersection(sys.modules)),
++        frozen_control_rows_validated=control_rows, resets=0, physical_steps=0, solves=0)))
++
++
++def child(flag):
++    result = subprocess.run([sys.executable, "-B", str(HERE / "parity.py"), flag],
++        cwd=REPO, capture_output=True, text=True, encoding="utf-8",
++        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    if result.returncode:
++        raise ValueError("Read-only parity child failed: " + result.stderr)
++    return json.loads(result.stdout)
++
++
++def verify():
++    import wave_support as w
++    from actor import authenticate, verify_live
++    from checks import helpers
++    actor, auth = authenticate()
++    source = w.sources()
++    helpers()
++    expected = child("--original")
++    obs = observations(w.read(w.PREDECESSOR / "settings.json"), w.np, w.torch)
++    actions = w.np.stack([actor.act(row) for row in obs])
++    w.np.testing.assert_array_equal(actions.view(w.np.uint32),
++        w.np.array(expected["actions"], dtype=w.np.float32).view(w.np.uint32))
++    if hashlib.sha256(obs.tobytes()).hexdigest() != expected["observations_sha256"]:
++        raise ValueError("Parity observations differ")
++    boundary = child("--physical-import")
++    verify_live(auth, source)
++    return dict(bit_identical=True, observations=len(obs), observation_shape=list(obs.shape),
++        observations_sha256=expected["observations_sha256"], actions_sha256=hashlib.sha256(actions.tobytes()).hexdigest(),
++        model_sha256=w.MODEL_SHA, predecessor_completion_sha256=w.COMPLETION_SHA,
++        original_runtime=expected["original_runtime"], physical_import=boundary,
++        source_sha256=source, training_updates=0, physical_steps=0)
++
++
++if __name__ == "__main__":
++    if sys.argv[1:] == ["--original"]:
++        original()
++    elif sys.argv[1:] == ["--physical-import"]:
++        physical_import()
++    else:
++        print(json.dumps(verify(), indent=2))
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\readout.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\readout.py"
+new file mode 100644
+index 0000000..14c0eb4
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\readout.py"
+@@ -0,0 +1,74 @@
++"""Read-only acceptance of exactly five completed slots; no physical checkpoint load."""
++import json
++import wave_support as w
++from actor import authenticate, verify_live
++from checks import validate_settings, validate_rows, raw_trace, tag, audit_receipt, summarize
++from worker import check_operations
++
++
++def load_completed(folder, scenario, actor, authentication, sources):
++    if folder.resolve() != (w.WAVE / scenario).resolve():
++        raise ValueError("Wrong completed slot")
++    done = w.read(folder / "completion.json")
++    settings = w.read(folder / "settings.json")
++    validate_settings(settings, authentication, sources, scenario)
++    if (done["format"] != w.FORMAT or done["status"] != "completed" or done["settings"] != settings or
++            done["model_sha256"] != w.MODEL_SHA):
++        raise ValueError("Completion identity differs")
++    names = {"settings.json", "latest.json", "trace.json", "experience.pt", "observation_schema.json",
++             "diagnostic-audit.json", "timing.json", "summary.json"}
++    if set(done["outputs_sha256"]) != names:
++        raise ValueError("Incomplete output manifest")
++    for name, expected in done["outputs_sha256"].items():
++        w.check_hash(folder / name, expected)
++    record, _ = w.checkpoint_record(folder)  # Hash bytes only; no simulator unpickle/boot.
++    if (record != done["checkpoint"] or record["control_steps"] != 75 or
++            record["settings_digest"] != w.digest(settings)):
++        raise ValueError("Completed checkpoint binding differs")
++    check_operations(folder, 75)
++    schema = w.read(folder / "observation_schema.json")
++    if schema != settings["contract"]["observation_schema"]:
++        raise ValueError("Observation schema differs")
++    payload = w.torch.load(folder / "experience.pt", map_location="cpu", weights_only=False)
++    if payload["format"] != w.FORMAT or payload["settings"] != settings:
++        raise ValueError("Experience identity differs")
++    tagged = w.read(folder / "trace.json")
++    trace = raw_trace(tagged)
++    if tag(trace)[0] != tagged or audit_receipt(folder, trace, payload) != w.read(folder / "diagnostic-audit.json"):
++        raise ValueError("Diagnostic receipt/experience binding differs")
++    validate_rows(trace, payload["transitions"], settings, schema, actor)
++    timing = w.session_timing(folder, settings, record["session_ids"])
++    if timing != w.read(folder / "timing.json") or not timing["session_ids"]:
++        raise ValueError("Worker timing differs")
++    summary = summarize(trace, settings, timing)
++    if summary != w.read(folder / "summary.json"):
++        raise ValueError("Summary reconciliation differs")
++    return summary
++
++
++def validate_wave():
++    actor, authentication = authenticate()
++    sources = w.sources()
++    completed = {p.parent.resolve() for p in w.WAVE.rglob("completion.json")}
++    expected = {(w.WAVE / s).resolve() for s in w.SCENARIOS}
++    if completed != expected:
++        raise ValueError("Need exactly five unique completed scenario slots, no missing/extra/duplicate trajectories")
++    rows = [load_completed(w.WAVE / s, s, actor, authentication, sources) for s in w.SCENARIOS]
++    if len({r["run_id"] for r in rows}) != 5 or {r["model_sha256"] for r in rows} != {w.MODEL_SHA}:
++        raise ValueError("Duplicate runs or mixed policy")
++    verify_live(authentication, sources)
++    return dict(format=w.FORMAT, status="completed", integrity_pass=True,
++        all_health_gates_pass=all(all(r["health"].values()) for r in rows), scenarios=rows,
++        model_sha256=w.MODEL_SHA, evaluation=False, exploration=False, policy_improvement_claim=False,
++        critic_continuation="carry", wave_elapsed_wall_seconds=None,
++        timing_note="Parent owns dispatch timestamps and actual worker drain; worker seconds are not wave wall time.",
++        health_note="Each zero-NUF requests <=5 and terminal inventory <=550. Failure is diagnostic; preserve results.",
++        next_action="Parent reviews actual readout and decides Task3; no automatic fit, retry or next wave.")
++
++
++def main():
++    print(json.dumps(validate_wave(), indent=2, allow_nan=False))
++
++
++if __name__ == "__main__":
++    main()
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\run_tests.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\run_tests.py"
+new file mode 100644
+index 0000000..a0a8f04
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\run_tests.py"
+@@ -0,0 +1,51 @@
++"""Scoped synthetic tests plus read-only parity/authentication and preservation hashes."""
++import os
++import sys
++import uuid
++import xml.etree.ElementTree as ET
++import wave_support as w
++import parity
++
++
++def preservation():
++    settings = w.read(w.PREDECESSOR / "settings.json")
++    files = {w.REPO / p for p in settings["sources"]} | {w.REPO / p for p in settings["data"]["files"]}
++    files.update(p for p in w.PREDECESSOR.rglob("*") if p.is_file())
++    for directory in (w.OLD, w.NUF, w.REPO / "work/sdmpc_rl_return_init_20260930"):
++        files.update(directory.glob("*.py"))
++    manifest = w.DEFAULT_SNAPSHOT.parent / "manifest.json"
++    files.add(manifest)
++    files.update(w.DEFAULT_SNAPSHOT.parent / r["snapshot_relative"] for r in w.read(manifest)["files"])
++    files.add(w.GATE)
++    return {p.relative_to(w.REPO).as_posix(): w.file_hash(p) for p in sorted(files)}
++
++
++def main():
++    os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
++    os.environ["PYTHONUTF8"] = "1"
++    import pytest
++    run_id = uuid.uuid4().hex[:8]
++    output = w.HERE / "test-evidence" / run_id
++    (w.HERE / "_t").mkdir(exist_ok=True)
++    before, source = preservation(), w.sources()
++    checked = parity.verify()
++    w.save(output / "parity-authentication.json", checked)
++    code = pytest.main(["-q", "--tb=short", "-p", "no:cacheprovider", "--confcutdir="+str(w.HERE),
++        "--basetemp="+str(w.HERE / "_t" / run_id), "--junitxml="+str(output / "tests.xml"),
++        str(w.HERE / "test_wave.py"), *sys.argv[1:]])
++    if preservation() != before or w.sources() != source:
++        raise ValueError("Preserved inputs or tested source changed")
++    suite = ET.parse(output / "tests.xml").getroot().find("testsuite")
++    w.save(output / "evidence.json", dict(exit_code=code, source_sha256=source,
++        command=[sys.executable, "-B", str(w.HERE / "run_tests.py"), *sys.argv[1:]],
++        test_summary=suite.attrib, tests_sha256=w.file_hash(output / "tests.xml"),
++        parity_sha256=w.file_hash(output / "parity-authentication.json"),
++        preserved_before_after_sha256=before, preserved_file_count=len(before),
++        actual_physical_steps=0, actual_optimization_updates=0,
++        actual_wave_dispatched=False, runtime_versions=w.runtime_versions()))
++    print("EVIDENCE", output, flush=True)
++    return code
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_wave.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_wave.py"
+new file mode 100644
+index 0000000..587997e
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_wave.py"
+@@ -0,0 +1,381 @@
++import copy
++import json
++import sys
++from types import SimpleNamespace as NS
++import pytest
++import wave_support as w
++import actor as adapter
++import checks
++import worker
++import readout
++from conftest import ACTOR, AUTH, FakeEnv, request
++
++
++def retained():
++    output = w.WAVE / w.SCENARIOS[0]
++    record, path = w.checkpoint_record(output)
++    return output, record, w.torch.load(path, map_location="cpu", weights_only=False)
++
++
++@pytest.fixture
++def candidate():
++    return w.torch.load(w.PREDECESSOR / "model_final.pt", map_location="cpu", weights_only=False)
++
++
++@pytest.mark.parametrize("bad", ["missing", "extra", "shape", "dtype", "bounds", "nan", "inf"])
++def test_actor_strict_complete_weights(candidate, bad):
++    state = candidate["learner"]["models"]["actor"]
++    if bad == "missing":
++        del state["net.4.bias"]
++    elif bad == "extra":
++        state["extra"] = w.torch.zeros(1)
++    elif bad == "shape":
++        state["net.0.weight"] = state["net.0.weight"][:, :-1]
++    elif bad == "dtype":
++        state["bounds"] = state["bounds"].double()
++    elif bad == "bounds":
++        state["bounds"][0] = .3
++    else:
++        state["net.0.bias"][0] = float(bad)
++    with pytest.raises(ValueError):
++        adapter.FrozenActor(state)
++
++
++@pytest.mark.parametrize("bad", ["phase", "phi", "critic", "actor", "polyak", "spec", "continuation", "gate", "candidate"])
++def test_candidate_admission_failures(candidate, bad):
++    settings = copy.deepcopy(candidate["settings"])
++    done = w.read(w.PREDECESSOR / "completion.json")
++    learner = candidate["learner"]
++    if bad == "phase":
++        learner["phase"] = "actor"
++    elif bad in adapter.COUNTS:
++        learner["counts"][bad] -= 1
++    elif bad == "spec":
++        learner["spec"]["gamma"] = .99
++    elif bad == "continuation":
++        learner["critic_continuation"] = "new_actor"
++    elif bad == "gate":
++        learner["metrics"]["gate"]["final"]["pooled"] = 1e10
++    else:
++        candidate["candidate"] = False
++    with pytest.raises(ValueError):
++        adapter.validate_candidate(candidate, settings, done)
++
++
++def test_native_actor_no_rng_or_grad(candidate):
++    before = w.torch.get_rng_state().clone()
++    actor = adapter.FrozenActor(candidate["learner"]["models"]["actor"])
++    assert w.torch.equal(before, w.torch.get_rng_state())
++    assert not actor.training and not any(p.requires_grad for p in actor.parameters())
++    out = actor.act(w.np.zeros(2367, dtype=w.np.float32))
++    assert out.dtype == w.np.float32 and out.shape == (2,)
++    with pytest.raises(ValueError):
++        actor.act(w.np.zeros(2367, dtype=w.np.float64))
++
++
++def test_import_boundary(monkeypatch):
++    checks.helpers()
++    w.import_boundary()
++    for name in ("learner", "data", "td3", "train_round", "local_runtime"):
++        with monkeypatch.context() as patch:
++            patch.setitem(sys.modules, name, NS())
++            with pytest.raises(ValueError, match="Learner"):
++                w.import_boundary()
++    monkeypatch.setitem(sys.modules, "runtime", NS(__file__="wrong/runtime.py"))
++    with pytest.raises(ValueError, match="collision"):
++        w.import_boundary()
++
++
++@pytest.mark.parametrize("kind", ["model", "source", "settings", "completion"])
++def test_auth_hash_fail_closed(tmp_path, monkeypatch, kind):
++    path = tmp_path / (kind+".json")
++    w.save(path, {"value": 1})
++    original = w.file_hash(path)
++    w.save(path, {"value": 2})
++    with pytest.raises(ValueError, match="changed"):
++        w.check_hash(path, original)
++    if kind == "completion":
++        monkeypatch.setattr(w, "PREDECESSOR", tmp_path)
++        with pytest.raises(ValueError):
++            adapter.authenticate()
++
++
++@pytest.mark.parametrize("level", ["REPO", "GOAL", "WAVE", "slot"])
++def test_stop_all_levels(synthetic, level):
++    root = w.WAVE / w.SCENARIOS[0] if level == "slot" else getattr(w, level)
++    w.save(root / "STOP", {"keep": True})
++    before = w.file_hash(root / "STOP")
++    with pytest.raises(w.Stopped):
++        worker.run(request())
++    assert FakeEnv.resets == FakeEnv.steps == 0
++    assert w.file_hash(root / "STOP") == before
++
++
++def test_kernel_duplicate_and_prefix_resume(synthetic):
++    output = w.WAVE / w.SCENARIOS[0]
++    with w.exclusive_run(output):
++        with pytest.raises(OSError):
++            worker.run(request())
++    assert worker.run(request(limit=1)) == "checkpointed"
++    folder, record, ck = retained()
++    first = ck["transitions"][0]
++    first_hash = record["sha256"]
++    with pytest.raises(FileExistsError):
++        worker.run(request())
++    assert worker.run(request(resume=True, limit=1)) == "checkpointed"
++    _, _, resumed = retained()
++    assert FakeEnv.resets == 1 and FakeEnv.restores == 1 and FakeEnv.steps == 2
++    assert w.file_hash(folder / record["path"]) == first_hash
++    for actual, expected in zip(resumed["transitions"][0], first):
++        w.np.testing.assert_array_equal(actual, expected)
++    assert len(resumed["session_ids"]) == 2
++    checks.validate_checkpoint(resumed, resumed["settings"], ACTOR)
++
++
++@pytest.mark.parametrize("kind", ["source", "model", "settings"])
++def test_midrun_mutation_stops_next_interval(synthetic, kind):
++    original = FakeEnv.step
++    def step(self, *args, **kwargs):
++        result = original(self, *args, **kwargs)
++        if kind == "source":
++            synthetic.source["synthetic"] = "changed"
++        elif kind == "model":
++            synthetic.auth["model_sha256"] = "changed"
++        else:
++            output = w.WAVE / w.SCENARIOS[0]
++            settings = w.read(output / "settings.json")
++            settings["warmup_ttt"] += 1
++            w.save(output / "settings.json", settings)
++        return result
++    synthetic.patch.setattr(FakeEnv, "step", step)
++    with pytest.raises(ValueError):
++        worker.run(request())
++    assert FakeEnv.steps == 1
++    assert not (w.WAVE / w.SCENARIOS[0] / "completion.json").exists()
++
++
++def test_stop_after_interval_preserves_checkpoint(synthetic):
++    original = FakeEnv.step
++    def step(self, *args, **kwargs):
++        result = original(self, *args, **kwargs)
++        w.save(w.WAVE / "STOP", {"keep": True})
++        return result
++    synthetic.patch.setattr(FakeEnv, "step", step)
++    assert worker.run(request()) == "stopped"
++    assert retained()[1]["control_steps"] == 1 and FakeEnv.steps == 1
++
++
++@pytest.mark.parametrize("field", ["action", "obs_chain", "reward", "inventory", "clock", "terminal", "area", "guard", "solve", "pfo", "timing", "control", "budget", "physical_inf", "q", "meter", "vsl", "green", "offset", "allocation"])
++def test_retained_sequence_rejects_tamper(synthetic, field):
++    worker.run(request(limit=2))
++    _, _, ck = retained()
++    rows, transitions = ck["trace"], ck["transitions"]
++    if field == "action":
++        transitions[0][1][0] += .01
++    elif field == "obs_chain":
++        transitions[1][0][0] += .01
++    elif field == "reward":
++        obs, act, _, nxt, done = transitions[0]
++        transitions[0] = (obs, act, -.1, nxt, done)
++    elif field == "inventory":
++        rows[0]["plant_state"]["urban_link_storage"]["urban"] += 1
++    elif field == "clock":
++        rows[0]["time_sec"] += 180
++    elif field == "terminal":
++        rows[0]["terminated"] = True
++    elif field == "area":
++        rows[0]["urban_ttt"] += 1
++    elif field == "guard":
++        rows[0]["h3_guard_enabled"] = True
++    elif field == "solve":
++        rows[0]["lower_candidate_count"] = 2
++    elif field == "pfo":
++        rows[1]["pfo_calls"] = 1
++    elif field == "timing":
++        rows[0]["decision_cpu_seconds"] += 1
++    elif field == "control":
++        rows[0]["control"]["N_UF_star"] += 1
++    elif field == "budget":
++        rows[0]["execution_check"]["achieved"][1] += 1
++    elif field == "physical_inf":
++        rows[0]["plant_state"]["freeway_speed"]["a"][0] = float("inf")
++    elif field == "meter":
++        rows[0]["control"]["ramp_metering"]["r"] = 6001.
++    elif field == "vsl":
++        rows[0]["control"]["vsl"]["a__seg0"] = 90.
++    elif field == "green":
++        rows[0]["control"]["green_times"]["A_p1"] += 1.
++    elif field == "offset":
++        rows[0]["control"]["offsets"]["A"] = 16.
++    elif field == "allocation":
++        rows[0]["control"]["inflow_outflow_allocation"]["unexpected"] = 1.
++    else:
++        rows[0]["policy_q"] = [0., 0.]
++    with pytest.raises((ValueError, AssertionError)):
++        checks.validate_checkpoint(ck, ck["settings"], ACTOR)
++
++
++@pytest.mark.parametrize("bad", [float("nan"), -float("inf"), {"nonfinite_float": "+inf"}])
++def test_diagnostic_infinity_boundary(bad):
++    trace = [dict(candidates=[dict(stationarity=bad)])]
++    with pytest.raises(ValueError):
++        checks.tag(trace)
++    tagged, changes = checks.tag([dict(candidates=[dict(stationarity=float("inf"))])])
++    assert len(changes) == 1
++    assert checks.raw_trace(tagged)[0]["candidates"][0]["stationarity"] == float("inf")
++    with pytest.raises(ValueError):
++        checks.tag([dict(reward=float("inf"))])
++
++
++def test_interrupt_unknown_and_exact_restore(synthetic):
++    worker.run(request(limit=1))
++    output, record, ck = retained()
++    # A retained start without an end models a killed worker, not a zero-duration session.
++    sid = "f"*32
++    start = w.read(output / "sessions" / f"{ck['session_ids'][0]}.start.json")
++    start["session_id"] = sid
++    w.save(output / "sessions" / f"{sid}.start.json", start)
++    worker.run(request(resume=True, limit=1))
++    ck = retained()[2]
++    timing = w.session_timing(output, ck["settings"], ck["session_ids"])
++    assert timing["timing_status"] == "UNKNOWN" and timing["elapsed_wall_seconds"] is None
++    assert timing["unknown_sessions"] == [sid] and timing["known_elapsed_wall_seconds"] > 0
++    assert FakeEnv.resets == 1 and FakeEnv.restores == 1 and FakeEnv.steps == 2
++
++
++def test_uncertain_inflight_refused_and_orphan_preserved(synthetic):
++    worker.run(request(limit=1))
++    output, record, ck = retained()
++    worker.operation(output, 2, ck["session_ids"][-1], record)
++    orphan = output / "checkpoints/orphan.tmp"
++    w.save(orphan, {"retained": True})
++    with pytest.raises(ValueError, match="Uncheckpointed"):
++        worker.run(request(resume=True, limit=1))
++    assert FakeEnv.resets == FakeEnv.steps == 1 and FakeEnv.restores == 0
++    assert w.read(orphan) == {"retained": True}
++
++
++@pytest.mark.parametrize("field", ["k", "profile_hash", "last_requested", "physical_state", "dual", "observation", "options", "normalization"])
++def test_checkpoint_boundary_rejected_before_restore(synthetic, field):
++    worker.run(request(limit=1))
++    output, record, ck = retained()
++    env = ck["environment"]
++    if field == "k":
++        env["k"] += 1
++    elif field == "profile_hash":
++        env["profile_hash"] = "wrong"
++    elif field == "last_requested":
++        env["last_requested"][0] += 1.
++    elif field == "physical_state":
++        env["sim"].state.ramp_queue["r"] += 1.
++    elif field == "dual":
++        env["dual"][0, 0] = float("nan")
++    elif field == "options":
++        env["contract"]["options"]["fd_green_sec"] += 1
++    elif field == "normalization":
++        env["contract"]["observation"]["delay"] += 1
++    else:
++        ck["observation"][0] += 1.
++    w.persist_checkpoint(output, ck)
++    with pytest.raises((ValueError, AssertionError)):
++        worker.run(request(resume=True))
++    assert FakeEnv.restores == 0 and FakeEnv.steps == 1
++
++
++@pytest.mark.parametrize("zero,inventory,passed", [(5, 550., True), (6, 550., False), (5, 550.01, False)])
++def test_health_exact_boundaries(synthetic, zero, inventory, passed):
++    worker.run(request(limit=1))
++    ck = retained()[2]
++    trace = [copy.deepcopy(ck["trace"][0]) for _ in range(75)]
++    for row in trace[:zero]:
++        row["B_requested"][0][1] = 0.
++    trace[-1]["inventory"] = inventory
++    summary = checks.summarize(trace, ck["settings"], {})
++    assert all(summary["health"].values()) is passed
++
++
++def test_restored_observation_must_be_exact(synthetic):
++    worker.run(request(limit=1))
++    original = FakeEnv.restore
++    def changed(self, ck):
++        obs = original(self, ck)
++        obs[0] += .01
++        return obs
++    synthetic.patch.setattr(FakeEnv, "restore", changed)
++    with pytest.raises(AssertionError):
++        worker.run(request(resume=True))
++    assert FakeEnv.steps == 1
++
++
++def test_invalid_checkpoint_retains_raw_orphan(synthetic):
++    original = FakeEnv.step
++    def changed(self, *args, **kwargs):
++        obs, reward, done, row = original(self, *args, **kwargs)
++        row["reward"] = float("nan")
++        return obs, float("nan"), done, row
++    synthetic.patch.setattr(FakeEnv, "step", changed)
++    with pytest.raises(ValueError):
++        worker.run(request())
++    output, record, ck = retained()
++    assert record["control_steps"] == 0 and len(list((output / "checkpoints").glob("*.pt"))) == 2
++
++
++def test_five_completed_readonly_and_rejections(synthetic):
++    worker.run(request(limit=1))
++    first_record = retained()[1]
++    for scenario in w.SCENARIOS:
++        assert worker.run(request(scenario, resume=scenario == w.SCENARIOS[0])) == "completed"
++    assert FakeEnv.resets == 5 and FakeEnv.steps == 375 and FakeEnv.restores == 1
++    first = w.WAVE / w.SCENARIOS[0]
++    assert w.file_hash(first / first_record["path"]) == first_record["sha256"]
++    original_load = w.torch.load
++    def no_raw_checkpoint(path, **kwargs):
++        assert "checkpoints" not in str(path), "Completed validator must not deserialize physical checkpoints"
++        return original_load(path, **kwargs)
++    synthetic.patch.setattr(w.torch, "load", no_raw_checkpoint)
++    result = readout.validate_wave()
++    assert result["integrity_pass"] and result["wave_elapsed_wall_seconds"] is None
++    assert [s["scenario"] for s in result["scenarios"]] == list(w.SCENARIOS)
++    for row in result["scenarios"]:
++        assert row["control_steps"] == 75 and row["simulation_seconds"] == 14400
++        assert row["ttt"] == 80. and row["terminal_inventory"] == 63.
++        assert row["pfo_calls"] == 1 and row["lower_candidate_solves"] == 75
++        assert row["timing"]["decision_wall"]["sum_seconds"] > row["timing"]["actor_wall"]["sum_seconds"]
++        with pytest.raises(FileExistsError):
++            worker.run(request(row["scenario"], resume=True))
++    done = w.read(first / "completion.json")
++    settings = w.read(first / "settings.json")
++    for field, bad in (("model_sha256", "different"), ("profile_sha256", "wrong-profile"),
++                       ("training_seed", 42), ("evaluation", True)):
++        changed = dict(settings, **{field: bad})
++        w.save(first / "settings.json", changed)
++        with pytest.raises(ValueError):
++            readout.validate_wave()
++        w.save(first / "settings.json", settings)
++    extra = w.WAVE / "extra/completion.json"
++    w.save(extra, done)
++    with pytest.raises(ValueError, match="exactly five"):
++        readout.validate_wave()
++    extra.rename(extra.with_suffix(".preserved"))
++    missing = first / "completion.json"
++    missing.rename(first / "completion.preserved")
++    with pytest.raises(ValueError, match="exactly five"):
++        readout.validate_wave()
++    (first / "completion.preserved").rename(missing)
++    loader = readout.load_completed
++    # Every scenario independently participates in both health screens.
++    for scenario in w.SCENARIOS:
++        for gate in ("zero_nuf_requests_le_5", "terminal_inventory_le_550"):
++            def health_failure(folder, name, *args):
++                row = copy.deepcopy(next(r for r in result["scenarios"] if r["scenario"] == name))
++                if name == scenario:
++                    row["health"][gate] = False
++                return row
++            synthetic.patch.setattr(readout, "load_completed", health_failure)
++            assert readout.validate_wave()["all_health_gates_pass"] is False
++    synthetic.patch.setattr(readout, "load_completed", lambda folder, name, *args:
++        dict(next(r for r in result["scenarios"] if r["scenario"] == name), run_id="duplicate"))
++    with pytest.raises(ValueError, match="Duplicate"):
++        readout.validate_wave()
++    synthetic.patch.setattr(readout, "load_completed", loader)
++    assert len(list(w.WAVE.glob("*/completion.json"))) == 5
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\wave_support.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\wave_support.py"
+new file mode 100644
+index 0000000..6505cc5
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\wave_support.py"
+@@ -0,0 +1,239 @@
++"""Frozen imports, provenance and durable single-slot bookkeeping; no dispatcher."""
++import ast
++import hashlib
++import importlib.util
++import json
++import math
++import os
++from pathlib import Path
++import sys
++import uuid
++
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++GOAL = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++WAVE = GOAL / "return_policy_wave_v1"
++PREDECESSOR = GOAL / "return_init_v1"
++OLD = REPO / "work/sdmpc_rl_multi_20260929"
++NUF = REPO / "work/sdmpc_rl_nuf_retention_20260930"
++SCENARIOS = ("sweet_155_w", "sweet_170_w", "sweet_170_incident_w", "sweet_170_skew15_w", "sweet_190_w")
++MASKS = (1, 4, 16, 64, 256)
++FORMAT = "sdmpc-return-policy-wave-v1"
++MODEL_SHA = "7723bad496cd2e2b5f9a8f52b74ac8f65f021ccff42635d396e9f3b248b23904"
++COMPLETION_SHA = "34f617fc171ce0a63611f5883eac7e8af9814a59889f4a545adb3fabb3778757"
++SPEC_SHA = "933e29c1b316530ceff1605d527532e482a658c12fa6c13fd24a93074ef6593e"
++GATE = GOAL / "value_audit_v1/projection/completion.json"
++GATE_SHA = "b6fabf1ccaa095fed6b5bcb33dea88cf7f39de4a419ed41b2459a940db6857d3"
++TAG_PATH = REPO / "work/sdmpc_rl_export_recovery_20260930/export_recovery.py"
++TAG_SHA = "f79513942cd892e346dd68a188ecd2221e862b55558170c3a35d90ed8f80a4b3"
++TIMING_SCOPE = (
++    "Locked worker sessions from before start publication through authentication, boot, "
++    "reset/restore, inference, physical steps, validation, checkpoints, data export and close. "
++    "Excludes final end/timing/summary/completion publication, lock release, interpreter startup/teardown, "
++    "parent launch/budget work and offline readout. Missing interrupted ends are UNKNOWN; "
++    "known session seconds are then a lower bound. Worker sums are not wave elapsed wall time.")
++
++sys.dont_write_bytecode = True
++for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
++    os.environ[key] = "1"
++sys.path[:0] = [str(REPO / ".deps-budget"), str(OLD)]
++import numpy as np
++import torch
++from budget_runtime import boot, DEFAULT_SNAPSHOT, read as raw_read, plain, digest
++from run_budget import exclusive_run, file_hash, runtime_versions, verify_pins, observation_schema
++from budget_controller import residual_budget
++from compare_runs import finite, same_cost, queue_exposure
++
++torch.set_num_threads(1)
++if torch.get_num_interop_threads() != 1:
++    torch.set_num_interop_threads(1)
++torch.use_deterministic_algorithms(True)
++
++
++def check_hash(path, expected):
++    if file_hash(path) != expected:
++        raise ValueError("Frozen source/artifact changed: " + str(path))
++
++
++def module(name, path, expected):
++    check_hash(path, expected)
++    spec = importlib.util.spec_from_file_location(name, path)
++    result = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(result)
++    return result
++
++
++def definitions(path, names, namespace, expected):
++    """Reuse unchanged pure definitions without importing unrelated learner modules."""
++    check_hash(path, expected)
++    tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
++    nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
++    if {n.name for n in nodes} != set(names) or len(nodes) != len(names):
++        raise ValueError("Missing/ambiguous frozen helper")
++    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), "exec"), namespace)
++    return namespace
++
++
++def finite_tree(value):
++    if isinstance(value, torch.Tensor):
++        if not torch.isfinite(value).all():
++            raise ValueError("Nonfinite tensor")
++    elif isinstance(value, np.ndarray):
++        if not np.isfinite(value).all():
++            raise ValueError("Nonfinite array")
++    elif isinstance(value, dict):
++        for v in value.values():
++            finite_tree(v)
++    elif isinstance(value, (list, tuple)):
++        for v in value:
++            finite_tree(v)
++    elif isinstance(value, (float, np.floating)) and not math.isfinite(value):
++        raise ValueError("Nonfinite scalar")
++
++
++def read(path):
++    value = raw_read(path)
++    finite_tree(value)
++    return value
++
++
++def save(path, value):
++    path = Path(path)
++    data = json.dumps(plain(value), indent=2, allow_nan=False).encode("utf-8")
++    path.parent.mkdir(parents=True, exist_ok=True)
++    pending = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
++    with pending.open("xb") as stream:
++        stream.write(data)
++        stream.flush()
++        os.fsync(stream.fileno())
++    pending.replace(path)
++
++
++def save_once(path, value):
++    if path.exists():
++        if read(path) != plain(value):
++            raise FileExistsError("Retained output differs: " + str(path))
++    else:
++        save(path, value)
++
++
++def save_tensor(path, payload):
++    pending = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with pending.open("xb") as stream:
++        torch.save(payload, stream)
++        stream.flush()
++        os.fsync(stream.fileno())
++    pending.replace(path)
++
++
++def persist_checkpoint(output, payload, validate=None):
++    path = output / "checkpoints" / (uuid.uuid4().hex + ".pt")
++    save_tensor(path, payload)
++    if validate is not None:
++        validate(payload)  # Failed validation leaves the raw orphan as evidence.
++    record = dict(path=path.relative_to(output).as_posix(), sha256=file_hash(path),
++                  control_steps=len(payload["trace"]), settings_digest=digest(payload["settings"]),
++                  session_ids=payload["session_ids"])
++    save(output / "latest.json", record)
++    return record
++
++
++def checkpoint_record(output):
++    record = read(output / "latest.json")
++    path = (output / record["path"]).resolve()
++    if path.parent != (output / "checkpoints").resolve() or path.suffix != ".pt":
++        raise ValueError("Checkpoint pointer escaped slot")
++    check_hash(path, record["sha256"])
++    return record, path
++
++
++class Stopped(RuntimeError):
++    pass
++
++
++def check_stop(output):
++    if any((p / "STOP").exists() for p in (REPO, GOAL, WAVE, output)):
++        raise Stopped("STOP requested; marker retained")
++
++
++def sources():
++    return {p.relative_to(REPO).as_posix(): file_hash(p) for p in sorted(HERE.glob("*.py"))}
++
++
++def verify_files(files):
++    for name, expected in files.items():
++        path = (REPO / name).resolve()
++        if not path.is_relative_to(REPO.resolve()):
++            raise ValueError("Manifest path outside repository")
++        check_hash(path, expected)
++
++
++def expected_profile(scenario):
++    rows = read(DEFAULT_SNAPSHOT / "outputs/sdmpc_budget_exception_all_20260922/protocols_0" /
++                scenario / "forecast.json")
++    rng = np.random.default_rng(7301 + SCENARIOS.index(scenario))
++    multipliers = {field: rng.uniform(.98, 1.02) for field in
++                   ("freeway_mainline", "urban_boundary", "ramp_arrival")}
++    for row in rows:
++        for field, multiplier in multipliers.items():
++            row[field] = {k: v * multiplier for k, v in row[field].items()}
++    return digest(rows)
++
++
++def import_boundary(physical=False):
++    forbidden = {"learner", "data", "td3", "train_round", "local_runtime"}
++    if forbidden.intersection(sys.modules):
++        raise ValueError("Learner module leaked into inference process")
++    runtime = sys.modules.get("runtime")
++    if runtime is not None and Path(runtime.__file__).resolve() != (
++            DEFAULT_SNAPSHOT / "work/sdmpc_slide_alignment_20260922/runtime.py").resolve():
++        raise ValueError("Generic runtime import collision")
++    if physical and runtime is None:
++        raise ValueError("Physical runtime not loaded")
++
++
++def process_identity():
++    helper = module("wave_process_identity", NUF / "launch_identity.py",
++        "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160")
++    state, created = helper.probe_process(os.getpid())
++    if state != "live" or type(created) is not int or created <= 0:
++        raise ValueError("Actual worker creation identity UNKNOWN")
++    return dict(pid=os.getpid(), created=created, parent_pid=os.getppid(),
++                executable=sys.executable, command=list(sys.orig_argv))
++
++
++def session_ids(output):
++    return sorted(p.name[:-11] for p in (output / "sessions").glob("*.start.json"))
++
++
++def session_timing(output, settings, required=()):
++    ids = sorted(set(required) | set(session_ids(output)))
++    known, unknown, hashes = 0., [], {}
++    for sid in ids:
++        if len(sid) != 32 or any(c not in "0123456789abcdef" for c in sid):
++            raise ValueError("Malformed worker session")
++        start, end = [output / "sessions" / f"{sid}.{kind}.json" for kind in ("start", "end")]
++        if not start.exists():
++            raise ValueError("Missing retained session start")
++        record = read(start)
++        proc = record["process"]
++        if (record["session_id"] != sid or record["run_id"] != settings["run_id"] or
++                record["model_sha256"] != MODEL_SHA or record["sources"] != settings["sources"] or
++                record["scenario"] != settings["scenario"] or record["lock_held"] is not True or
++                type(proc["pid"]) is not int or proc["pid"] <= 0 or
++                type(proc["created"]) is not int or proc["created"] <= 0 or not proc["command"]):
++            raise ValueError("Session worker/source identity differs")
++        hashes[start.relative_to(output).as_posix()] = file_hash(start)
++        if not end.exists():
++            unknown.append(sid)
++            continue
++        finish = read(end)
++        if (finish["session_id"] != sid or finish["start_sha256"] != file_hash(start) or
++                finish["process"] != proc):
++            raise ValueError("Session end binding differs")
++        known += finite(finish["elapsed_wall_seconds"], "session elapsed")
++        hashes[end.relative_to(output).as_posix()] = file_hash(end)
++    return dict(timing_status="UNKNOWN" if unknown else "KNOWN", session_ids=ids,
++        elapsed_wall_seconds=None if unknown else known, known_elapsed_wall_seconds=known,
++        unknown_sessions=unknown, session_sha256=hashes, timing_scope=TIMING_SCOPE)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\worker.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\worker.py"
+new file mode 100644
+index 0000000..e1a34bd
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\worker.py"
+@@ -0,0 +1,212 @@
++"""One locked training-wave slot. Parent owns dispatch and the global worker budget."""
++import argparse
++import time
++import uuid
++import wave_support as w
++from actor import authenticate, verify_live
++from checks import helpers, validate_settings, validate_checkpoint, validate_rows, tag, audit_receipt, summarize
++from budget_env import BudgetEnv
++
++
++def check_output(output, resume):
++    if (output / "completion.json").exists():
++        raise FileExistsError("Completed slot cannot be recollected or resumed")
++    if resume:
++        if not (output / "latest.json").exists() or not (output / "settings.json").exists():
++            raise ValueError("Resume requires the retained full environment checkpoint and settings")
++    elif output.exists() and any(p.name not in {"runner.lock", "stdout.log", "stderr.log", "launcher.json"}
++                                 for p in output.iterdir()):
++        raise FileExistsError("Partial/orphan slot exists; preserve it and resume its checkpoint")
++
++
++def operation(output, step, session, previous):
++    name = "reset" if step == 0 else f"step_{step:02d}"
++    w.save_once(output / "operations" / (name + ".json"),
++        dict(session_id=session, control_steps=step, previous_checkpoint=previous))
++
++
++def check_operations(output, steps):
++    expected = {"reset.json"} | {f"step_{i:02d}.json" for i in range(1, steps+1)}
++    actual = {p.name for p in (output / "operations").glob("*.json")}
++    if actual != expected:
++        raise ValueError("Uncheckpointed reset/step or missing operation evidence; preserve orphans, do not repeat physics")
++
++
++def run(args):
++    if args.scenario not in w.SCENARIOS or (args.max_new_steps is not None and
++            (type(args.max_new_steps) is not int or not 1 <= args.max_new_steps <= 75)):
++        raise ValueError("Invalid scenario or max-new-steps")
++    output = w.WAVE / args.scenario
++    w.check_stop(output)
++    check_output(output, args.resume)
++    with w.exclusive_run(output):
++        w.check_stop(output)
++        check_output(output, args.resume)
++        started = time.perf_counter()
++        source = w.sources()
++        previous = w.read(output / "settings.json") if args.resume else None
++        run_id = previous["run_id"] if previous else uuid.uuid4().hex
++        session = uuid.uuid4().hex
++        process = w.process_identity()
++        start_path = output / "sessions" / f"{session}.start.json"
++        w.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
++            run_id=run_id, scenario=args.scenario, model_sha256=w.MODEL_SHA, sources=source,
++            settings_digest=w.digest(previous) if previous else None, lock_held=True,
++            scope=w.TIMING_SCOPE))
++        w.save(output / "process.json", dict(**process, session_id=session, run_id=run_id,
++            scenario=args.scenario, model_sha256=w.MODEL_SHA, sources=source, lock_held=True))
++        env, settings, ready = None, None, False
++        outcome = "failed"
++        steps = 0
++        try:
++            actor, authentication = authenticate()
++            verify_live(authentication, source)
++            w.check_stop(output)
++            mask = w.MASKS[w.SCENARIOS.index(args.scenario)]
++            rt = w.boot(w.DEFAULT_SNAPSHOT, mask)
++            w.import_boundary(physical=True)
++            env = BudgetEnv(rt, scenario=args.scenario,
++                            training_seed=7301+w.SCENARIOS.index(args.scenario), guard_mode="physical")
++            helpers().verify_environment(env, rt, authentication["contract"])
++            settings = dict(format=w.FORMAT, run_id=run_id, scenario=args.scenario,
++                behavior="frozen_shared_actor", mode="training_wave",
++                training_seed=7301+w.SCENARIOS.index(args.scenario), profile_sha256=env.profile_hash,
++                evaluation=False, exploration=False, policy_improvement_claim=False,
++                model_sha256=w.MODEL_SHA, authentication=authentication, sources=source,
++                contract=authentication["contract"], capacity=float(rt["cfg"].network.total_ramp_capacity),
++                cpu_mask=mask, physical_config=w.plain(rt["rc"].to_plain_dict(rt["cfg"])),
++                physical_options=w.plain(rt["rc"].to_plain_dict(rt["options"])),
++                reward_divisor=100., gamma=1., warmup_steps=5, controlled_steps=75, total_seconds=14400,
++                critic_continuation="carry", updates_per_interval=0, threads=1,
++                warmup_ttt=previous["warmup_ttt"] if previous else None)
++            if env.profile_hash != authentication["profiles"][args.scenario]:
++                raise ValueError("Constructed demand profile differs from declared training seed")
++            w.check_stop(output)
++            verify_live(authentication, source)
++            if args.resume:
++                validate_settings(settings, authentication, source, args.scenario)
++                if previous != settings:
++                    raise ValueError("Resume source/model/settings mismatch")
++                record, path = w.checkpoint_record(output)
++                check_operations(output, record["control_steps"])
++                ck = w.torch.load(path, map_location="cpu", weights_only=False)
++                validate_checkpoint(ck, settings, actor)
++                if (record["settings_digest"] != w.digest(settings) or
++                        record["control_steps"] != len(ck["trace"]) or record["session_ids"] != ck["session_ids"]):
++                    raise ValueError("Checkpoint pointer/progress mismatch")
++                w.session_timing(output, settings, ck["session_ids"])
++                w.check_stop(output)
++                verify_live(authentication, source)
++                obs = env.restore(ck["environment"])
++                w.np.testing.assert_array_equal(obs, ck["observation"])
++                trace, transitions = ck["trace"], ck["transitions"]
++            else:
++                operation(output, 0, session, None)
++                obs = env.reset()
++                settings["warmup_ttt"] = env.warmup_ttt
++                trace, transitions = [], []
++            helpers().verify_environment(env, rt, authentication["contract"], schema=True)
++            schema = w.observation_schema(env)
++            validate_settings(settings, authentication, source, args.scenario)
++            w.save_once(output / "settings.json", settings)
++            w.save_once(output / "observation_schema.json", schema)
++
++            def checkpoint():
++                ck = dict(format=w.FORMAT, settings=settings, model_sha256=w.MODEL_SHA, schema=schema,
++                    environment=env.checkpoint(), observation=obs.copy(), trace=trace, transitions=transitions,
++                    session_ids=w.session_ids(output), process=process,
++                    session_progress=dict(session_id=session, elapsed_wall_seconds=time.perf_counter()-started,
++                                          control_steps=len(trace), simulation_seconds=env.sim.state.time_sec))
++                record = w.persist_checkpoint(output, ck, lambda value: validate_checkpoint(value, settings, actor))
++                verify_live(authentication, source)
++                if w.read(output / "settings.json") != settings:
++                    raise ValueError("Persisted settings mutated")
++                return record
++
++            if not args.resume:
++                record = checkpoint()
++            steps = len(trace)
++            new_steps = 0
++            while env.k < 80:
++                w.check_stop(output)
++                verify_live(authentication, source)
++                if w.read(output / "settings.json") != settings:
++                    raise ValueError("Persisted settings mutated")
++                helpers().validate_observation(obs, env.k, schema, env.controller.action_anchor,
++                                               env.last_requested, env.last_executed)
++                tick, cpu = time.perf_counter(), time.process_time()
++                action = actor.act(obs)
++                actor_wall, actor_cpu = time.perf_counter()-tick, time.process_time()-cpu
++                w.check_stop(output)
++                operation(output, steps+1, session, record)
++                nxt, reward, terminal, row = env.step(action, "rl", actor_wall, actor_cpu_seconds=actor_cpu)
++                row.update(reward=reward, scenario=args.scenario, behavior="frozen_shared_actor",
++                    mode="training_wave", evaluation=False, exploration=False, model_sha256=w.MODEL_SHA,
++                    profile_sha256=env.profile_hash, policy_q=None, learning=[], learning_wall_seconds=0.)
++                trace.append(w.plain(row))
++                transitions.append((obs.copy(), action.copy(), reward, nxt.copy(), bool(terminal)))
++                obs = nxt
++                record = checkpoint()
++                steps, new_steps = len(trace), new_steps+1
++                w.save(output / "status.json", dict(status="checkpointed", control_steps=steps,
++                    session_id=session, model_sha256=w.MODEL_SHA, latest=record))
++                print(args.scenario, f"{steps}/75", f"TTT={env.sim.total_ttt:.6f}", flush=True)
++                if args.max_new_steps is not None and new_steps >= args.max_new_steps and not terminal:
++                    outcome = "checkpointed"
++                    return outcome
++            w.check_stop(output)
++            verify_live(authentication, source)
++            validate_rows(trace, transitions, settings, schema, actor)
++            payload = dict(format=w.FORMAT, settings=settings, transitions=transitions)
++            w.save_tensor(output / "experience.pt", payload)
++            w.save(output / "trace.json", tag(trace)[0])
++            w.save(output / "diagnostic-audit.json", audit_receipt(output, trace, payload))
++            ready, outcome = True, "completed"
++        except w.Stopped:
++            outcome = "stopped"
++            return outcome
++        except BaseException as exc:
++            w.save(output / "failure-" / f"{session}.json", dict(error=f"{type(exc).__name__}: {exc}",
++                session_id=session, control_steps=steps, preserve_all_orphans=True))
++            raise
++        finally:
++            try:
++                if env is not None:
++                    env.close()
++            except BaseException:
++                outcome, ready = "failed", False
++                raise
++            finally:
++                w.save_once(output / "sessions" / f"{session}.end.json", dict(session_id=session,
++                    process=process, start_sha256=w.file_hash(start_path), outcome=outcome,
++                    elapsed_wall_seconds=time.perf_counter()-started, control_steps=steps))
++                w.save(output / "status.json", dict(status=outcome, session_id=session, control_steps=steps))
++        if ready:
++            w.check_stop(output)
++            verify_live(authentication, source)
++            timing = w.session_timing(output, settings, record["session_ids"])
++            w.save(output / "timing.json", timing)
++            w.save(output / "summary.json", summarize(trace, settings, timing))
++            names = ("settings.json", "latest.json", "trace.json", "experience.pt", "observation_schema.json",
++                     "diagnostic-audit.json", "timing.json", "summary.json")
++            w.check_stop(output)
++            w.save_once(output / "completion.json", dict(format=w.FORMAT, status="completed", settings=settings,
++                model_sha256=w.MODEL_SHA, checkpoint=record, outputs_sha256={n: w.file_hash(output / n) for n in names}))
++        return outcome
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--scenario", choices=w.SCENARIOS, required=True)
++    parser.add_argument("--resume", action="store_true")
++    parser.add_argument("--max-new-steps", type=int)
++    args = parser.parse_args(argv)
++    try:
++        return 2 if run(args) == "stopped" else 0
++    except w.Stopped:
++        print("stopped_before_environment", flush=True)
++        return 2
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

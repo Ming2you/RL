@@ -1,0 +1,1418 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\conftest.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\conftest.py"
+new file mode 100644
+index 0000000..4e05853
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\conftest.py"
+@@ -0,0 +1,173 @@
++"""Static synthetic checkpoint data. No environment construction/reset/step."""
++import copy
++from dataclasses import dataclass, field, asdict
++from pathlib import Path
++from types import SimpleNamespace as NS
++
++import pytest
++
++import export_recovery as recovery
++
++lr, collector, validator, wave = recovery.modules()
++SEQUENCE_VALIDATOR = lr.sequence_validator()
++from exploration import LocalBudgetPolicy
++
++SCHEMA = {"names": ["state/time_sec", "memory/remaining/0"] +
++    [f"memory/{name}/{i}" for name in ("action_anchor", "previous_requested", "previous_executed") for i in range(2)]}
++CONFIG = dict(network=dict(total_ramp_capacity=6000., freeway_links=["a"],
++    freeway_segments_per_link=1, freeway_segment_length_km=.5, freeway_lanes=2,
++    freeway_buffer_segments=1, off_ramp_storage_link={"r": "off"},
++    urban_link_storage_veh={"urban": 50., "off": 30.}))
++CONTRACT = {"observation_schema": SCHEMA, "environment_contract": {"config_sha256": lr.digest(CONFIG)}}
++IDENTITY = {"fixture": "isolated-static-data"}
++TOKEN = "a" * 32
++
++
++@dataclass
++class StaticState:
++    time_sec: float = 14400.
++    freeway_density: dict = field(default_factory=lambda: {"a": [20.]})
++    freeway_speed: dict = field(default_factory=lambda: {"a": [50.]})
++    freeway_flow: dict = field(default_factory=lambda: {"a": [2000.]})
++    freeway_effective_lanes: dict = field(default_factory=lambda: {"a": [2.]})
++    ramp_queue: dict = field(default_factory=lambda: {"r": 3.})
++    mainline_origin_queue: dict = field(default_factory=lambda: {"a": 4.})
++    urban_queue: dict = field(default_factory=lambda: {"legacy": 999.})
++    boundary_queue: dict = field(default_factory=lambda: {"legacy": 999.})
++    urban_movement_queue: dict = field(default_factory=lambda: {"m": 5.})
++    urban_link_storage: dict = field(default_factory=lambda: {"urban": 40., "off": 23.})
++    freeway_buffer_up_density: dict = field(default_factory=lambda: {"a": [6.]})
++    freeway_buffer_down_density: dict = field(default_factory=lambda: {"a": [8.]})
++    urban_arrival_buffer: dict = field(default_factory=dict)
++    urban_storage_release_buffer: dict = field(default_factory=dict)
++
++
++def static_checkpoint(settings):
++    np = lr.np
++    anchor, previous = np.array([-10., 6000.]), np.zeros(2)
++    policy = LocalBudgetPolicy(settings["behavior"], settings["exploration_seed"], 6000.)
++    control = {k: {"a": 1.} for k in validator.CONTROL_FIELDS}
++
++    def observation(k, budget, memory):
++        if k == 80:
++            return np.zeros(8, dtype=np.float32)
++        return np.array([k*180/14400., (80-k)/75., *(budget/[1000., 10000.]),
++                         *(memory/[1000., 10000.]), *(memory/[1000., 10000.])], dtype=np.float32)
++
++    trace, experience = [], []
++    for i in range(75):
++        obs = observation(i+5, anchor, previous)
++        action, audit = policy.choose(anchor)
++        request = np.array(audit["projected_request"])
++        nxt = observation(i+6, request, request)
++        row = dict(action_anchor=anchor.tolist(), action_requested=action.tolist(),
++            B_requested=[request.tolist()], B_executed=request.tolist(), B_raw=audit["raw_request"],
++            selection_source="reference_fallback" if i == 14 else "lower_solution",
++            reference_source="pfo_initial" if i == 0 else "previous", reference_recovery=False,
++            guard_mode="physical", h3_guard_enabled=False,
++            execution_check=dict(physical_control_valid=True, budget_feasible=True),
++            lower_candidate_count=1, pfo_calls=int(i == 0), step=i+5, control_step=i,
++            time_sec=(i+6)*180, terminated=i == 74, truncated=False,
++            interval_ttt=1., total_ttt=6.+i, freeway_ttt=6.+i, urban_ttt=0., inventory=63.,
++            plant_state=asdict(StaticState(time_sec=(i+6)*180)), control=copy.deepcopy(control),
++            reward=-.01, scenario=settings["scenario"], behavior=settings["behavior"],
++            profile_sha256=settings["profile_sha256"], policy_q=None, learning=[], learning_wall_seconds=0.,
++            candidates=[dict(stationarity=1., converged=False,
++                             rows=[dict(primal_stationarity=1.) for _ in range(6)])],
++            queue_state=dict(ramp_queue={"r": 3.}, boundary_queue={"legacy": 999.}),
++            queue_near_capacity_estimate=dict(method="interval_endpoint_sampled", exact_substep_exposure=False,
++                threshold_fraction=.9, interval_seconds=180, duration_units="s", capacity_units="veh",
++                ramp_queue={"r": dict(queue_veh=3., capacity_veh=100., near_capacity_seconds=0.)},
++                boundary_queue={"legacy": dict(queue_veh=999., capacity_veh=2000., near_capacity_seconds=0.)}))
++        for component in ("forecast", "observation", "pfo", "reference", "lower", "guard", "actor"):
++            for kind in ("wall", "cpu"):
++                row[f"{component}_{kind}_seconds"] = .1
++        row.update(decision_wall_seconds=.7, decision_cpu_seconds=.7)
++        row["exploration_audit"] = policy.commit(row)
++        trace.append(row)
++        experience.append((obs, action, -.01, nxt, i == 74))
++        anchor, previous = request, request
++    candidate = trace[14]["candidates"][0]
++    candidate["stationarity"] = float("inf")
++    for index in (2, 3, 5):
++        candidate["rows"][index]["primal_stationarity"] = float("inf")
++    return dict(format=lr.FORMAT, settings=settings, schema=SCHEMA, trace=trace, transitions=experience,
++        environment=dict(k=80, profile_hash=settings["profile_sha256"], warmup_ttt=5.,
++            sim=NS(total_ttt=80., freeway_ttt=80., urban_ttt=0., state=StaticState(), cfg=copy.deepcopy(CONFIG)),
++            previous=control, last_budget=anchor, last_requested=previous, last_executed=previous, prepared=None),
++        observation=experience[-1][3], policy=policy.state_dict(), session_ids=[TOKEN])
++
++
++@pytest.fixture
++def cohort(monkeypatch, tmp_path):
++    # All writable roots and process probes are explicitly isolated before helper calls.
++    root = (tmp_path / "cohort").resolve()
++    assert recovery.REPO not in root.parents or recovery.HERE in root.parents
++    monkeypatch.setattr(lr, "COHORT_ROOT", root)
++    monkeypatch.setattr(lr, "REPO", tmp_path)
++    monkeypatch.setattr(lr, "GOAL", tmp_path)
++    monkeypatch.setattr(lr, "REQUIRE_MIGRATION", False)
++    monkeypatch.setattr(lr, "identity", lambda: copy.deepcopy(IDENTITY))
++    monkeypatch.setattr(lr, "contract", lambda: copy.deepcopy(CONTRACT))
++    monkeypatch.setattr(validator, "contract", lambda: copy.deepcopy(CONTRACT))
++    monkeypatch.setattr(validator, "sequence_validator", lambda: SEQUENCE_VALIDATOR)
++
++    def verify(value):
++        if value != IDENTITY:
++            raise ValueError("Synthetic source drift")
++
++    monkeypatch.setattr(lr, "verify_identity", verify)
++    monkeypatch.setattr(validator, "verify_identity", verify)
++    monkeypatch.setattr(wave, "verify_identity", verify)
++    boot_calls = []
++    monkeypatch.setattr(lr, "boot", lambda *a: boot_calls.append(a))
++    monkeypatch.setattr(collector, "boot", lambda *a: pytest.fail("collector boot forbidden"))
++    monkeypatch.setattr(collector, "run", lambda *a: pytest.fail("collector run forbidden"))
++    monkeypatch.setattr(collector, "BudgetEnv", lambda *a, **k: pytest.fail("environment forbidden"))
++    monkeypatch.setattr(wave, "run", lambda *a: pytest.fail("actual wave forbidden"))
++    statuses = {100: ("dead", 1000), 200: ("dead", 2000), 300: ("dead", 3000), 999: ("live", 9999)}
++    monkeypatch.setattr(lr, "probe_process", lambda pid: statuses.get(pid, ("unknown", None)))
++    monkeypatch.setattr(lr, "process_identity", lambda pid=None, command=None:
++        dict(pid=999 if pid is None else pid, created=9999 if pid is None else statuses[pid][1], command=command or []))
++    job = wave.jobs_for(root)[0]
++    folder = root / job["key"]
++    attempt = root / "attempts" / ("b" * 32)
++    owner = dict(pid=100, created=1000, command=[str(recovery.V2 / "run_wave.py"), "--resume"])
++    command = [str(recovery.V2 / "collect.py"), "--abort-file", str(attempt / "ABORT.json")]
++    record = dict(key=job["key"], token=TOKEN, state="exited", owner=owner,
++                  launcher=dict(pid=200, created=2000, command=command),
++                  worker=dict(pid=300, created=3000, command=command),
++                  run_id="synthetic-run", cohort_phase="checkpointed", control_steps=75,
++                  training_seed=job["training_seed"], exploration_seed=job["exploration_seed"], cpu_mask=job["cpu_mask"])
++    settings = dict(format=lr.FORMAT, run_id=record["run_id"], **{k: v for k, v in job.items() if k != "key"},
++        identity=IDENTITY, contract=CONTRACT, capacity=6000., physical_config=CONFIG, warmup_ttt=5.,
++        profile_sha256="synthetic-training-profile", evaluation=False, model_sha256=None)
++    ck = static_checkpoint(settings)
++    process = dict(pid=100, command=owner["command"], started=123., attempt=str(attempt))
++    error = f"RuntimeError: Child failed/stopped: {job['key']}, exit=1"
++    for path, value in {
++        root / ".ownership/reservations.json": [record], root / "process.json": process,
++        attempt / "process.json": process, attempt / "failure.json": dict(error=error),
++        attempt / "ABORT.json": dict(reason="coordinator_draining", created=124.),
++        root / "status.json": dict(status="failed", error=error),
++        root / "plan.json": dict(format=lr.FORMAT, jobs=wave.jobs_for(root), identity=IDENTITY,
++            maximum_workers=5, threads_per_worker=1, episodes=10, transitions=750, training_only=True),
++        folder / "settings.json": settings, folder / "observation_schema.json": SCHEMA,
++        folder / "status.json": dict(status="failed", pid=300, error=recovery.ERROR),
++        folder / "process.json": record["worker"],
++        folder / "launcher.json": dict(pid=200, command=command, attempt=str(attempt)),
++        folder / "sessions" / f"{TOKEN}.start.json": dict(session_id=TOKEN, process=record["worker"], started=123.),
++    }.items():
++        lr.save(path, value)
++    lr.save(folder / "sessions" / f"{TOKEN}.end.json", dict(session_id=TOKEN,
++        start_sha256=lr.file_hash(folder / "sessions" / f"{TOKEN}.start.json"), outcome="failed", elapsed_wall_seconds=12.))
++    lr.save(folder / "timing.json", lr.session_timing(folder, [TOKEN]))
++    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", ck)
++    (folder / "stdout.log").write_text("synthetic 75/75\n", encoding="utf-8")
++    (folder / "stderr.log").write_text(
++        f'Traceback (most recent call last):\n  File "{recovery.V2 / "collect.py"}", line 155, in run\n'
++        '    save(output / "trace.json", trace)\n'
++        f'  File "{recovery.V2 / "local_runtime.py"}", line 42, in save\n'
++        '    json.dumps(plain(value), allow_nan=False)\n' + recovery.ERROR + "\n", encoding="utf-8")
++    return NS(root=root, folder=folder, ck=ck, settings=settings, record=record,
++              attempt=attempt, statuses=statuses, boot_calls=boot_calls, job=job)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\export_recovery.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\export_recovery.py"
+new file mode 100644
+index 0000000..d5ac9b6
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\export_recovery.py"
+@@ -0,0 +1,336 @@
++"""Terminal JSON export adapter for the frozen local-budget v2 cohort."""
++import argparse
++from contextlib import ExitStack
++import importlib
++import json
++import math
++import os
++from pathlib import Path
++import sys
++import time
++
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++V2 = REPO / "work/sdmpc_rl_local_20260930_v2"
++ERROR = "ValueError: Out of range float values are not JSON compliant: inf"
++OUTPUTS = ("trace.json", "summary.json", "experience.pt", "observation_schema.json", "timing.json")
++STAGE = ".export-recovery"
++RECEIPT = "export-receipt.json"
++EXPORT_SCOPE = (
++    "This successful invocation: from entry before cohort/slot locks through identity and "
++    "checkpoint validation, class-registration boot, serialization, original completed-loader "
++    "validation, output publication and retained-cohort finish bookkeeping. Excludes receipt "
++    "and completion publication, lock release, interpreter startup/teardown and supervisor "
++    "time. Separate additional cost; original worker-session timing is unchanged."
++)
++
++
++class LiveProcess(OSError):
++    pass
++
++
++def modules():
++    sys.dont_write_bytecode = True
++    sys.path.insert(0, str(V2))
++    loaded = tuple(importlib.import_module(n) for n in ("local_runtime", "collect", "validate", "run_wave"))
++    for module in loaded:
++        if Path(module.__file__).resolve().parent != V2:
++            raise ValueError("Mixed collector modules")
++    return loaded
++
++
++def tag_diagnostics(trace):
++    """Copy JSON structure; only typed list-index candidate paths admit +inf."""
++    changes = []
++
++    def walk(value, path):
++        if type(value) is dict:
++            if "nonfinite_float" in value or any(type(k) is not str for k in value):
++                raise ValueError("Pre-tagged or non-JSON trace object")
++            return {k: walk(v, path + [k]) for k, v in value.items()}
++        if type(value) is list:
++            return [walk(v, path + [i]) for i, v in enumerate(value)]
++        if type(value) is float and not math.isfinite(value):
++            candidate = (len(path) in (4, 6) and type(path[0]) is int and
++                         path[1] == "candidates" and type(path[2]) is int)
++            allowed = candidate and (
++                len(path) == 4 and path[3] == "stationarity" or
++                len(path) == 6 and path[3] == "rows" and type(path[4]) is int and
++                path[5] == "primal_stationarity")
++            if not allowed or value != math.inf:
++                raise ValueError(f"Forbidden nonfinite trace value at {path}")
++            tag = {"nonfinite_float": "+inf"}
++            changes.append(dict(path=path, original_value="+inf", original_type="float", exported=tag))
++            return tag.copy()
++        if value is not None and type(value) not in (str, bool, int, float):
++            raise TypeError(f"Non-JSON trace value at {path}")
++        return value
++
++    if type(trace) is not list:
++        raise TypeError("Trace must be a list")
++    return walk(trace, []), changes
++
++
++def json_bytes(value):
++    return json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8")
++
++
++def publish_bytes(path, data):
++    """Exclusive publication; an interrupted pending file is evidence, never reused."""
++    path = Path(path)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    pending = path.with_name(path.name + ".pending")
++    with pending.open("xb") as stream:
++        stream.write(data)
++        stream.flush()
++        os.fsync(stream.fileno())
++    os.link(pending, path)  # Atomic, refuses an existing destination on Windows and POSIX.
++    pending.unlink()
++
++
++def check_stops(lr, wave, root):
++    lr.check_stop(root)
++    for job in wave.jobs_for(root):
++        lr.check_stop(root / job["key"])
++
++
++def require_dead(lr, record):
++    if (not isinstance(record, dict) or type(record.get("pid")) is not int or not 0 < record["pid"] <= 0xffffffff or
++            type(record.get("created")) is not int or record["created"] <= 0):
++        raise OSError("Missing creation identity; process state UNKNOWN")
++    state, created = lr.probe_process(record["pid"])
++    if state == "dead" or (state == "live" and type(created) is int and created != record["created"]):
++        return
++    if state == "live" and created == record["created"]:
++        raise LiveProcess("Process live")
++    raise OSError("Process live or UNKNOWN")
++
++
++def prove_dead(lr, wave, root, honor_stop=True):
++    """Called under the cohort lock; do not trust an exited label alone."""
++    if honor_stop:
++        check_stops(lr, wave, root)
++    records = lr.read(root / ".ownership/reservations.json")
++    keys = {j["key"] for j in wave.jobs_for(root)}
++    if not records:
++        raise ValueError("Missing retained cohort identities")
++    for record in records:
++        if record["key"] not in keys or record["state"] not in ("reserved", "active", "exited", "completed"):
++            raise ValueError("Unknown cohort reservation")
++        require_dead(lr, record["owner"])
++        require_dead(lr, record["worker"])
++        if record["launcher"] is not None:
++            require_dead(lr, record["launcher"])
++        elif record["state"] == "reserved":
++            raise OSError("Unbound launch UNKNOWN")
++    process = lr.read(root / "process.json")
++    attempt = Path(process["attempt"]).resolve()
++    if attempt.parent != root / "attempts" or lr.read(attempt / "process.json") != process:
++        raise ValueError("Coordinator attempt identity differs")
++    owners = [r["owner"] for r in records if r["owner"]["pid"] == process["pid"] and
++              r["owner"]["command"] == process["command"]]
++    if not owners or len({o["created"] for o in owners}) != 1:
++        raise OSError("Coordinator creation identity UNKNOWN")
++    for key in {r["key"] for r in records}:
++        current = [r for r in records if r["key"] == key][-1]
++        folder = root / key
++        worker = lr.read(folder / "process.json")
++        if any(worker.get(k) != current["worker"].get(k) for k in ("pid", "created", "command")):
++            raise OSError("Actual worker identity UNKNOWN")
++        if current["launcher"] is not None:
++            launcher = lr.read(folder / "launcher.json")
++            if any(launcher.get(k) != current["launcher"].get(k) for k in ("pid", "command")):
++                raise OSError("Launcher identity UNKNOWN")
++    return records, attempt
++
++
++def known_failure(lr, folder, record):
++    status = lr.read(folder / "status.json")
++    if status != dict(status="failed", pid=record["worker"]["pid"], error=ERROR):
++        raise ValueError("Not the exact terminal diagnostic JSON failure")
++    log = (folder / "stderr.log").read_text(encoding="utf-8-sig")
++    last = log.rsplit("Traceback (most recent call last):", 1)[-1]
++    fragments = (f'File "{V2 / "collect.py"}", line 155, in run',
++                 'save(output / "trace.json", trace)',
++                 f'File "{V2 / "local_runtime.py"}", line 42, in save',
++                 "json.dumps(plain(value), allow_nan=False)")
++    if "Traceback (most recent call last):" not in log or not all(s in last for s in fragments) or last.strip().splitlines()[-1] != ERROR:
++        raise ValueError("Failure traceback is not the frozen trace serialization boundary")
++    return status
++
++
++def authenticate(lr, wave, root):
++    source = lr.identity()
++    plan = dict(format=lr.FORMAT, jobs=wave.jobs_for(root), identity=source, maximum_workers=5,
++                threads_per_worker=1, episodes=10, transitions=750, training_only=True)
++    if lr.read(root / "plan.json") != plan:
++        raise ValueError("Wave plan/source changed")
++    return source
++
++
++def hashes(lr, folder, names):
++    return {name: lr.file_hash(folder / name) for name in names}
++
++
++def verify_complete(lr, validator, folder, source):
++    completion = lr.read(folder / "completion.json")
++    if completion.get("export_recovery", {}).get("receipt") != RECEIPT:
++        raise ValueError("Completion is not this adapter's export")
++    receipt = lr.read(folder / RECEIPT)
++    if completion["export_recovery"]["sha256"] != lr.file_hash(folder / RECEIPT):
++        raise ValueError("Export receipt changed")
++    if receipt["helper_sha256"] != helper_hashes(lr):
++        raise ValueError("Export helper source changed")
++    if lr.read(folder / "status.json") != dict(status="export-completed", control_steps=75,
++            export_receipt_sha256=completion["export_recovery"]["sha256"]):
++        raise ValueError("Export current status changed")
++    inputs = dict(receipt["input_sha256"])
++    original = inputs.pop("status.json")
++    if (hashes(lr, folder, inputs) != inputs or
++            lr.file_hash(folder / STAGE / "original-status.json") != original or
++            hashes(lr, folder, OUTPUTS) != receipt["output_sha256"] or
++            completion["outputs_sha256"] != receipt["output_sha256"]):
++        raise ValueError("Export inputs/outputs changed")
++    validator.load_completed(folder, source)
++    return receipt
++
++
++def helper_hashes(lr):
++    return hashes(lr, HERE, ("export_recovery.py", "supervise.py"))
++
++
++def export(folder):
++    started = time.perf_counter()
++    lr, collector, validator, wave = modules()
++    root, folder = lr.COHORT_ROOT.resolve(), Path(folder).resolve()
++    lr.canonical_root(root)
++    job = next((j for j in wave.jobs_for(root) if root / j["key"] == folder), None)
++    if job is None:
++        raise ValueError("Export requires a canonical v2 slot")
++    check_stops(lr, wave, root)
++    with ExitStack() as locks:
++        locks.enter_context(lr.exclusive_run(root))
++        locks.enter_context(lr.exclusive_run(folder))
++        records, attempt = prove_dead(lr, wave, root)
++        source = authenticate(lr, wave, root)
++        if (folder / "completion.json").exists():
++            receipt = verify_complete(lr, validator, folder, source)
++            retained = [r for r in records if r["key"] == job["key"]][-1]
++            if retained["cohort_phase"] != "finished" or retained["control_steps"] != 75:
++                raise ValueError("Completed export lost its retained cohort identity")
++            return receipt
++        stage = folder / STAGE
++        if stage.exists() or (folder / RECEIPT).exists():
++            raise FileExistsError("Interrupted export; preserve staging for review")
++        for name in ("trace.json", "summary.json", "experience.pt"):
++            if (folder / name).exists():
++                raise FileExistsError("Conflicting preexisting output: " + name)
++        retained = [r for r in records if r["key"] == job["key"]][-1]
++        failure = known_failure(lr, folder, retained)
++        names = ["checkpoint.pt", "settings.json", "status.json", "timing.json", "observation_schema.json",
++                 "process.json", "stderr.log", "stdout.log"]
++        names += [p.relative_to(folder).as_posix() for p in sorted((folder / "sessions").glob("*.json"))]
++        if (folder / "launcher.json").exists():
++            names.append("launcher.json")
++        inputs = hashes(lr, folder, names)
++        helpers = helper_hashes(lr)
++        settings = lr.read(folder / "settings.json")
++        if (settings["identity"] != source or settings["contract"] != lr.contract() or
++                any(settings[k] != job[k] for k in ("behavior", "scenario", "cpu_mask", "training_seed", "exploration_seed")) or
++                settings["run_id"] != retained["run_id"] or retained["control_steps"] != 75 or
++                settings["evaluation"] is not False or settings["model_sha256"] is not None):
++            raise ValueError("Terminal slot/settings/cohort identity differs")
++        # Boot registers frozen pickle classes. Never construct, restore or step an environment.
++        lr.boot(lr.DEFAULT_SNAPSHOT, job["cpu_mask"])
++        ck = lr.torch.load(folder / "checkpoint.pt", map_location="cpu", weights_only=False)
++        if len(ck["trace"]) != 75 or len(ck["transitions"]) != 75 or ck["environment"]["k"] != 80:
++            raise ValueError("Need the saved 75-step terminal checkpoint")
++        transformed, changes = tag_diagnostics(ck["trace"])
++        if not changes:
++            raise ValueError("No allowlisted diagnostic infinity to repair")
++        env = ck["environment"]
++        physical = {k: env[k] for k in ("previous", "last_budget", "last_requested", "last_executed", "warmup_ttt")}
++        physical.update(state=env["sim"].state, total_ttt=env["sim"].total_ttt,
++                        freeway_ttt=env["sim"].freeway_ttt, urban_ttt=env["sim"].urban_ttt)
++        json_bytes(lr.plain(dict(physical=physical, transitions=ck["transitions"],
++                               observation=ck["observation"], settings=settings, policy=ck["policy"])))
++        collector.validate_checkpoint(ck, settings)
++        validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
++        timing = lr.read(folder / "timing.json")
++        required = sorted(set(ck["session_ids"]) | {r["token"] for r in records if r["key"] == job["key"]})
++        if not required or timing != lr.session_timing(folder, required):
++            raise ValueError("Original timing/session reconciliation differs")
++        if lr.read(folder / "observation_schema.json") != ck["schema"]:
++            raise ValueError("Original schema differs")
++        summary = lr.plain(validator.summarize(ck["trace"], settings, timing["timing_status"]))
++        exported_ck = dict(ck, trace=transformed)
++        collector.validate_checkpoint(exported_ck, settings)
++        validator.validate_rows(transformed, ck["transitions"], settings, ck["schema"], settings["capacity"])
++        if lr.plain(validator.summarize(transformed, settings, timing["timing_status"])) != summary:
++            raise ValueError("Export summary differs")
++        payload = dict(format=lr.FORMAT, settings=settings, transitions=ck["transitions"])
++        experience_digest = lr.digest(payload)
++        stage.mkdir()
++        publish_bytes(stage / "original-status.json", (folder / "status.json").read_bytes())
++        publish_bytes(stage / "intent.json", json_bytes(dict(input_sha256=inputs, helper_sha256=helpers,
++                      changed_paths=changes, started=time.time(), interruption_policy="preserve_and_fail_closed")))
++        for name in ("settings.json", "observation_schema.json", "timing.json", *[n for n in names if n.startswith("sessions/")]):
++            publish_bytes(stage / name, (folder / name).read_bytes())
++        publish_bytes(stage / "trace.json", json_bytes(transformed))
++        publish_bytes(stage / "summary.json", json_bytes(summary))
++        lr.checkpoint_save(lr.torch, stage / "experience.pt", payload)
++        with (stage / "experience.pt").open("r+b") as stream:
++            os.fsync(stream.fileno())
++        if lr.digest(lr.torch.load(stage / "experience.pt", map_location="cpu", weights_only=False)) != experience_digest:
++            raise ValueError("Export changed training experience")
++        output_hashes = hashes(lr, stage, OUTPUTS)
++        completion = dict(format=lr.FORMAT, status="completed", settings=settings, outputs_sha256=output_hashes)
++        publish_bytes(stage / "completion.json", json_bytes(completion))
++        validator.load_completed(stage, source)
++        if hashes(lr, folder, inputs) != inputs or helper_hashes(lr) != helpers:
++            raise ValueError("Export inputs/helper changed during validation")
++        lr.verify_identity(source)
++        prove_dead(lr, wave, root)
++        for name in ("trace.json", "summary.json", "experience.pt"):
++            publish_bytes(folder / name, (stage / name).read_bytes())
++        # Existing locked helper retains the actual token, run_id and 75-step count.
++        lr.release_worker(retained["token"], finished=True)
++        check_stops(lr, wave, root)
++        if hashes(lr, folder, inputs) != inputs or hashes(lr, folder, OUTPUTS) != output_hashes:
++            raise ValueError("Export inputs/outputs changed before completion")
++        lr.verify_identity(source)
++        receipt = dict(format="sdmpc-terminal-export-receipt-v1", slot=job["key"],
++            run_id=settings["run_id"], token=retained["token"], helper_sha256=helpers,
++            input_sha256=inputs, source_identity=source, known_failure=failure,
++            original_status=f"{STAGE}/original-status.json", changed_paths=changes,
++            output_sha256=output_hashes, experience_digest=experience_digest,
++            summary_digest=lr.digest(summary), control_steps=75, true_terminals=1,
++            worker_timing_scope=lr.TIMING_SCOPE, export_elapsed_wall_seconds=time.perf_counter()-started,
++            export_timing_scope=EXPORT_SCOPE, coordinator_attempt=str(attempt),
++            cohort_before_sha256=lr.digest(records), checkpoint_authoritative=True,
++            convergence_claim=False, physical_or_training_change=False)
++        publish_bytes(folder / RECEIPT, json_bytes(receipt))
++        completion["export_recovery"] = dict(receipt=RECEIPT, sha256=lr.file_hash(folder / RECEIPT))
++        lr.durable_save(folder / "status.json", dict(status="export-completed", control_steps=75,
++                                                   export_receipt_sha256=completion["export_recovery"]["sha256"]))
++        check_stops(lr, wave, root)
++        publish_bytes(folder / "completion.json", json_bytes(completion))
++        return receipt
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--slot", required=True, help="Canonical behavior/scenario")
++    parser.add_argument("--execute", action="store_true", help="Publish only after parent review")
++    args = parser.parse_args(argv)
++    if not args.execute:
++        parser.error("No export performed; explicit --execute is required")
++    lr, _, _, wave = modules()
++    if args.slot not in {j["key"] for j in wave.jobs_for(lr.COHORT_ROOT)}:
++        parser.error("Unknown canonical v2 slot")
++    export(lr.COHORT_ROOT / args.slot)
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\run_tests.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\run_tests.py"
+new file mode 100644
+index 0000000..45a5742
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\run_tests.py"
+@@ -0,0 +1,32 @@
++"""Run only new isolated covering tests using already installed dependencies."""
++import os
++import hashlib
++import json
++from pathlib import Path
++import sys
++import uuid
++
++HERE = Path(__file__).resolve().parent
++sys.dont_write_bytecode = True
++os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
++for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
++    os.environ[name] = "1"
++sys.path.insert(0, str(HERE.parents[1] / ".deps-budget"))
++import pytest
++
++if __name__ == "__main__":
++    run_id = uuid.uuid4().hex[:8]
++    run = HERE / "test-evidence" / run_id
++    run.mkdir(parents=True)
++    (HERE / "_t").mkdir(exist_ok=True)
++    sources = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(HERE.glob("*.py"))}
++    code = pytest.main(["-q", "--tb=short", "-p", "no:cacheprovider", "--confcutdir=" + str(HERE),
++        "--basetemp=" + str(HERE / "_t" / run_id), "--junitxml=" + str(run / "tests.xml")]
++        + [str(p) for p in sorted(HERE.glob("test_*.py"))])
++    after = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(HERE.glob("*.py"))}
++    if sources != after:
++        raise ValueError("Tested source changed during tests")
++    (run / "evidence.json").write_text(json.dumps(dict(exit_code=code, source_sha256=sources,
++        xml_sha256=hashlib.sha256((run / "tests.xml").read_bytes()).hexdigest(),
++        python=sys.version, isolated_fixtures=str(HERE / "_t" / run_id)), indent=2), encoding="utf-8")
++    raise SystemExit(code)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\supervise.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\supervise.py"
+new file mode 100644
+index 0000000..b807b37
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\supervise.py"
+@@ -0,0 +1,200 @@
++"""Bounded companion: export known terminal failures, resume immutable v2."""
++import argparse
++from contextlib import ExitStack
++import os
++from pathlib import Path
++import subprocess
++import sys
++import time
++import uuid
++
++import export_recovery as recovery
++
++MAX_REPAIRS = 10
++MAX_WAVES = 11
++
++
++def inspect(lr, validator, wave, root):
++    """No arbitrary retry: reconcile the exact primary error and drained siblings."""
++    records, attempt = recovery.prove_dead(lr, wave, root)
++    source = recovery.authenticate(lr, wave, root)
++    jobs = wave.jobs_for(root)
++    status = lr.read(root / "status.json")
++    if (root / "completion.json").exists():
++        done = lr.read(root / "completion.json")
++        if (status != {"status": "completed"} or done["status"] != "completed" or
++                done["plan"] != lr.read(root / "plan.json") or
++                done["child_completion_sha256"] != {j["key"]: lr.file_hash(root / j["key"] / "completion.json") for j in jobs} or
++                done["comparison_sha256"] != lr.file_hash(root / "comparison.json") or
++                lr.read(root / "comparison.json") != validator.compare_pairs(root, source)):
++            raise ValueError("Wave completion differs")
++        return True, []
++    primary = next((j["key"] for j in jobs if status == dict(status="failed",
++        error=f"RuntimeError: Child failed/stopped: {j['key']}, exit=1")), None)
++    if primary is None or lr.read(attempt / "failure.json") != {"error": status["error"]}:
++        raise ValueError("Coordinator failure is not the known recoverable child failure")
++    repairs = []
++    for job in jobs:
++        folder = root / job["key"]
++        history = [r for r in records if r["key"] == job["key"]]
++        if (folder / "completion.json").exists():
++            wave.validate_job(root, job, source)
++            if (folder / recovery.RECEIPT).exists():
++                receipt = recovery.verify_complete(lr, validator, folder, source)
++                if job["key"] == primary and receipt["coordinator_attempt"] != str(attempt):
++                    raise ValueError("Primary repaired failure belongs to another attempt")
++            elif job["key"] == primary:
++                raise ValueError("Primary failure lacks an export receipt")
++            continue
++        if (folder / recovery.STAGE).exists():
++            raise FileExistsError("Interrupted export; preserve staging for review")
++        if not history:
++            # Unstarted canonical slots are left to the original runner.
++            if folder.exists() and any(p.name != "runner.lock" for p in folder.iterdir()):
++                raise ValueError("Unowned slot artifacts")
++            continue
++        record = history[-1]
++        if not (folder / "checkpoint.pt").is_file():
++            raise ValueError("Missing retained checkpoint")
++        if lr.read(folder / "settings.json")["run_id"] != record["run_id"]:
++            raise ValueError("Retained checkpoint run identity differs")
++        child = lr.read(folder / "status.json")
++        if child.get("status") == "failed":
++            recovery.known_failure(lr, folder, record)
++            if record["control_steps"] != 75:
++                raise ValueError("Failure is not terminal")
++            repairs.append(job["key"])
++        elif child.get("status") == "stopped":
++            abort = attempt / "ABORT.json"
++            command = record["worker"]["command"]
++            if (not abort.exists() or lr.read(abort).get("reason") != "coordinator_draining" or
++                    "--abort-file" not in command or
++                    Path(command[command.index("--abort-file") + 1]).resolve() != abort):
++                raise ValueError("Stopped worker is not a drained sibling of this attempt")
++        else:
++            raise ValueError("Unexpected incomplete worker status")
++        if job["key"] == primary and job["key"] not in repairs:
++            raise ValueError("Primary child failure is not recoverable")
++    if primary not in repairs and not (root / primary / "completion.json").exists():
++        raise ValueError("Primary checkpoint missing")
++    return False, repairs
++
++
++def launched(lr, wave, root, folder, state, command, kind):
++    """Persist launch intent first. An interrupted/ambiguous launch is never retried."""
++    recovery.check_stops(lr, wave, root)
++    if state["helper_sha256"] != recovery.helper_hashes(lr):
++        raise ValueError("Supervisor helper source changed")
++    attempt = dict(id=uuid.uuid4().hex, kind=kind, command=command, phase="launching", started=time.time())
++    state["attempts"].append(attempt)
++    lr.durable_save(folder / "state.json", state)
++    path = folder / "attempts" / (attempt["id"] + ".json")
++    lr.durable_save(path, attempt)
++    env = os.environ.copy()
++    env.update(PYTHONDONTWRITEBYTECODE="1", PYTHONIOENCODING="utf-8",
++               OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
++    with (folder / "stdout.log").open("a", encoding="utf-8") as out, (folder / "stderr.log").open("a", encoding="utf-8") as err:
++        out.write(f"\n{attempt['id']} {kind} {command!r}\n")
++        out.flush()
++        child = subprocess.Popen(command, cwd=lr.REPO, env=env, stdout=out, stderr=err,
++                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++        try:
++            identity = lr.process_identity(child.pid, command)
++            attempt.update(phase="running", process=identity)
++            lr.durable_save(path, attempt)
++            lr.durable_save(folder / "state.json", state)
++        finally:
++            # Even a bookkeeping failure after spawn must wait for the launched handle.
++            code = child.wait()
++    recovery.require_dead(lr, identity)
++    if kind == "wave":
++        while True:
++            try:
++                # Wait for known actual identities even if their launcher already exited.
++                # STOP prevents continuation, but must not bypass this draining proof.
++                recovery.prove_dead(lr, wave, root, honor_stop=False)
++                with lr.exclusive_run(root):
++                    recovery.prove_dead(lr, wave, root, honor_stop=False)
++                break
++            except recovery.LiveProcess:
++                time.sleep(1)
++            # UNKNOWN and inaccessible locks fail closed, never dispatch a duplicate.
++    attempt.update(phase="exited", exit_code=code, ended=time.time())
++    lr.durable_save(path, attempt)
++    lr.durable_save(folder / "state.json", state)
++    recovery.check_stops(lr, wave, root)
++    return code
++
++
++def supervise():
++    lr, _, validator, wave = recovery.modules()
++    root = lr.canonical_root(lr.COHORT_ROOT)
++    recovery.check_stops(lr, wave, root)
++    folder = root / ".export-supervisor"
++    with lr.exclusive_run(folder):
++        state_path = folder / "state.json"
++        source = recovery.authenticate(lr, wave, root)
++        state = (lr.read(state_path) if state_path.exists() else
++                 dict(source=source, helper_sha256=recovery.helper_hashes(lr), repairs=[], attempts=[], status="ready"))
++        if (state["source"] != source or state["helper_sha256"] != recovery.helper_hashes(lr) or
++                state["status"] not in ("ready", "completed")):
++            raise ValueError("Interrupted/changed supervisor; preserve state for review")
++        if (len(state["repairs"]) > MAX_REPAIRS or len(set(state["repairs"])) != len(state["repairs"]) or
++                not set(state["repairs"]) <= {j["key"] for j in wave.jobs_for(root)}):
++            raise ValueError("Invalid durable repair bound")
++        process = lr.process_identity()
++        if type(process.get("created")) is not int or lr.probe_process(process["pid"]) != ("live", process["created"]):
++            raise OSError("Supervisor creation identity UNKNOWN")
++        state.update(status="running", process=process)
++        lr.durable_save(state_path, state)
++        try:
++            while True:
++                with ExitStack() as locks:
++                    locks.enter_context(lr.exclusive_run(root))
++                    completed, repairs = inspect(lr, validator, wave, root)
++                if completed:
++                    state["status"] = "completed"
++                    lr.durable_save(state_path, state)
++                    return "completed"
++                for slot in repairs:
++                    if slot in state["repairs"] or len(state["repairs"]) >= MAX_REPAIRS:
++                        raise ValueError("Terminal repair bound/once-per-slot exceeded")
++                    state["repairs"].append(slot)
++                    lr.durable_save(state_path, state)
++                    code = launched(lr, wave, root, folder, state,
++                        [sys.executable, "-B", "-u", str(recovery.HERE / "export_recovery.py"),
++                         "--slot", slot, "--execute"], "export")
++                    if code != 0:
++                        raise RuntimeError("Export failed; no automatic retry")
++                    recovery.verify_complete(lr, validator, root / slot, source)
++                if sum(a["kind"] == "wave" for a in state["attempts"]) >= MAX_WAVES:
++                    raise ValueError("Bounded coordinator continuation exhausted")
++                recovery.check_stops(lr, wave, root)
++                lr.verify_identity(source)
++                previous = lr.file_hash(root / "process.json")
++                code = launched(lr, wave, root, folder, state,
++                    [sys.executable, "-B", "-u", str(recovery.V2 / "run_wave.py"),
++                     "--output", str(root), "--resume"], "wave")
++                if lr.file_hash(root / "process.json") == previous:
++                    raise ValueError("Launched coordinator did not record a new attempt")
++                if code == 0 and not (root / "completion.json").exists():
++                    raise ValueError("Coordinator exited without completion")
++                if code not in (0, 1):
++                    raise RuntimeError("Coordinator stopped or exited unexpectedly")
++        except BaseException as exc:
++            state.update(status="failed", error=f"{type(exc).__name__}: {exc}")
++            lr.durable_save(state_path, state)
++            raise
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--execute", action="store_true", help="Continue only after parent review")
++    if not parser.parse_args(argv).execute:
++        parser.error("No continuation performed; explicit --execute is required")
++    supervise()
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_diagnostics.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_diagnostics.py"
+new file mode 100644
+index 0000000..6d0c2de
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_diagnostics.py"
+@@ -0,0 +1,55 @@
++"""Only output-boundary tests; no runtime boot or numerical collection."""
++import copy
++import json
++import math
++
++import pytest
++
++from export_recovery import tag_diagnostics
++
++
++def test_known_failure_and_exact_tags():
++    trace = [dict(candidates=[dict(stationarity=float("inf"), converged=False,
++        rows=[dict(primal_stationarity=float("inf"))])],
++        selection_source="reference_fallback", reward=-1.,
++        execution_check=dict(physical_control_valid=True, budget_feasible=True))]
++    before = copy.deepcopy(trace)
++    with pytest.raises(ValueError, match="Out of range"):
++        json.dumps(trace, allow_nan=False)
++    exported, changes = tag_diagnostics(trace)
++    assert json.loads(json.dumps(exported, allow_nan=False)) == exported
++    assert [c["path"] for c in changes] == [
++        [0, "candidates", 0, "stationarity"],
++        [0, "candidates", 0, "rows", 0, "primal_stationarity"]]
++    assert all(c["original_value"] == "+inf" and c["original_type"] == "float" for c in changes)
++    assert trace == before and math.isinf(trace[0]["candidates"][0]["stationarity"])
++    assert exported[0]["candidates"][0]["converged"] is False
++    assert exported[0]["selection_source"] == "reference_fallback"
++
++
++def test_finite_identity():
++    trace = [dict(candidates=[dict(stationarity=-0.0, rows=[dict(primal_stationarity=2.)])],
++                  value=[None, True, 1, 1.25, "inf"], reward=-2.)]
++    exported, changes = tag_diagnostics(trace)
++    assert json.dumps(exported) == json.dumps(trace)
++    assert changes == []
++
++
++@pytest.mark.parametrize("value", [float("nan"), -float("inf")])
++def test_negative_infinity_and_nan_forbidden_even_in_diagnostics(value):
++    with pytest.raises(ValueError, match="nonfinite"):
++        tag_diagnostics([dict(candidates=[dict(stationarity=value)])])
++
++
++@pytest.mark.parametrize("row", [
++    dict(reward=float("inf")), dict(plant_state=dict(density=float("inf"))),
++    dict(action_requested=[float("inf"), 0.]), dict(total_ttt=float("inf")),
++    dict(stationarity=float("inf")), dict(candidates=dict(stationarity=float("inf"))),
++    dict(candidates={0: dict(stationarity=float("inf"))}),
++    dict(candidates=[dict(rows=dict(primal_stationarity=float("inf")))]),
++    dict(candidates=[dict(nested=dict(stationarity=float("inf")))]),
++    dict(candidates=[dict(stationarity={"nonfinite_float": "+inf"})]),
++])
++def test_no_structural_or_physical_allowlist_widening(row):
++    with pytest.raises((ValueError, TypeError)):
++        tag_diagnostics([row])
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_export.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_export.py"
+new file mode 100644
+index 0000000..fc79d63
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_export.py"
+@@ -0,0 +1,304 @@
++import copy
++import json
++import math
++
++import pytest
++
++import export_recovery as recovery
++from conftest import lr, collector, validator, wave, IDENTITY, TOKEN
++
++
++def contents(folder):
++    return {p.relative_to(folder).as_posix(): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
++
++
++def save_checkpoint(cohort):
++    lr.checkpoint_save(lr.torch, cohort.folder / "checkpoint.pt", cohort.ck)
++
++
++def test_export_original_validators_retained_identity_and_complete_retry(cohort, monkeypatch):
++    before = contents(cohort.folder)
++    original_summary = validator.summarize(cohort.ck["trace"], cohort.settings, "KNOWN")
++    calls = []
++    original_loader = validator.load_completed
++
++    def load(*a, **k):
++        calls.append(a[0])
++        return original_loader(*a, **k)
++
++    monkeypatch.setattr(validator, "load_completed", load)
++    receipt = recovery.export(cohort.folder)
++    result, settings, summary = original_loader(cohort.folder, IDENTITY)
++    assert len(cohort.boot_calls) == 1
++    assert calls == [cohort.folder / recovery.STAGE]
++    assert settings == cohort.settings and summary["ttt"] == 80.
++    assert lr.read(cohort.folder / "summary.json") == original_summary
++    assert result["outputs_sha256"].keys() == set(recovery.OUTPUTS)
++    assert result["export_recovery"]["sha256"] == lr.file_hash(cohort.folder / recovery.RECEIPT)
++    assert len(receipt["changed_paths"]) == 4 and receipt["export_elapsed_wall_seconds"] > 0.
++    assert receipt["convergence_claim"] is False and receipt["true_terminals"] == 1
++    exported = lr.read(cohort.folder / "trace.json")
++    assert exported[14]["selection_source"] == "reference_fallback"
++    assert exported[14]["candidates"][0]["converged"] is False
++    assert exported[14]["candidates"][0]["stationarity"] == {"nonfinite_float": "+inf"}
++    raw = lr.torch.load(cohort.folder / "checkpoint.pt", weights_only=False)
++    assert math.isinf(raw["trace"][14]["candidates"][0]["stationarity"])
++    payload = lr.torch.load(cohort.folder / "experience.pt", weights_only=False)
++    assert lr.digest(payload["transitions"]) == lr.digest(raw["transitions"])
++    for name, data in before.items():
++        if name != "status.json":
++            assert (cohort.folder / name).read_bytes() == data
++    assert (cohort.folder / recovery.STAGE / "original-status.json").read_bytes() == before["status.json"]
++    retained = lr.read(cohort.root / ".ownership/reservations.json")[-1]
++    assert retained["cohort_phase"] == "finished" and retained["control_steps"] == 75
++    assert retained["token"] == TOKEN and retained["run_id"] == cohort.record["run_id"]
++    after = contents(cohort.root)
++    assert recovery.export(cohort.folder) == receipt
++    assert contents(cohort.root) == after and len(cohort.boot_calls) == 1
++
++
++@pytest.mark.parametrize("fault", ["length", "terminal", "state", "reward", "action", "physical_nan", "extra_inf", "policy"])
++def test_reject_invalid_checkpoint(cohort, fault):
++    ck = cohort.ck
++    if fault == "length":
++        ck["trace"].pop()
++    elif fault == "terminal":
++        ck["transitions"][-1] = (*ck["transitions"][-1][:-1], False)
++    elif fault == "state":
++        ck["environment"]["sim"].total_ttt += 1.
++    elif fault == "reward":
++        ck["transitions"][0] = (ck["transitions"][0][0], ck["transitions"][0][1], float("inf"), *ck["transitions"][0][3:])
++    elif fault == "action":
++        ck["transitions"][0][1][0] = float("nan")
++    elif fault == "physical_nan":
++        ck["environment"]["sim"].state.freeway_speed["a"][0] = float("nan")
++    elif fault == "extra_inf":
++        ck["trace"][0]["execution_check"]["stationarity"] = float("inf")
++    else:
++        ck["policy"]["count"] -= 1
++    save_checkpoint(cohort)
++    with pytest.raises((ValueError, AssertionError)):
++        recovery.export(cohort.folder)
++    assert not (cohort.folder / "completion.json").exists()
++
++
++@pytest.mark.parametrize("artifact", ["checkpoint.pt", "settings.json", "observation_schema.json", "timing.json", "stderr.log", "process.json"])
++def test_missing_artifacts_fail_before_publication(cohort, artifact):
++    (cohort.folder / artifact).unlink()
++    with pytest.raises((FileNotFoundError, ValueError, OSError)):
++        recovery.export(cohort.folder)
++    assert not (cohort.folder / "completion.json").exists()
++
++
++@pytest.mark.parametrize("artifact", ["settings.json", "timing.json", "observation_schema.json", "sessions/" + TOKEN + ".end.json"])
++def test_changed_artifacts_rejected(cohort, artifact):
++    value = lr.read(cohort.folder / artifact)
++    value["unadmitted"] = True
++    lr.save(cohort.folder / artifact, value)
++    with pytest.raises((ValueError, AssertionError)):
++        recovery.export(cohort.folder)
++
++
++def test_source_drift_rejected(cohort, monkeypatch):
++    monkeypatch.setattr(lr, "identity", lambda: {"changed": True})
++    with pytest.raises(ValueError, match="source"):
++        recovery.export(cohort.folder)
++    assert not cohort.boot_calls
++
++
++@pytest.mark.parametrize("fault", ["missing_source", "changed_source", "runtime"])
++def test_source_and_runtime_authentication_fail_closed(cohort, monkeypatch, fault):
++    source = cohort.root / "synthetic-source.py"
++    source.write_text("immutable fixture")
++    expected = lr.file_hash(source)
++
++    def authenticated():
++        if lr.file_hash(source) != expected or fault == "runtime":
++            raise ValueError("Source/runtime changed")
++        return IDENTITY
++
++    monkeypatch.setattr(lr, "identity", authenticated)
++    if fault == "missing_source":
++        source.unlink()
++    elif fault == "changed_source":
++        source.write_text("changed fixture")
++    with pytest.raises((FileNotFoundError, ValueError)):
++        recovery.export(cohort.folder)
++    assert not cohort.boot_calls
++
++
++@pytest.mark.parametrize("who", [100, 200, 300])
++@pytest.mark.parametrize("state", ["live", "unknown"])
++def test_live_or_unknown_blocks_before_boot(cohort, who, state):
++    cohort.statuses[who] = (state, who*10 if state == "live" else None)
++    with pytest.raises(OSError, match="live|UNKNOWN"):
++        recovery.export(cohort.folder)
++    assert not cohort.boot_calls
++
++
++def test_pid_reuse_proves_original_exit(cohort):
++    cohort.statuses[300] = ("live", 3001)
++    recovery.export(cohort.folder)
++
++
++@pytest.mark.parametrize("fault", ["error", "traceback", "creation", "cohort_steps", "run_id", "STOP", "sibling_STOP", "relocated"])
++def test_fail_closed_identity_failure_stop(cohort, fault):
++    if fault == "error":
++        lr.save(cohort.folder / "status.json", dict(status="failed", pid=300, error="ValueError: physical inf"))
++    elif fault == "traceback":
++        (cohort.folder / "stderr.log").write_text(recovery.ERROR)
++    elif fault in ("creation", "cohort_steps", "run_id"):
++        record = copy.deepcopy(cohort.record)
++        if fault == "creation":
++            record["owner"]["created"] = None
++        else:
++            record["control_steps" if fault == "cohort_steps" else "run_id"] = 74 if fault == "cohort_steps" else "wrong"
++        lr.save(cohort.root / ".ownership/reservations.json", [record])
++    elif fault in ("STOP", "sibling_STOP"):
++        folder = cohort.folder if fault == "STOP" else cohort.root / wave.jobs_for(cohort.root)[1]["key"]
++        folder.mkdir(parents=True, exist_ok=True)
++        (folder / "STOP").touch()
++    target = cohort.folder if fault != "relocated" else cohort.root / "wrong" / cohort.job["scenario"]
++    with pytest.raises((ValueError, OSError, lr.Stopped)):
++        recovery.export(target)
++    assert not cohort.boot_calls
++
++
++@pytest.mark.parametrize("name", ["trace.json", "summary.json", "experience.pt"])
++def test_conflicting_output_never_overwritten(cohort, name):
++    (cohort.folder / name).write_bytes(b"keep me")
++    with pytest.raises(FileExistsError):
++        recovery.export(cohort.folder)
++    assert (cohort.folder / name).read_bytes() == b"keep me"
++
++
++@pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
++def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
++    publish = recovery.publish_bytes
++
++    def interrupt(path, data):
++        selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
++                    "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
++                    "completion": cohort.folder / "completion.json"}[point]
++        if path == selected:
++            raise RuntimeError("synthetic interruption")
++        publish(path, data)
++
++    monkeypatch.setattr(recovery, "publish_bytes", interrupt)
++    with pytest.raises(RuntimeError, match="interruption"):
++        recovery.export(cohort.folder)
++    assert not (cohort.folder / "completion.json").exists()
++    assert (cohort.folder / recovery.STAGE / "original-status.json").exists()
++    before = contents(cohort.root)
++    with pytest.raises(FileExistsError, match="Interrupted"):
++        recovery.export(cohort.folder)
++    assert contents(cohort.root) == before
++
++
++@pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "status.json", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
++def test_complete_retry_detects_tampering(cohort, name):
++    recovery.export(cohort.folder)
++    path = cohort.folder / name
++    if name == "status.json":
++        lr.save(path, {"status": "wrong"})
++    else:
++        path.write_bytes(path.read_bytes() + b" ")
++    with pytest.raises(ValueError, match="changed"):
++        recovery.export(cohort.folder)
++
++
++def test_completion_is_last(cohort, monkeypatch):
++    events, publish = [], recovery.publish_bytes
++
++    def record(path, data):
++        events.append(path)
++        if path == cohort.folder / "completion.json":
++            retained = lr.read(cohort.root / ".ownership/reservations.json")[-1]
++            assert retained["cohort_phase"] == "finished"
++            assert (cohort.folder / recovery.RECEIPT).exists()
++        publish(path, data)
++
++    monkeypatch.setattr(recovery, "publish_bytes", record)
++    recovery.export(cohort.folder)
++    assert events[-1] == cohort.folder / "completion.json"
++
++
++def test_input_change_during_validation_preserved_and_rejected(cohort, monkeypatch):
++    original = validator.load_completed
++
++    def changed(*a, **k):
++        result = original(*a, **k)
++        (cohort.folder / "stdout.log").write_text("changed")
++        return result
++
++    monkeypatch.setattr(validator, "load_completed", changed)
++    with pytest.raises(ValueError, match="changed during"):
++        recovery.export(cohort.folder)
++    assert not (cohort.folder / "completion.json").exists()
++
++
++@pytest.mark.parametrize("point", ["STOP", "output_tamper"])
++def test_final_publication_guard(cohort, monkeypatch, point):
++    original = lr.release_worker
++
++    def release(*a, **k):
++        original(*a, **k)
++        if point == "STOP":
++            (cohort.root / "STOP").touch()
++        else:
++            (cohort.folder / "trace.json").write_text("[]")
++
++    monkeypatch.setattr(lr, "release_worker", release)
++    with pytest.raises((lr.Stopped, ValueError)):
++        recovery.export(cohort.folder)
++    assert not (cohort.folder / "completion.json").exists()
++    assert (cohort.folder / recovery.STAGE / "original-status.json").exists()
++
++
++@pytest.mark.parametrize("lock", ["cohort", "slot"])
++def test_original_locks_exclude_export(cohort, lock):
++    with lr.exclusive_run(cohort.root if lock == "cohort" else cohort.folder):
++        with pytest.raises(OSError):
++            recovery.export(cohort.folder)
++    assert not cohort.boot_calls
++
++
++def test_retains_previous_sessions_and_75_step_record(cohort):
++    older = copy.deepcopy(cohort.record)
++    older.update(token="c"*32, control_steps=2)
++    lr.save(cohort.root / ".ownership/reservations.json", [older, cohort.record])
++    start = cohort.folder / "sessions" / (older["token"] + ".start.json")
++    lr.save(start, dict(session_id=older["token"], process=older["worker"], started=1.))
++    lr.save(start.with_name(older["token"] + ".end.json"), dict(session_id=older["token"],
++        start_sha256=lr.file_hash(start), outcome="checkpointed", elapsed_wall_seconds=3.))
++    cohort.ck["session_ids"].append(older["token"])
++    save_checkpoint(cohort)
++    lr.save(cohort.folder / "timing.json", lr.session_timing(cohort.folder, cohort.ck["session_ids"]))
++    before = contents(cohort.folder / "sessions")
++    recovery.export(cohort.folder)
++    records = lr.read(cohort.root / ".ownership/reservations.json")
++    assert records[0] == older and records[1]["cohort_phase"] == "finished"
++    assert records[1]["control_steps"] == 75 and records[1]["token"] == cohort.record["token"]
++    assert contents(cohort.folder / "sessions") == before
++    assert validator.load_completed(cohort.folder, IDENTITY)[2]["elapsed_wall_seconds"] == 15.
++
++
++@pytest.mark.parametrize("job_index,inf_count", [(1, 7), (4, 5), (5, 4)])
++def test_later_slots_use_same_allowlist(cohort, job_index, inf_count):
++    from conftest import static_checkpoint
++    job = wave.jobs_for(cohort.root)[job_index]
++    folder = cohort.root / job["key"]
++    folder.parent.mkdir(parents=True, exist_ok=True)
++    cohort.folder.rename(folder)
++    settings = dict(cohort.settings, **{k: v for k, v in job.items() if k != "key"})
++    record = dict(cohort.record, key=job["key"], cpu_mask=job["cpu_mask"],
++                  training_seed=job["training_seed"], exploration_seed=job["exploration_seed"])
++    ck = static_checkpoint(settings)
++    for index in range(inf_count - 4):
++        ck["trace"][index]["candidates"][0]["stationarity"] = float("inf")
++    lr.save(folder / "settings.json", settings)
++    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", ck)
++    lr.save(cohort.root / ".ownership/reservations.json", [record])
++    receipt = recovery.export(folder)
++    assert receipt["slot"] == job["key"] and len(receipt["changed_paths"]) == inf_count
++    validator.load_completed(folder, IDENTITY)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_supervisor.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_supervisor.py"
+new file mode 100644
+index 0000000..d560294
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test_supervisor.py"
+@@ -0,0 +1,276 @@
++import copy
++from pathlib import Path
++
++import pytest
++
++import export_recovery as recovery
++import supervise as supervisor
++from conftest import lr, validator, wave, IDENTITY
++
++
++def test_inspect_only_exact_failure_and_skip_original_runner(cohort, monkeypatch):
++    assert supervisor.inspect(lr, validator, wave, cohort.root) == (False, [cohort.job["key"]])
++    abort = (cohort.attempt / "ABORT.json").read_bytes()
++    recovery.export(cohort.folder)
++    assert supervisor.inspect(lr, validator, wave, cohort.root) == (False, [])
++    monkeypatch.setattr(wave.subprocess, "Popen", lambda *a, **k: pytest.fail("completed slot relaunched"))
++    wave.run_stage(cohort.root, [cohort.job], IDENTITY, cohort.attempt / "ABORT.json", [cohort.job])
++    assert (cohort.attempt / "ABORT.json").read_bytes() == abort
++
++
++@pytest.mark.parametrize("fault", ["wrong_error", "missing_checkpoint", "stopped", "UNKNOWN", "STOP", "wrong_traceback"])
++def test_unrecoverable_does_not_launch(cohort, monkeypatch, fault):
++    monkeypatch.setattr(supervisor.subprocess, "Popen", lambda *a, **k: pytest.fail("unexpected launch"))
++    if fault == "wrong_error":
++        lr.save(cohort.root / "status.json", dict(status="failed", error="arbitrary failure"))
++    elif fault == "missing_checkpoint":
++        (cohort.folder / "checkpoint.pt").unlink()
++    elif fault == "stopped":
++        lr.save(cohort.root / "status.json", dict(status="stopped"))
++    elif fault == "UNKNOWN":
++        cohort.statuses[300] = ("unknown", None)
++    elif fault == "STOP":
++        (cohort.root / "STOP").touch()
++    else:
++        (cohort.folder / "stderr.log").write_text(recovery.ERROR)
++    with pytest.raises((ValueError, OSError, lr.Stopped)):
++        supervisor.supervise()
++
++
++def test_duplicate_supervisor_is_excluded(cohort, monkeypatch):
++    monkeypatch.setattr(supervisor.subprocess, "Popen", lambda *a, **k: pytest.fail("unexpected launch"))
++    with lr.exclusive_run(cohort.root / ".export-supervisor"):
++        with pytest.raises(OSError):
++            supervisor.supervise()
++
++
++def ready_state():
++    return dict(source=IDENTITY, helper_sha256=recovery.helper_hashes(lr), repairs=[], attempts=[], status="ready")
++
++
++@pytest.mark.parametrize("status", ["running", "failed", "launching"])
++def test_interrupted_supervisor_not_restarted(cohort, status):
++    state = dict(ready_state(), status=status)
++    lr.save(cohort.root / ".export-supervisor/state.json", state)
++    with pytest.raises(ValueError, match="Interrupted"):
++        supervisor.supervise()
++    assert lr.read(cohort.root / ".export-supervisor/state.json") == state
++
++
++def test_bounded_supervisor_exports_waits_and_resumes(cohort, monkeypatch):
++    launched, waited = [], []
++    done = [False]
++    original_inspect = supervisor.inspect
++
++    def inspect(*args):
++        if done[0]:
++            return True, []  # Numerical completion is deliberately outside this test.
++        return original_inspect(*args)
++
++    class Child:
++        pid = 500
++
++        def __init__(self, command, **kwargs):
++            assert len(launched) == len(waited)
++            assert kwargs["env"]["OMP_NUM_THREADS"] == kwargs["env"]["MKL_NUM_THREADS"] == kwargs["env"]["OPENBLAS_NUM_THREADS"] == "1"
++            cohort.statuses[500] = ("live", 5000)
++            self.command = command
++            launched.append(command)
++
++        def wait(self):
++            if Path(self.command[3]).name == "export_recovery.py":
++                recovery.export(cohort.folder)
++            else:
++                assert self.command[-1] == "--resume"
++                assert Path(self.command[3]) == recovery.V2 / "run_wave.py"
++                # The original run_stage's completed-slot skip is exercised separately.
++                process = lr.read(cohort.root / "process.json")
++                process["started"] += 1
++                lr.save(cohort.root / "process.json", process)
++                lr.save(cohort.attempt / "process.json", process)
++                lr.save(cohort.root / "completion.json", {"synthetic": True})
++                done[0] = True
++            cohort.statuses[500] = ("dead", 5000)
++            waited.append(self.command)
++            return 0
++
++    monkeypatch.setattr(supervisor, "inspect", inspect)
++    monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
++    before_abort = (cohort.attempt / "ABORT.json").read_bytes()
++    assert supervisor.supervise() == "completed"
++    assert len(launched) == len(waited) == 2
++    state = lr.read(cohort.root / ".export-supervisor/state.json")
++    assert state["repairs"] == [cohort.job["key"]] and state["status"] == "completed"
++    assert [a["kind"] for a in state["attempts"]] == ["export", "wave"]
++    assert all(a["phase"] == "exited" and a["exit_code"] == 0 and a["process"]["created"] == 5000 for a in state["attempts"])
++    assert (cohort.root / ".export-supervisor/stdout.log").stat().st_size > 0
++    assert (cohort.attempt / "ABORT.json").read_bytes() == before_abort
++
++
++@pytest.mark.parametrize("prior", ["same_slot", "ten_repairs", "eleven_waves"])
++def test_durable_bounds_block_new_launch(cohort, monkeypatch, prior):
++    state = ready_state()
++    if prior == "same_slot":
++        state["repairs"] = [cohort.job["key"]]
++    elif prior == "ten_repairs":
++        state["repairs"] = [j["key"] for j in wave.jobs_for(cohort.root)]
++    else:
++        state["attempts"] = [dict(kind="wave", phase="exited", exit_code=1) for _ in range(11)]
++        monkeypatch.setattr(supervisor, "inspect", lambda *a: (False, []))
++    lr.save(cohort.root / ".export-supervisor/state.json", state)
++    monkeypatch.setattr(supervisor.subprocess, "Popen", lambda *a, **k: pytest.fail("bound allowed a launch"))
++    with pytest.raises(ValueError, match="bound|Bounded"):
++        supervisor.supervise()
++
++
++def test_ten_repairs_once_each_then_resume(cohort, monkeypatch):
++    slots = [j["key"] for j in wave.jobs_for(cohort.root)]
++    calls, finished = [], [False]
++    monkeypatch.setattr(supervisor, "inspect", lambda *a: (True, []) if finished[0] else (False, slots))
++    monkeypatch.setattr(recovery, "verify_complete", lambda *a: None)
++
++    def launch(lr, wave, root, folder, state, command, kind):
++        calls.append((kind, command))
++        if kind == "wave":
++            finished[0] = True
++            lr.save(root / "process.json", {"new": True})
++            lr.save(root / "completion.json", {"synthetic": True})
++        return 0
++
++    monkeypatch.setattr(supervisor, "launched", launch)
++    assert supervisor.supervise() == "completed"
++    assert len(calls) == 11 and [c[0] for c in calls] == ["export"] * 10 + ["wave"]
++    assert lr.read(cohort.root / ".export-supervisor/state.json")["repairs"] == slots
++
++
++def test_export_failure_never_continues(cohort, monkeypatch):
++    calls = []
++
++    def launch(*args):
++        calls.append(args[-1])
++        return 1
++
++    monkeypatch.setattr(supervisor, "launched", launch)
++    with pytest.raises(RuntimeError, match="Export failed"):
++        supervisor.supervise()
++    assert calls == ["export"]
++
++
++@pytest.mark.parametrize("code", [1, 2, 17])
++def test_wrong_coordinator_failures_not_retried(cohort, monkeypatch, code):
++    recovery.export(cohort.folder)
++    calls = []
++
++    def launch(lr, wave, root, folder, state, command, kind):
++        calls.append(kind)
++        lr.save(root / "process.json", {"new": True})
++        lr.save(root / "status.json", {"status": "failed", "error": "arbitrary failure"})
++        return code
++
++    monkeypatch.setattr(supervisor, "launched", launch)
++    with pytest.raises((ValueError, RuntimeError, KeyError)):
++        supervisor.supervise()
++    assert calls == ["wave"]
++
++
++def test_stop_after_export_prevents_resume(cohort, monkeypatch):
++    calls = []
++
++    def launch(lr, wave, root, folder, state, command, kind):
++        calls.append(kind)
++        recovery.export(cohort.folder)
++        (root / "STOP").touch()
++        return 0
++
++    monkeypatch.setattr(supervisor, "launched", launch)
++    with pytest.raises(lr.Stopped):
++        supervisor.supervise()
++    assert calls == ["export"]
++
++
++def test_launched_waits_before_stop_exception(cohort, monkeypatch):
++    waited = []
++    folder = cohort.root / ".export-supervisor"
++    folder.mkdir()
++
++    class Child:
++        pid = 500
++
++        def __init__(self, *a, **k):
++            cohort.statuses[500] = ("live", 5000)
++
++        def wait(self):
++            waited.append(True)
++            cohort.statuses[500] = ("dead", 5000)
++            (cohort.root / "STOP").touch()
++            return 2
++
++    monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
++    with pytest.raises(lr.Stopped):
++        supervisor.launched(lr, wave, cohort.root, folder, ready_state(), ["synthetic"], "wave")
++    assert waited == [True]
++
++
++@pytest.mark.parametrize("after_launcher", ["live", "unknown"])
++def test_actual_children_drained_or_unknown_blocks(cohort, monkeypatch, after_launcher):
++    folder = cohort.root / ".export-supervisor"
++    folder.mkdir()
++    sleeps = []
++
++    class Child:
++        pid = 500
++
++        def __init__(self, *a, **k):
++            cohort.statuses[500] = ("live", 5000)
++
++        def wait(self):
++            cohort.statuses[500] = ("dead", 5000)
++            cohort.statuses[300] = (after_launcher, 3000 if after_launcher == "live" else None)
++            (cohort.root / "STOP").touch()
++            return 2
++
++    def drained(seconds):
++        sleeps.append(seconds)
++        cohort.statuses[300] = ("dead", 3000)
++
++    monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
++    monkeypatch.setattr(supervisor.time, "sleep", drained)
++    with pytest.raises(lr.Stopped if after_launcher == "live" else OSError):
++        supervisor.launched(lr, wave, cohort.root, folder, ready_state(), ["synthetic"], "wave")
++    assert sleeps == ([1] if after_launcher == "live" else [])
++
++
++def test_spawn_bookkeeping_failure_still_waits(cohort, monkeypatch):
++    folder = cohort.root / ".export-supervisor"
++    folder.mkdir()
++    waits = []
++    save = lr.durable_save
++
++    class Child:
++        pid = 500
++
++        def __init__(self, *a, **k):
++            cohort.statuses[500] = ("live", 5000)
++
++        def wait(self):
++            waits.append(True)
++            cohort.statuses[500] = ("dead", 5000)
++            return 1
++
++    def fail(path, value):
++        if value.get("phase") == "running":
++            raise OSError("synthetic durable write failed")
++        save(path, value)
++
++    monkeypatch.setattr(supervisor.subprocess, "Popen", Child)
++    monkeypatch.setattr(lr, "durable_save", fail)
++    with pytest.raises(OSError, match="durable write"):
++        supervisor.launched(lr, wave, cohort.root, folder, ready_state(), ["synthetic"], "export")
++    assert waits == [True]
++
++
++def test_supervisor_unknown_creation_does_not_launch(cohort, monkeypatch):
++    cohort.statuses[999] = ("unknown", None)
++    monkeypatch.setattr(supervisor.subprocess, "Popen", lambda *a, **k: pytest.fail("unexpected launch"))
++    with pytest.raises(OSError, match="UNKNOWN"):
++        supervisor.supervise()

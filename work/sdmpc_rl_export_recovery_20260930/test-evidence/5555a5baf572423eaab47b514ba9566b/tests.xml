@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="12" skipped="0" tests="62" time="7.693" timestamp="2026-09-30T05:46:15.616518+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_known_failure_and_exact_tags" time="0.001" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_finite_identity" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_negative_infinity_and_nan_forbidden_even_in_diagnostics[nan]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_negative_infinity_and_nan_forbidden_even_in_diagnostics[-inf]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row0]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row1]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row2]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row3]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row4]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row5]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row6]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row7]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row8]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row9]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_export_original_validators_retained_identity_and_complete_retry" time="0.370"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_export_original_validator0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E30B2CBA40&gt;
+
+    def test_export_original_validators_retained_identity_and_complete_retry(cohort, monkeypatch):
+        before = contents(cohort.folder)
+        original_summary = validator.summarize(cohort.ck["trace"], cohort.settings, "KNOWN")
+        calls = []
+        original_loader = validator.load_completed
+    
+        def load(*a, **k):
+            calls.append(a[0])
+            return original_loader(*a, **k)
+    
+        monkeypatch.setattr(validator, "load_completed", load)
+&gt;       receipt = recovery.export(cohort.folder)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...ginal_validator0/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_export_original_validator0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[length]" time="0.101" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[terminal]" time="0.132" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[state]" time="0.142" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[reward]" time="0.112" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[action]" time="0.100" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[physical_nan]" time="0.108" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[extra_inf]" time="0.142" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[policy]" time="0.144" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[checkpoint.pt]" time="0.080" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[settings.json]" time="0.077" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[observation_schema.json]" time="0.081" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[timing.json]" time="0.079" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[stderr.log]" time="0.072" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[process.json]" time="0.062" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[settings.json]" time="0.106" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[timing.json]" time="0.181" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[observation_schema.json]" time="0.178" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json]" time="0.236" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_source_drift_rejected" time="0.071" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[live-100]" time="0.057" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[live-200]" time="0.059" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[live-300]" time="0.056" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[unknown-100]" time="0.059" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[unknown-200]" time="0.064" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[unknown-300]" time="0.061" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_pid_reuse_proves_original_exit" time="0.277"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_pid_reuse_proves_original0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+
+    def test_pid_reuse_proves_original_exit(cohort):
+        cohort.statuses[300] = ("live", 3001)
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:120: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...proves_original0/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_pid_reuse_proves_original0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[error]" time="0.074" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[traceback]" time="0.074" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[creation]" time="0.063" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[cohort_steps]" time="0.102" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[run_id]" time="0.098" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[STOP]" time="0.048" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[sibling_STOP]" time="0.053" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[relocated]" time="0.072" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_conflicting_output_never_overwritten[trace.json]" time="0.117" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_conflicting_output_never_overwritten[summary.json]" time="0.119" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_conflicting_output_never_overwritten[experience.pt]" time="0.106" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[stage]" time="0.350"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E30B2CB920&gt;
+point = 'stage'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\test_export.py:164: in interrupt
+    publish(path, data)
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...on_preserves_st0/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[output]" time="0.262"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st1\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E30B3C7530&gt;
+point = 'output'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\test_export.py:164: in interrupt
+    publish(path, data)
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...on_preserves_st1/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st1\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[receipt]" time="0.261"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st2\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E30B88A720&gt;
+point = 'receipt'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\test_export.py:164: in interrupt
+    publish(path, data)
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...on_preserves_st2/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st2\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[completion]" time="0.260"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st3\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E30B8408C0&gt;
+point = 'completion'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\test_export.py:164: in interrupt
+    publish(path, data)
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...on_preserves_st3/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_interruption_preserves_st3\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[trace.json]" time="0.266"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'trace.json'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...etry_detects_ta0/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[checkpoint.pt]" time="0.259"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta1\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'checkpoint.pt'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...etry_detects_ta1/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta1\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[export-receipt.json]" time="0.318"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta2\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'export-receipt.json'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...etry_detects_ta2/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta2\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.start.json]" time="0.255"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta3\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.start.json'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...etry_detects_ta3/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_complete_retry_detects_ta3\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_completion_is_last_and_stop_at_publication_blocks_marker" time="0.266"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_completion_is_last_and_st0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E30B8939B0&gt;
+
+    def test_completion_is_last_and_stop_at_publication_blocks_marker(cohort, monkeypatch):
+        events, publish = [], recovery.publish_bytes
+    
+        def record(path, data):
+            events.append(path)
+            if path == cohort.folder / "completion.json":
+                retained = lr.read(cohort.root / ".ownership/reservations.json")[-1]
+                assert retained["cohort_phase"] == "finished"
+                assert (cohort.folder / recovery.RECEIPT).exists()
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", record)
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:198: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\test_export.py:195: in record
+    publish(path, data)
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b..._is_last_and_st0/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_completion_is_last_and_st0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_input_change_during_validation_preserved_and_rejected" time="0.273"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_input_change_during_valid0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E30B922330&gt;
+
+    def test_input_change_during_validation_preserved_and_rejected(cohort, monkeypatch):
+        original = validator.load_completed
+    
+        def changed(*a, **k):
+            result = original(*a, **k)
+            (cohort.folder / "stdout.log").write_text("changed")
+            return result
+    
+        monkeypatch.setattr(validator, "load_completed", changed)
+        with pytest.raises(ValueError, match="changed during"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:274: in export
+    publish_bytes(stage / name, (folder / name).read_bytes())
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:83: in publish_bytes
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-evidence/5555a5b...ge_during_valid0/cohort/carry/sweet_155_w/.export-recovery/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending')
+mode = 'xb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\5555a5baf572423eaab47b514ba9566b\\fixtures\\test_input_change_during_valid0\\cohort\\carry\\sweet_155_w\\.export-recovery\\sessions\\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json.pending'
+
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: FileNotFoundError</failure></testcase></testsuite></testsuites>

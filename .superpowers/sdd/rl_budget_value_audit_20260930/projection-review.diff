@@ -1,0 +1,293 @@
+diff --git a/work/sdmpc_rl_value_audit_20260930/projection_audit.py b/work/sdmpc_rl_value_audit_20260930/projection_audit.py
+new file mode 100644
+index 0000000..621b25a
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/projection_audit.py
+@@ -0,0 +1,196 @@
++"""Audit preserved training transitions and Q on identical projected requests."""
++import argparse
++import os
++from pathlib import Path
++import sys
++import time
++
++HERE = Path(__file__).resolve().parent
++ROOT = HERE.parents[1]
++sys.path.insert(0, str(ROOT / "work/sdmpc_rl_recovery_20260929"))
++from common import (BASE, BASE_HASH, REPO, DEFAULT_SNAPSHOT, SCENARIOS, torch,
++                    load_base, read, save, file_hash, verify_pins, runtime_versions,
++                    exclusive_run)
++import numpy as np
++from budget_controller import residual_budget
++from budget_runtime import boot, digest
++from train_round import load_collections
++
++GOAL_ROOT = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++
++
++def stopped(output):
++    return any((folder / "STOP").exists() for folder in (output, GOAL_ROOT, REPO))
++
++
++def column(names, name):
++    if names.count(name) != 1:
++        raise ValueError("Missing/duplicate observation field: " + name)
++    return names.index(name)
++
++
++def validate_sequence(transitions, trace, names, capacity):
++    if len(transitions) != 75 or len(trace) != 75:
++        raise ValueError("Need a complete 75-interval training episode")
++    remaining = column(names, "memory/remaining/0")
++    clock = column(names, "state/time_sec")
++    anchor_columns = [column(names, f"memory/action_anchor/{i}") for i in range(2)]
++    memory_columns = {key: [column(names, f"memory/{key}/{i}") for i in range(2)]
++                      for key in ("previous_requested", "previous_executed")}
++    for i, ((obs, action, reward, next_obs, terminal), row) in enumerate(zip(transitions, trace)):
++        if (np.asarray(obs).shape != (len(names),) or np.asarray(next_obs).shape != (len(names),)
++                or not np.isfinite(obs).all() or not np.isfinite(next_obs).all()
++                or not np.isfinite(reward)):
++            raise ValueError("Invalid replay observation or reward")
++        if type(terminal) is not bool or terminal != (i == 74) or row["terminated"] != terminal:
++            raise ValueError("True terminal differs")
++        if row["control_step"] != i or row["time_sec"] != 1080. + 180. * i:
++            raise ValueError("Interval clock differs")
++        np.testing.assert_equal(obs[remaining], np.float32((75 - i) / 75.))
++        np.testing.assert_equal(obs[clock], np.float32((900. + 180. * i) / 14400.))
++        np.testing.assert_array_equal(obs[anchor_columns],
++            np.asarray(np.asarray(row["action_anchor"]) / [1000., 10000.], dtype=np.float32))
++        for key, source in (("previous_requested", "B_requested"), ("previous_executed", "B_executed")):
++            expected = np.zeros(2) if i == 0 else np.asarray(trace[i-1][source])
++            if i and source == "B_requested":
++                expected = expected[0]
++            np.testing.assert_array_equal(obs[memory_columns[key]], np.asarray(expected / [1000., 10000.], dtype=np.float32))
++        if row["interval_ttt"] < 0 or abs(reward + row["interval_ttt"] / 100.) > 1e-8:
++            raise ValueError("Reward differs from actual interval accounting")
++        np.testing.assert_array_equal(action, np.asarray(row["action_requested"], dtype=np.float32))
++        raw, request = residual_budget(action, row["action_anchor"], capacity)
++        np.testing.assert_allclose(raw, row["B_raw"], rtol=0, atol=1e-10)
++        np.testing.assert_allclose(request, row["B_requested"][0], rtol=0, atol=1e-10)
++        if terminal:
++            np.testing.assert_array_equal(next_obs, np.zeros(len(names), dtype=np.float32))
++        else:
++            np.testing.assert_array_equal(next_obs, transitions[i+1][0])
++    return dict(transitions=75, true_terminals=1, horizon_and_clock="matched",
++                previous_budget_memory="matched", reward_accounting="matched", projection="matched")
++
++
++def alias_actions(anchor, capacity, np_action):
++    """Use the physical transform itself to prove equality, never a rounded key."""
++    threshold = (capacity - float(anchor[1])) / 1000.
++    if threshold > 1.:
++        return []
++    low = max(-1., threshold)
++    # Move inside the clipped region so an FP roundoff cannot fake equivalence.
++    low = min(1., low + 1e-7)
++    candidates = [np.array([np_action, value]) for value in (low, (low+1.)/2., 1.)]
++    groups = []
++    for action in candidates:
++        _, request = residual_budget(action, anchor, capacity)
++        for group in groups:
++            if np.array_equal(request, group["request"]):
++                if not any(np.array_equal(action, other) for other in group["actions"]):
++                    group["actions"].append(action)
++                break
++        else:
++            groups.append(dict(request=request, actions=[action]))
++    return [group for group in groups if len(group["actions"]) >= 2]
++
++
++@torch.no_grad()
++def q_aliases(learner, obs, anchor, capacity):
++    records = []
++    for np_action in (-1., 0., 1.):
++        for group in alias_actions(anchor, capacity, np_action):
++            actions = torch.tensor(np.stack(group["actions"]), dtype=torch.float32)
++            # Conversion to float32 must preserve the physical equivalence.
++            requests = [residual_budget(a.numpy(), anchor, capacity)[1] for a in actions]
++            if not all(np.array_equal(r, requests[0]) for r in requests):
++                continue
++            inputs = torch.cat((torch.tensor(obs).repeat(len(actions), 1), actions), dim=1)
++            q = torch.stack([critic(inputs).flatten() for critic in learner.critics], dim=1)
++            if not torch.isfinite(q).all():
++                raise ValueError("Nonfinite alias Q")
++            records.append(dict(np_action=np_action, projected_request=requests[0].tolist(),
++                nominal_actions=actions.tolist(), twin_q=q.tolist(),
++                twin_q_spread=(q.max(dim=0).values-q.min(dim=0).values).tolist()))
++    return records
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    output = args.output.resolve()
++    if stopped(output):
++        print("PROJECTION_AUDIT_STOPPED", flush=True)
++        return
++    if output.exists() and any(output.iterdir()):
++        raise FileExistsError(output)
++    with exclusive_run(output):
++        started = time.time()
++        save(output / "process.json", dict(pid=os.getpid(), started=started, command=sys.argv))
++        model, learner = load_base()
++        rt = boot(DEFAULT_SNAPSHOT, 1)
++        contract = model["contract"]
++        if (digest(rt["rc"].to_plain_dict(rt["cfg"])) != contract["environment_contract"]["config_sha256"] or
++                digest(rt["rc"].to_plain_dict(rt["options"])) != contract["environment_contract"]["options_sha256"]):
++            raise ValueError("Physical configuration differs")
++        capacity = rt["cfg"].network.total_ramp_capacity
++        source = {str(path.relative_to(REPO)): file_hash(path) for path in (
++            Path(__file__), REPO / "work/sdmpc_rl_recovery_20260929/common.py")}
++        settings = dict(base_sha256=BASE_HASH, source_sha256=source, contract=contract,
++                        capacity=capacity, scope="training_replay_only_no_new_simulation")
++        save(output / "settings.json", settings)
++        save(output / "status.json", dict(status="running"))
++        names = contract["observation_schema"]["names"]
++        data, episodes, alias_rows, identities = model["learner"]["replay"], [], [], []
++        for round_index in (0, 1):
++            if stopped(output):
++                save(output / "status.json", dict(status="stopped"))
++                return
++            predecessor = None if round_index == 0 else file_hash(BASE / "train_round0/model_final.pt")
++            loaded_contract, runs = load_collections(
++                [BASE / f"collect_round{round_index}" / s for s in SCENARIOS], round_index,
++                contract["source_pins"], contract["runtime_versions"], predecessor)
++            if loaded_contract != contract:
++                raise ValueError("Collection and final model contracts differ")
++            for scenario in SCENARIOS:
++                if stopped(output):
++                    save(output / "status.json", dict(status="stopped"))
++                    return
++                run = runs[scenario]
++                folder = Path(run["identity"]["folder"])
++                trace = read(folder / "episode_00_trace.json")
++                transitions = run["transitions"]
++                check = validate_sequence(transitions, trace, names, capacity)
++                for index, (transition, row) in enumerate(zip(transitions, trace)):
++                    i = round_index*75 + index
++                    for key, value in zip(("observations", "actions", "rewards", "next_observations", "terminated"), transition):
++                        expected = torch.as_tensor(value, dtype=data[scenario][key].dtype)
++                        torch.testing.assert_close(data[scenario][key][i], expected, rtol=0, atol=0)
++                    aliases = q_aliases(learner, transition[0], row["action_anchor"], capacity)
++                    alias_rows.extend(dict(scenario=scenario, round=round_index, control_step=index,
++                                           **record) for record in aliases)
++                episodes.append(dict(scenario=scenario, round=round_index, **check))
++                identities.append(run["identity"])
++        if stopped(output):
++            save(output / "status.json", dict(status="stopped"))
++            return
++        verify_pins(DEFAULT_SNAPSHOT, contract["source_pins"])
++        if file_hash(BASE / "train_round1/model_final.pt") != BASE_HASH or runtime_versions() != contract["runtime_versions"]:
++            raise ValueError("Input/runtime changed")
++        if any(file_hash(REPO / key) != value for key, value in source.items()):
++            raise ValueError("Diagnostic source changed")
++        spreads = np.array([r["twin_q_spread"] for r in alias_rows]).reshape(-1, 2)
++        save(output / "aliases.json", alias_rows)
++        result = dict(status="completed", settings=settings, episodes=episodes, collections=identities,
++            alias_groups=len(alias_rows), aliased_states=len({(r["scenario"],r["round"],r["control_step"]) for r in alias_rows}),
++            q_spread_mean=spreads.mean(axis=0).tolist() if len(spreads) else None,
++            q_spread_max=spreads.max(axis=0).tolist() if len(spreads) else None,
++            alias_groups_above_1e_6=int(np.any(spreads > 1e-6, axis=1).sum()),
++            aliases_sha256=file_hash(output / "aliases.json"), elapsed_seconds=time.time()-started,
++            caveat="Same projected request at the same saved training state; no counterfactual solver run. "
++                   "Nominal actions enter the physical controller only through this projection. "
++                   "A Q difference violates action equivalence, but does not measure optimal ranking or traffic gain.")
++        save(output / "completion.json", result)
++        save(output / "status.json", dict(status="completed"))
++        print("PROJECTION_AUDIT_PASS", result["aliased_states"], result["q_spread_max"], flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py b/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py
+new file mode 100644
+index 0000000..fa6acc2
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py
+@@ -0,0 +1,85 @@
++import copy
++import numpy as np
++import pytest
++import torch
++import projection_audit as audit
++
++
++NAMES = ["memory/remaining/0", "state/time_sec", "memory/action_anchor/0",
++         "memory/action_anchor/1", "memory/previous_requested/0", "memory/previous_requested/1",
++         "memory/previous_executed/0", "memory/previous_executed/1"]
++
++
++def episode():
++    observations, rows = [], []
++    for i in range(75):
++        previous = [0., 0.] if i == 0 else [0., .6]
++        observations.append(np.array([(75-i)/75., (900+180*i)/14400., 0., .6,
++                                      *previous, *previous], dtype=np.float32))
++        rows.append(dict(terminated=i == 74, control_step=i, time_sec=1080.+180*i,
++            action_anchor=[0.,6000.], B_requested=[[0.,6000.]], B_executed=[0.,6000.],
++            B_raw=[0.,6500.], interval_ttt=100., action_requested=[0.,.5]))
++    transitions = [(obs,np.array([0.,.5], dtype=np.float32),-1.,
++                    np.zeros(len(NAMES), dtype=np.float32) if i == 74 else observations[i+1],i == 74)
++                   for i,obs in enumerate(observations)]
++    return transitions, rows
++
++
++def test_sequence_accepts_clock_memory_reward_and_projection():
++    transitions, rows = episode()
++    result = audit.validate_sequence(transitions, rows, NAMES, 6000.)
++    assert result["transitions"] == 75 and result["true_terminals"] == 1
++
++
++@pytest.mark.parametrize("fault", ["clock", "remaining", "terminal", "reward", "anchor", "memory", "projection", "next"])
++def test_sequence_rejects_contract_drift(fault):
++    transitions, rows = episode()
++    if fault == "clock": transitions[5][0][1] += .01
++    elif fault == "remaining": transitions[74][0][0] = 0
++    elif fault == "terminal": rows[0]["terminated"] = True
++    elif fault == "reward": rows[20]["interval_ttt"] = 200.
++    elif fault == "anchor": rows[15]["action_anchor"][0] = 3.
++    elif fault == "memory": transitions[7][0][6] = 1.
++    elif fault == "projection": rows[7]["B_requested"] = [[0.,6500.]]
++    elif fault == "next": transitions[74][3][0] = 1.
++    with pytest.raises((AssertionError, ValueError)):
++        audit.validate_sequence(transitions, rows, NAMES, 6000.)
++
++
++def test_projection_aliases_cap_without_inventing_interior_aliases():
++    groups = audit.alias_actions([12.,6000.],6000.,0.)
++    assert len(groups) == 1 and len(groups[0]["actions"]) == 3
++    assert np.array_equal(groups[0]["request"], [12.,6000.])
++    assert audit.alias_actions([12.,4000.],6000.,0.) == []
++    assert audit.alias_actions([12.,5000.],6000.,0.) == []
++
++
++def test_alias_q_detects_raw_action_dependence_without_mutating_network():
++    from types import SimpleNamespace
++    critics = [torch.nn.Linear(len(NAMES)+2,1) for _ in range(2)]
++    with torch.no_grad():
++        for critic in critics:
++            critic.weight.zero_(); critic.bias.zero_(); critic.weight[0,-1] = 2.
++    state = copy.deepcopy([c.state_dict() for c in critics])
++    rows = audit.q_aliases(SimpleNamespace(critics=critics), np.zeros(len(NAMES),np.float32), [0.,6000.],6000.)
++    assert len(rows) == 3
++    for row in rows:
++        assert min(row["twin_q_spread"]) > 1.99
++    for saved,critic in zip(state,critics):
++        for key,value in saved.items(): assert torch.equal(value,critic.state_dict()[key])
++
++
++def test_stop_scope(tmp_path,monkeypatch):
++    monkeypatch.setattr(audit,"REPO",tmp_path/"repo")
++    monkeypatch.setattr(audit,"GOAL_ROOT",tmp_path/"goal")
++    output=tmp_path/"output"
++    for folder in (audit.REPO,audit.GOAL_ROOT,output):
++        folder.mkdir(); (folder/"STOP").touch()
++        assert audit.stopped(output)
++        (folder/"STOP").unlink()
++    assert not audit.stopped(output)
++
++
++def test_unique_schema_column():
++    with pytest.raises(ValueError): audit.column(["x","x"],"x")
++    with pytest.raises(ValueError): audit.column(["y"],"x")

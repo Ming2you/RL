@@ -1,0 +1,1462 @@
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/local_runtime.py b/work/sdmpc_rl_local_20260930/local_runtime.py
+index ad8f8ae..639e4a3 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/local_runtime.py
++++ b/work/sdmpc_rl_local_20260930/local_runtime.py
+@@ -1,17 +1,21 @@
+ """Versioned collection helpers; frozen physical runtime stays read-only."""
+ import importlib.util
+ import json
+ import os
+ from pathlib import Path
+ import sys
++import time
++import uuid
++from contextlib import contextmanager
+ 
+ HERE = Path(__file__).resolve().parent
+ REPO = HERE.parents[1]
+ OLD = REPO / "work/sdmpc_rl_multi_20260929"
+ GOAL = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++COHORT_ROOT = GOAL / "local_budget_v1"
+ GATE = GOAL / "value_audit_v1/projection/completion.json"
+ GATE_HASH = "b6fabf1ccaa095fed6b5bcb33dea88cf7f39de4a419ed41b2459a940db6857d3"
+ for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+     os.environ[key] = "1"
+ sys.dont_write_bytecode = True
+ sys.path[:0] = [str(REPO / ".deps-budget"), str(OLD)]
+@@ -21,19 +25,210 @@ import numpy as np
+ import torch
+ from td3 import SCENARIOS
+ 
+ BEHAVIORS = ("carry", "local")
+ MASKS = (1, 4, 16, 64, 256)
+ FORMAT = "sdmpc-local-training-v1"
++TIMING_SCOPE = ("Aggregate locked worker sessions: from before session-start publication through boot, "
++    "reset/restore, steps, all checkpoint and data-output serialization, environment close, status and "
++    "ownership exit bookkeeping. Excludes final session/timing-ledger and completion-marker publication, "
++    "lock release, interpreter startup/teardown, coordinator time and offline analysis. "
++    "UNKNOWN means missing session elapsed time; known_elapsed_wall_seconds is then only a lower bound.")
+ 
+ 
+ def save(path, value):
+     json.dumps(plain(value), allow_nan=False)
+     atomic_save(path, value)
+ 
+ 
++def durable_save(path, value):
++    save(path, value)
++    with Path(path).open("r+b") as stream:
++        os.fsync(stream.fileno())
++
++
++def canonical_root(output):
++    if Path(output).resolve() != COHORT_ROOT.resolve():
++        raise ValueError("Use the declared canonical cohort root")
++    return COHORT_ROOT.resolve()
++
++
++def canonical_worker(output, scenario, behavior, cpu_mask):
++    if scenario not in SCENARIOS or behavior not in BEHAVIORS or cpu_mask != MASKS[SCENARIOS.index(scenario)]:
++        raise ValueError("Worker differs from declared cohort slot")
++    expected = COHORT_ROOT.resolve() / behavior / scenario
++    if Path(output).resolve() != expected:
++        raise ValueError("Use the declared canonical cohort output")
++    return f"{behavior}/{scenario}"
++
++
++def probe_process(pid):
++    """Query only: never send signals (including os.kill(pid, 0) on Windows)."""
++    if os.name != "nt" or type(pid) is not int or not 0 < pid <= 0xffffffff:
++        return "unknown", None
++    import ctypes
++    from ctypes import wintypes
++    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
++    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
++    kernel.OpenProcess.restype = wintypes.HANDLE
++    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
++    kernel.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)]*4
++    kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
++    handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
++    if not handle:
++        return ("dead" if ctypes.get_last_error() == 87 else "unknown"), None
++    try:
++        created, exited, cpu, user = (wintypes.FILETIME() for _ in range(4))
++        code = wintypes.DWORD()
++        if not kernel.GetProcessTimes(handle, ctypes.byref(created), ctypes.byref(exited),
++                                      ctypes.byref(cpu), ctypes.byref(user)):
++            return "unknown", None
++        if not kernel.GetExitCodeProcess(handle, ctypes.byref(code)):
++            return "unknown", None
++        return ("live" if code.value == 259 else "dead"), (created.dwHighDateTime << 32) | created.dwLowDateTime
++    finally:
++        kernel.CloseHandle(handle)
++
++
++def process_identity(pid=None, command=None):
++    pid = os.getpid() if pid is None else pid
++    _, created = probe_process(pid)
++    return dict(pid=pid, created=created, command=list(sys.argv if command is None else command))
++
++
++def process_dead(record):
++    if record is None:
++        return False
++    status, created = probe_process(record["pid"])
++    return status == "dead" or (status == "live" and record["created"] is not None and
++                                 created is not None and created != record["created"])
++
++
++@contextmanager
++def ownership():
++    # Five children can claim together; retry only the small ownership-file critical section.
++    for attempt in range(101):
++        lock = exclusive_run(COHORT_ROOT / ".ownership")
++        try:
++            lock.__enter__()
++            break
++        except OSError:
++            if attempt == 100:
++                raise
++            time.sleep(.05)
++    try:
++        path = COHORT_ROOT / ".ownership/reservations.json"
++        records = read(path) if path.exists() else []
++        for record in records:
++            if record["state"] not in ("reserved", "active", "exited", "completed"):
++                raise ValueError("Unknown cohort reservation state")
++            if (COHORT_ROOT / record["key"] / "completion.json").exists():
++                record["state"] = "completed"
++            elif record["state"] in ("reserved", "active") and process_dead(record["worker"]):
++                record["state"] = "exited"
++        yield records
++        durable_save(path, records)
++    finally:
++        lock.__exit__(None, None, None)
++
++
++def ensure_cohort_idle(output):
++    canonical_root(output)
++    with ownership() as records:
++        if any(r["state"] in ("reserved", "active") for r in records):
++            raise OSError("Cohort has a live or UNKNOWN startup/worker reservation")
++
++
++def reserve_worker(output, scenario, behavior, cpu_mask, launch=False):
++    key = canonical_worker(output, scenario, behavior, cpu_mask)
++    with ownership() as records:
++        if (Path(output) / "completion.json").exists() or any(r["key"] == key and r["state"] == "completed" for r in records):
++            raise ValueError("Already completed cohort slot")
++        occupied = [r for r in records if r["state"] in ("reserved", "active")]
++        if any(r["key"] == key for r in occupied):
++            raise OSError("Cohort slot has a live or UNKNOWN reservation")
++        if len(occupied) >= 5:
++            raise OSError("Maximum five numerical workers/reservations")
++        if launch:
++            with exclusive_run(Path(output)):
++                pass
++        token = uuid.uuid4().hex
++        records.append(dict(key=key, token=token, state="reserved" if launch else "active",
++            owner=process_identity(), worker=None if launch else process_identity(),
++            training_seed=seeds(scenario)[0], exploration_seed=seeds(scenario)[1], cpu_mask=cpu_mask))
++    return token
++
++
++def bind_launch(token, pid, command):
++    with ownership() as records:
++        record = next(r for r in records if r["token"] == token)
++        if record["state"] == "reserved":
++            record["worker"] = process_identity(pid, command)
++        elif record["state"] == "active" and record["worker"]["pid"] != pid:
++            raise ValueError("Reservation claimed by a different process")
++
++
++def claim_worker(output, scenario, behavior, cpu_mask, token=None):
++    key = canonical_worker(output, scenario, behavior, cpu_mask)
++    if token is None:
++        return reserve_worker(output, scenario, behavior, cpu_mask)
++    with ownership() as records:
++        record = next((r for r in records if r["token"] == token), None)
++        if record is None or record["key"] != key or record["state"] != "reserved":
++            raise ValueError("Invalid or already claimed launch reservation")
++        current = process_identity()
++        worker = record["worker"]
++        if worker is not None and (worker["pid"] != current["pid"] or
++                worker["created"] is not None and worker["created"] != current["created"]):
++            raise ValueError("Launch reservation process identity differs")
++        record.update(state="active", worker=current)
++    return token
++
++
++def release_worker(token):
++    with ownership() as records:
++        record = next(r for r in records if r["token"] == token)
++        record["state"] = "completed" if (COHORT_ROOT / record["key"] / "completion.json").exists() else "exited"
++
++
++def session_ids(output):
++    return sorted(p.name[:-11] for p in (Path(output) / "sessions").glob("*.start.json"))
++
++
++def reserved_sessions(output):
++    key = Path(output).resolve().relative_to(COHORT_ROOT.resolve()).as_posix()
++    return [r["token"] for r in read(COHORT_ROOT / ".ownership/reservations.json") if r["key"] == key]
++
++
++def session_timing(output, required=(), exclude=()):
++    output = Path(output)
++    ids = sorted((set(required) | set(session_ids(output))) - set(exclude))
++    known, unknown, hashes = 0., [], {}
++    for session in ids:
++        if len(session) != 32 or any(c not in "0123456789abcdef" for c in session):
++            raise ValueError("Invalid timing session ID")
++        start, end = [output / "sessions" / f"{session}.{kind}.json" for kind in ("start", "end")]
++        for path in (start, end):
++            if path.exists():
++                hashes[str(path.relative_to(output)).replace("\\", "/")] = file_hash(path)
++        if not start.exists() or not end.exists():
++            unknown.append(session)
++            continue
++        record = read(end)
++        if (read(start)["session_id"] != session or record["session_id"] != session or
++                record["start_sha256"] != file_hash(start)):
++            raise ValueError("Session timing provenance differs")
++        elapsed = record["elapsed_wall_seconds"]
++        if not np.isfinite(elapsed) or elapsed < 0:
++            raise ValueError("Invalid session elapsed time")
++        known += elapsed
++    return dict(timing_status="UNKNOWN" if unknown else "KNOWN", elapsed_wall_seconds=None if unknown else known,
++                known_elapsed_wall_seconds=known, unknown_sessions=unknown, session_ids=ids,
++                session_sha256=hashes, timing_scope=TIMING_SCOPE)
++
++
+ class Stopped(RuntimeError):
+     pass
+ 
+ 
+ def stop_paths(output, abort=None):
+     output = Path(output)
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/collect.py b/work/sdmpc_rl_local_20260930/collect.py
+index ce394df..36e131e 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/collect.py
++++ b/work/sdmpc_rl_local_20260930/collect.py
+@@ -6,15 +6,17 @@ import sys
+ import time
+ import uuid
+ from local_runtime import (np, torch, REPO, FORMAT, BEHAVIORS, MASKS, SCENARIOS,
+     DEFAULT_SNAPSHOT, boot, read, save, plain, digest, file_hash, exclusive_run,
+     identity, verify_identity, contract, verify_environment, seeds, check_stop,
+     Stopped, checkpoint_save, observation_schema)
++from local_runtime import (canonical_worker, claim_worker, release_worker, durable_save,
++                           session_ids, reserved_sessions, session_timing, process_identity)
+ from budget_env import BudgetEnv
+ from exploration import LocalBudgetPolicy
+-from validate import validate_rows, summarize, replay_policy
++from validate import validate_rows, summarize, replay_policy, validate_boundary, validate_observation
+ 
+ 
+ def check_output(output, resume):
+     if (output / "completion.json").exists():
+         raise ValueError("Already completed; refusing duplicate collection")
+     if resume:
+@@ -35,32 +37,41 @@ def validate_checkpoint(ck, settings):
+     n = len(trace)
+     if env["k"] != n+5 or env["profile_hash"] != settings["profile_sha256"]:
+         raise ValueError("Checkpoint boundary differs")
+     total = validate_rows(trace, experience, settings, ck["schema"], settings["capacity"], complete=False)
+     if abs(env["sim"].total_ttt-total) > 1e-8 or env["sim"].state.time_sec != (5+n)*180:
+         raise ValueError("Checkpoint simulator/trace boundary differs")
++    validate_boundary(ck, settings)
+     policy = replay_policy(trace, settings)
+     if digest(policy.state_dict()) != digest(ck["policy"]):
+         raise ValueError("Saved exploration state differs from actual trace")
+     if n:
+         np.testing.assert_array_equal(ck["observation"], experience[-1][3])
+     return policy
+ 
+ 
+ def run(args):
+     output = args.output.resolve()
++    canonical_worker(output, args.scenario, args.behavior, args.cpu_mask)
+     check_stop(output, args.abort_file)
+     check_output(output, args.resume)
+     with exclusive_run(output):
+         check_stop(output, args.abort_file)
+         check_output(output, args.resume)
++        reservation = claim_worker(output, args.scenario, args.behavior, args.cpu_mask,
++                                   getattr(args, "reservation", None))
+         started = time.perf_counter()
+-        save(output / "process.json", dict(pid=os.getpid(), started=time.time(), command=sys.argv))
+-        save(output / "status.json", dict(status="initializing", pid=os.getpid()))
++        session = reservation
++        sessions = sorted(set(session_ids(output)) | set(reserved_sessions(output)))
++        start_file = output / "sessions" / f"{session}.start.json"
+         env = None
++        outcome, result = "failed", None
+         try:
++            durable_save(start_file, dict(session_id=session, process=process_identity(), started=time.time()))
++            save(output / "process.json", dict(**process_identity(), started=time.time()))
++            save(output / "status.json", dict(status="initializing", pid=os.getpid()))
+             source = identity()
+             expected = contract()
+             rt = boot(DEFAULT_SNAPSHOT, args.cpu_mask)
+             torch.set_num_threads(1)
+             if torch.get_num_interop_threads() != 1:
+                 torch.set_num_interop_threads(1)
+@@ -71,45 +82,48 @@ def run(args):
+             previous = read(output / "settings.json") if args.resume else None
+             settings = dict(format=FORMAT, run_id=previous["run_id"] if previous else uuid.uuid4().hex,
+                 scenario=args.scenario, behavior=args.behavior, training_seed=demand_seed,
+                 exploration_seed=exploration_seed, profile_sha256=env.profile_hash,
+                 evaluation=False, model_sha256=None, identity=source, contract=expected,
+                 capacity=capacity, cpu_mask=args.cpu_mask,
++                physical_config=plain(rt["rc"].to_plain_dict(rt["cfg"])),
+                 warmup_ttt=previous["warmup_ttt"] if previous else None)
+             check_stop(output, args.abort_file)
+             if args.resume:
+                 if previous != settings:
+                     raise ValueError("Resume settings changed")
+                 ck = torch.load(output / "checkpoint.pt", map_location="cpu", weights_only=False)
+                 policy = validate_checkpoint(ck, settings)
+                 obs = env.restore(ck["environment"])
+                 np.testing.assert_array_equal(obs, ck["observation"])
+                 trace, experience = ck["trace"], ck["transitions"]
+-                elapsed_before = ck["elapsed_wall_seconds"]
++                sessions = sorted(set(sessions) | set(ck["session_ids"]))
+             else:
+                 obs = env.reset()
+                 settings["warmup_ttt"] = env.warmup_ttt
+                 policy = LocalBudgetPolicy(args.behavior, exploration_seed, capacity)
+-                trace, experience, elapsed_before = [], [], 0.
++                trace, experience = [], []
+             verify_environment(env, rt, expected, schema=True)
+             schema = observation_schema(env)
+             check_stop(output, args.abort_file)
+             save(output / "settings.json", settings)
+             save(output / "observation_schema.json", schema)
+ 
+             def checkpoint():
+                 checkpoint_save(torch, output / "checkpoint.pt", dict(format=FORMAT,
+                     settings=settings, schema=schema, environment=env.checkpoint(),
+                     observation=obs.copy(), trace=trace, transitions=experience,
+-                    policy=policy.state_dict(), elapsed_wall_seconds=elapsed_before+time.perf_counter()-started))
++                    policy=policy.state_dict(), session_ids=sessions))
+ 
+             checkpoint()
+             steps_this_session = 0
+             while env.k < 80:
+                 check_stop(output, args.abort_file)
+                 verify_identity(source)
++                validate_observation(obs, env.k, schema, env.controller.action_anchor,
++                                     env.last_requested, env.last_executed)
+                 tick, cpu = time.perf_counter(), time.process_time()
+                 action, _ = policy.choose(env.controller.action_anchor.copy())
+                 actor_wall, actor_cpu = time.perf_counter()-tick, time.process_time()-cpu
+                 nxt, reward, terminal, row = env.step(action, "center" if args.behavior == "carry" else "rl",
+                                                     actor_wall, actor_cpu_seconds=actor_cpu)
+                 exploration = policy.commit(row)
+@@ -124,51 +138,73 @@ def run(args):
+                 save(output / "status.json", dict(status="running", pid=os.getpid(),
+                     control_steps=len(trace), simulation_seconds=env.sim.state.time_sec,
+                     ttt=env.sim.total_ttt))
+                 print(args.behavior, args.scenario, f"{len(trace)}/75", f"TTT={env.sim.total_ttt:.6f}", flush=True)
+                 if args.max_new_steps is not None and steps_this_session >= args.max_new_steps and not terminal:
+                     save(output / "status.json", dict(status="checkpointed", control_steps=len(trace), pid=os.getpid()))
+-                    return "checkpointed"
++                    outcome = "checkpointed"
++                    return outcome
+             check_stop(output, args.abort_file)
+             verify_identity(source)
+             validate_rows(trace, experience, settings, schema, capacity)
++            validate_boundary(dict(environment=env.checkpoint(), trace=trace, observation=obs, schema=schema), settings)
+             replay_policy(trace, settings)
+-            elapsed = elapsed_before+time.perf_counter()-started
+-            summary = summarize(trace, settings, elapsed)
++            prior_timing = session_timing(output, sessions, exclude=(session,))
++            summary = summarize(trace, settings, prior_timing["timing_status"])
+             save(output / "trace.json", trace)
+             save(output / "summary.json", summary)
+             checkpoint_save(torch, output / "experience.pt", dict(format=FORMAT, settings=settings, transitions=experience))
+             result = dict(format=FORMAT, status="completed", settings=settings,
+                 outputs_sha256={name: file_hash(output / name) for name in
+                     ("trace.json", "summary.json", "experience.pt", "observation_schema.json")})
+             verify_identity(source)
+             if read(output / "settings.json") != settings:
+                 raise ValueError("Persisted settings changed during collection")
+             check_stop(output, args.abort_file)
+             save(output / "status.json", dict(status="completed", control_steps=75, pid=os.getpid()))
+-            save(output / "completion.json", result)
+-            return "completed"
++            outcome = "completed"
++            return outcome
+         except Stopped:
++            result, outcome = None, "stopped"
+             save(output / "status.json", dict(status="stopped", pid=os.getpid()))
+             return "stopped"
+-        except Exception as exc:
++        except BaseException as exc:
++            result, outcome = None, "failed"
+             save(output / "status.json", dict(status="failed", pid=os.getpid(), error=f"{type(exc).__name__}: {exc}"))
+             raise
+         finally:
+-            if env is not None:
+-                env.close()
++            try:
++                if env is not None:
++                    env.close()
++            except BaseException as exc:
++                result, outcome = None, "failed"
++                save(output / "status.json", dict(status="failed", pid=os.getpid(), error=f"close: {exc}"))
++                raise
++            finally:
++                release_worker(reservation)
++                if start_file.exists():
++                    elapsed = time.perf_counter()-started
++                    durable_save(output / "sessions" / f"{session}.end.json", dict(session_id=session,
++                        start_sha256=file_hash(start_file), outcome=outcome, elapsed_wall_seconds=elapsed))
++                    timing = session_timing(output, sessions)
++                    durable_save(output / "timing.json", timing)
++            if result is not None:
++                check_stop(output, args.abort_file)
++                result["outputs_sha256"]["timing.json"] = file_hash(output / "timing.json")
++                save(output / "completion.json", result)
+ 
+ 
+ def main(argv=None):
+     p = argparse.ArgumentParser(description=__doc__)
+     p.add_argument("--output", type=Path, required=True)
+     p.add_argument("--scenario", choices=SCENARIOS, required=True)
+     p.add_argument("--behavior", choices=BEHAVIORS, required=True)
+     p.add_argument("--cpu-mask", type=int, required=True)
+     p.add_argument("--resume", action="store_true")
+     p.add_argument("--abort-file", type=Path)
++    p.add_argument("--reservation", help=argparse.SUPPRESS)
+     p.add_argument("--max-new-steps", type=int)
+     args = p.parse_args(argv)
+     if args.cpu_mask != MASKS[SCENARIOS.index(args.scenario)]:
+         p.error("Use the pinned scenario CPU mask")
+     if args.max_new_steps is not None and not 1 <= args.max_new_steps <= 75:
+         p.error("max-new-steps must be 1..75; it checkpoints, never declares completion")
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/validate.py b/work/sdmpc_rl_local_20260930/validate.py
+index 61d9e91..e8f6ba9 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/validate.py
++++ b/work/sdmpc_rl_local_20260930/validate.py
+@@ -1,32 +1,111 @@
+ """Authenticate training-only collections and report paired coverage, not wins."""
+ from pathlib import Path
+ from local_runtime import (np, torch, read, file_hash, digest, SCENARIOS, BEHAVIORS,
+-                           FORMAT, seeds, sequence_validator, verify_identity, contract)
++                           FORMAT, MASKS, seeds, sequence_validator, verify_identity, contract, plain,
++                           session_timing, TIMING_SCOPE)
+ from compare_runs import finite, same_cost, queue_exposure
++from budget_controller import residual_budget
++from frozen_inventory import inventory
+ 
+ CONTROL_FIELDS = ("ramp_metering", "vsl", "green_times", "offsets", "inflow_outflow_allocation")
+ 
+ 
++def validate_observation(obs, k, schema, anchor, requested, executed):
++    names = schema["names"]
++    obs = np.asarray(obs)
++    if obs.shape != (len(names),) or not np.isfinite(obs).all():
++        raise ValueError("Observation shape/finite mismatch")
++    expected = {"state/time_sec": k*180/14400., "memory/remaining/0": (80-k)/75.}
++    for key, budget in (("action_anchor", anchor), ("previous_requested", requested),
++                        ("previous_executed", executed)):
++        budget = np.asarray(budget)
++        if budget.shape != (2,) or not np.isfinite(budget).all():
++            raise ValueError("Invalid boundary budget: " + key)
++        expected.update({f"memory/{key}/{i}": value for i, value in enumerate(budget/[1000., 10000.])})
++    for name, value in expected.items():
++        if names.count(name) != 1:
++            raise ValueError("Missing/duplicate observation field: " + name)
++        np.testing.assert_equal(obs[names.index(name)], np.float32(0. if k == 80 else value))
++    if k == 80:
++        np.testing.assert_array_equal(obs, np.zeros(len(names), dtype=np.float32))
++
++
++def physical_config(settings):
++    cfg = settings["physical_config"]
++    if digest(cfg) != settings["contract"]["environment_contract"]["config_sha256"]:
++        raise ValueError("Physical accounting configuration differs")
++    return cfg
++
++
++def validate_boundary(ck, settings):
++    env, trace = ck["environment"], ck["trace"]
++    n = len(trace)
++    cfg = physical_config(settings)
++    if plain(env["sim"].cfg) != cfg or env["warmup_ttt"] != settings["warmup_ttt"]:
++        raise ValueError("Checkpoint physical configuration/accounting differs")
++    state = plain(env["sim"].state)
++    finite(inventory(state, cfg), "checkpoint inventory")
++    totals = {key: finite(getattr(env["sim"], key), "checkpoint accounting " + key)
++              for key in ("total_ttt", "freeway_ttt", "urban_ttt")}
++    same_cost(totals["freeway_ttt"]+totals["urban_ttt"], totals["total_ttt"], "checkpoint area accounting")
++    if n:
++        row = trace[-1]
++        if state != row["plant_state"] or plain(env["previous"]) != row["control"]:
++            raise ValueError("Checkpoint physical state/control boundary differs")
++        for key in ("total_ttt", "freeway_ttt", "urban_ttt"):
++            same_cost(getattr(env["sim"], key), row[key], "checkpoint " + key)
++        same_cost(inventory(state, cfg), row["inventory"], "checkpoint inventory")
++        requested, executed = row["B_requested"][0], row["B_executed"]
++        np.testing.assert_array_equal(env["last_budget"], executed)
++        anchor = executed
++    else:
++        same_cost(totals["total_ttt"], settings["warmup_ttt"], "checkpoint warmup accounting")
++        requested = executed = np.zeros(2)
++        if env["last_budget"] is not None or env["prepared"] is None:
++            raise ValueError("Initial checkpoint budget boundary differs")
++        anchor = env["prepared"]["budget"]
++    np.testing.assert_array_equal(env["last_requested"], requested)
++    np.testing.assert_array_equal(env["last_executed"], executed)
++    if env["k"] < 80:
++        if env["prepared"] is None:
++            raise ValueError("Missing prepared boundary reference")
++        np.testing.assert_array_equal(env["prepared"]["action_anchor"], anchor)
++    validate_observation(ck["observation"], env["k"], ck["schema"], anchor, requested, executed)
++
++
+ def validate_rows(trace, experience, settings, schema, capacity, complete=True):
+     n = len(trace)
+     if n != len(experience) or not 0 <= n <= 75 or (complete and n != 75):
+         raise ValueError("Collection length differs")
+     total = settings["warmup_ttt"]
++    cfg = physical_config(settings)
+     for i, (row, transition) in enumerate(zip(trace, experience)):
+         obs, action, reward, nxt, done = transition
+         if (row["scenario"] != settings["scenario"] or row["behavior"] != settings["behavior"] or
+                 row["profile_sha256"] != settings["profile_sha256"] or row["control_step"] != i or
+                 row["step"] != i+5 or row["time_sec"] != (i+6)*180 or
+                 done is not (i == 74) or row["terminated"] is not done or row["truncated"] is not False):
+             raise ValueError("Sequential identity/terminal mismatch")
+         for array in (obs, nxt):
+             if np.asarray(array).shape != (len(schema["names"]),) or not np.isfinite(array).all():
+                 raise ValueError("Observation shape/finite mismatch")
+         if i and not np.array_equal(obs, experience[i-1][3]):
+             raise ValueError("Observation chain mismatch")
++        previous_request = trace[i-1]["B_requested"][0] if i else np.zeros(2)
++        previous_execution = trace[i-1]["B_executed"] if i else np.zeros(2)
++        if i:
++            np.testing.assert_array_equal(row["action_anchor"], previous_execution)
++        validate_observation(obs, i+5, schema, row["action_anchor"], previous_request, previous_execution)
++        validate_observation(nxt, i+6, schema, row["B_executed"], row["B_requested"][0], row["B_executed"])
++        raw, request = residual_budget(action, row["action_anchor"], capacity)
++        np.testing.assert_allclose(raw, row["B_raw"], rtol=0, atol=1e-10)
++        np.testing.assert_allclose(request, row["B_requested"][0], rtol=0, atol=1e-10)
++        if row["plant_state"]["time_sec"] != row["time_sec"]:
++            raise ValueError("Physical state clock differs")
++        same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+         np.testing.assert_array_equal(action, np.asarray(row["action_requested"], dtype=np.float32))
+         same_cost(reward, -row["interval_ttt"]/100., "interval reward")
+         same_cost(row["reward"], reward, "trace reward")
+         total += finite(row["interval_ttt"], "interval TTT")
+         same_cost(row["total_ttt"], total, "cumulative TTT")
+         same_cost(row["freeway_ttt"]+row["urban_ttt"], total, "area TTT")
+@@ -49,13 +128,13 @@ def validate_rows(trace, experience, settings, schema, capacity, complete=True):
+     if complete:
+         sequence_validator()(experience, trace, schema["names"], capacity)
+         queue_exposure(trace)
+     return total
+ 
+ 
+-def summarize(trace, settings, elapsed):
++def summarize(trace, settings, timing_status="UNKNOWN"):
+     requests = np.array([r["B_requested"][0] for r in trace])
+     executed = np.array([r["B_executed"] for r in trace])
+     anchor0 = np.array(trace[0]["action_anchor"])
+     times = np.array([r["decision_wall_seconds"] for r in trace])
+     return dict(scenario=settings["scenario"], behavior=settings["behavior"],
+         training_seed=settings["training_seed"], profile_sha256=settings["profile_sha256"],
+@@ -73,14 +152,13 @@ def summarize(trace, settings, elapsed):
+         pfo_calls=sum(r["pfo_calls"] for r in trace),
+         pfo_recovery_count=sum(r["reference_recovery"] for r in trace),
+         lower_candidate_solves=sum(r["lower_candidate_count"] for r in trace),
+         decision_wall_seconds=float(times.sum()), decision_p50=float(np.median(times)),
+         decision_p95=float(np.quantile(times, .95)),
+         decision_cpu_seconds=sum(r["decision_cpu_seconds"] for r in trace),
+-        elapsed_wall_seconds=elapsed,
+-        timing_scope="aggregate worker sessions includes boot/reset/resume/steps/checkpoints until completion assembly; excludes offline analysis and final file publication")
++        timing_status=timing_status, timing_ledger="timing.json", timing_scope=TIMING_SCOPE)
+ 
+ 
+ def load_completed(folder, expected_identity=None):
+     folder = Path(folder)
+     result = read(folder / "completion.json")
+     settings = read(folder / "settings.json")
+@@ -92,33 +170,36 @@ def load_completed(folder, expected_identity=None):
+             settings["capacity"] != 6000. or settings["contract"] != contract()):
+         raise ValueError("Training run identity mismatch")
+     if expected_identity is not None and settings["identity"] != expected_identity:
+         raise ValueError("Wave/child source identity mismatch")
+     verify_identity(settings["identity"])
+     for name, expected in result["outputs_sha256"].items():
+-        if name not in {"experience.pt", "trace.json", "summary.json", "observation_schema.json"}:
++        if name not in {"experience.pt", "trace.json", "summary.json", "observation_schema.json", "timing.json"}:
+             raise ValueError("Unknown output manifest entry")
+         if file_hash(folder / name) != expected:
+             raise ValueError("Output changed: " + name)
+-    required = {"experience.pt", "trace.json", "summary.json", "observation_schema.json"}
++    required = {"experience.pt", "trace.json", "summary.json", "observation_schema.json", "timing.json"}
+     if set(result["outputs_sha256"]) != required:
+         raise ValueError("Incomplete output manifest")
+     schema, trace = read(folder / "observation_schema.json"), read(folder / "trace.json")
+     if schema != settings["contract"]["observation_schema"]:
+         raise ValueError("Schema mismatch")
+     payload = torch.load(folder / "experience.pt", map_location="cpu", weights_only=False)
+     if payload["format"] != FORMAT or payload["settings"] != settings:
+         raise ValueError("Experience provenance mismatch")
+     experience = payload["transitions"]
+     validate_rows(trace, experience, settings, schema, settings["capacity"])
+     replay_policy(trace, settings)
+     summary = read(folder / "summary.json")
+-    finite(summary["elapsed_wall_seconds"], "elapsed wall time")
+     finite(summary["terminal_inventory"], "terminal inventory")
+-    if summary != summarize(trace, settings, summary["elapsed_wall_seconds"]):
++    timing = read(folder / "timing.json")
++    if not timing["session_ids"] or timing != session_timing(folder, timing["session_ids"]):
++        raise ValueError("Timing reconciliation mismatch")
++    if summary != summarize(trace, settings, timing["timing_status"]):
+         raise ValueError("Summary reconciliation mismatch")
++    summary.update(timing)
+     return result, settings, summary
+ 
+ 
+ def replay_policy(trace, settings):
+     # Replaying the small generator authenticates behavior without a plant solve.
+     from exploration import LocalBudgetPolicy
+@@ -132,13 +213,17 @@ def replay_policy(trace, settings):
+ 
+ 
+ def compare_pairs(output, expected_identity):
+     rows, ids = [], set()
+     for scenario in SCENARIOS:
+         paired = {b: load_completed(Path(output) / b / scenario, expected_identity) for b in BEHAVIORS}
+-        for _, settings, _ in paired.values():
++        for behavior, (_, settings, _) in paired.items():
++            expected = dict(scenario=scenario, behavior=behavior, training_seed=seeds(scenario)[0],
++                            exploration_seed=seeds(scenario)[1], cpu_mask=MASKS[SCENARIOS.index(scenario)])
++            if any(settings[key] != value for key, value in expected.items()):
++                raise ValueError("Paired slot identity differs")
+             if not settings["run_id"] or settings["run_id"] in ids:
+                 raise ValueError("Duplicate run ID")
+             ids.add(settings["run_id"])
+         a, b = [paired[name][1] for name in BEHAVIORS]
+         for key in ("profile_sha256", "training_seed", "contract", "identity", "warmup_ttt", "capacity"):
+             if a[key] != b[key]:
+@@ -148,9 +233,10 @@ def compare_pairs(output, expected_identity):
+                       inventory_ratio_le1_25=local["terminal_inventory"] <= 1.25*max(1., carry["terminal_inventory"]))
+         rows.append(dict(scenario=scenario, carry=carry, local=local, checks=checks,
+                          interval_ttt_delta=(np.array(local["interval_ttt"])-carry["interval_ttt"]).tolist(),
+                          training_ttt_delta=local["ttt"]-carry["ttt"],
+                          coverage_screen_pass=all(checks.values())))
+     return dict(status="reconciled", rows=rows, transitions_per_scenario=150,
++                timing_status="UNKNOWN" if any(r[b]["timing_status"] == "UNKNOWN" for r in rows for b in BEHAVIORS) else "KNOWN",
+                 coverage_screen_pass=all(r["coverage_screen_pass"] for r in rows),
+                 canonical_evaluation=False, goal_claim=False,
+                 caveat="Paired perturbed training profiles; collection-design screen only, not policy admission or optimal action labels.")
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/run_wave.py b/work/sdmpc_rl_local_20260930/run_wave.py
+index 0b8b75b..ac49b0f 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/run_wave.py
++++ b/work/sdmpc_rl_local_20260930/run_wave.py
+@@ -7,12 +7,13 @@ import subprocess
+ import sys
+ import time
+ import uuid
+ from local_runtime import (HERE, REPO, GOAL, SCENARIOS, BEHAVIORS, MASKS, FORMAT,
+     identity, verify_identity, seeds, read, save, file_hash, exclusive_run,
+     check_stop, Stopped)
++from local_runtime import canonical_root, ensure_cohort_idle, reserve_worker, bind_launch, release_worker
+ from validate import load_completed, compare_pairs
+ 
+ 
+ def jobs_for(output):
+     return [dict(key=f"{behavior}/{scenario}", behavior=behavior, scenario=scenario,
+                  training_seed=seeds(scenario)[0], exploration_seed=seeds(scenario)[1], cpu_mask=MASKS[i])
+@@ -51,35 +52,40 @@ def run_stage(output, jobs, expected, abort, all_jobs):
+             verify_identity(expected)
+             folder = output / job["key"]
+             if (folder / "completion.json").exists():
+                 validate_job(output, job, expected)
+                 continue
+             command = command_for(output, job, abort)
++            token = reserve_worker(folder, job["scenario"], job["behavior"], job["cpu_mask"], launch=True)
++            command.extend(["--reservation", token])
+             out = (folder / "stdout.log").open("a", encoding="utf-8")
+             err = (folder / "stderr.log").open("a", encoding="utf-8")
+             env = os.environ.copy()
+             env.update(PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
+                        OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
+             try:
+                 child = subprocess.Popen(command, cwd=REPO, env=env, stdout=out, stderr=err,
+                                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+             except BaseException:
+                 out.close()
+                 err.close()
++                # A failed spawn with no returned handle remains UNKNOWN, fail closed.
+                 raise
+-            active[job["key"]] = child, out, err, job
++            active[job["key"]] = child, out, err, job, token
++            bind_launch(token, child.pid, command)
+             save(folder / "launcher.json", dict(pid=child.pid, command=command, started=time.time(),
+                                                 attempt=str(abort.parent)))
+         while active:
+             check_all_stops(output, all_jobs)
+-            for key, (child, out, err, job) in list(active.items()):
++            for key, (child, out, err, job, token) in list(active.items()):
+                 code = child.poll()
+                 if code is None:
+                     continue
+                 out.close()
+                 err.close()
++                release_worker(token)
+                 del active[key]
+                 if code != 0:
+                     raise RuntimeError(f"Child failed/stopped: {key}, exit={code}")
+                 validate_job(output, job, expected)
+                 print("COLLECTION_COMPLETED", key, flush=True)
+             save(output / "status.json", dict(status="running", behavior=jobs[0]["behavior"],
+@@ -87,20 +93,22 @@ def run_stage(output, jobs, expected, abort, all_jobs):
+             if active:
+                 time.sleep(5)
+     finally:
+         if active:
+             # A per-attempt abort is distinct from persistent user STOP markers.
+             save(abort, dict(reason="coordinator_draining", created=time.time()))
+-            for child, out, err, _ in active.values():
++            for child, out, err, _, token in active.values():
+                 child.wait()
+                 out.close()
+                 err.close()
++                release_worker(token)
+ 
+ 
+ def run(output, resume=False):
+     output = Path(output).resolve()
++    canonical_root(output)
+     check_stop(output)
+     if output.exists() and not resume:
+         raise FileExistsError("Use --resume for existing wave/checkpoint")
+     with exclusive_run(output):
+         check_stop(output)
+         if (output / "completion.json").exists():
+@@ -110,12 +118,13 @@ def run(output, resume=False):
+         source = identity()
+         plan = dict(format=FORMAT, jobs=jobs, identity=source, maximum_workers=5,
+                     threads_per_worker=1, episodes=10, transitions=750, training_only=True)
+         if (output / "plan.json").exists() and read(output / "plan.json") != plan:
+             raise ValueError("Wave plan/source changed")
+         # Detect orphaned live workers after coordinator loss before dispatching any.
++        ensure_cohort_idle(output)
+         with ExitStack() as locks:
+             for job in jobs:
+                 locks.enter_context(exclusive_run(output / job["key"]))
+         for job in jobs:
+             if (output / job["key"] / "completion.json").exists():
+                 validate_job(output, job, source)
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/test_collection.py b/work/sdmpc_rl_local_20260930/test_collection.py
+index 2f22d30..99204bc 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix1/test_collection.py
++++ b/work/sdmpc_rl_local_20260930/test_collection.py
+@@ -2,91 +2,135 @@
+ import copy
+ import json
+ from pathlib import Path
+ from types import SimpleNamespace as NS
+ import sys
+ import pytest
++from dataclasses import dataclass, field, asdict
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import local_runtime as lr
+ import collect
+ import validate
+ import run_wave
+ from exploration import LocalBudgetPolicy
+ 
+-SCHEMA = {"names": ["x", "y"]}
+-CONTRACT = {"observation_schema": SCHEMA}
++SCHEMA = {"names": ["state/time_sec", "memory/remaining/0"] +
++    [f"memory/{name}/{i}" for name in ("action_anchor", "previous_requested", "previous_executed") for i in range(2)]}
++CONFIG = dict(network=dict(total_ramp_capacity=6000., freeway_links=["a"],
++    freeway_segments_per_link=1, freeway_segment_length_km=.5, freeway_lanes=2,
++    freeway_buffer_segments=1, off_ramp_storage_link={"r": "off"},
++    urban_link_storage_veh={"urban": 50., "off": 30.}))
++CONTRACT = {"observation_schema": SCHEMA, "environment_contract": {"config_sha256": lr.digest(CONFIG)}}
+ IDENTITY = {"fixture": "immutable"}
+ 
+ 
++@dataclass
++class FakeState:
++    time_sec: float = 900.
++    freeway_density: dict = field(default_factory=lambda: {"a": [20.]})
++    freeway_speed: dict = field(default_factory=lambda: {"a": [50.]})
++    freeway_flow: dict = field(default_factory=lambda: {"a": [2000.]})
++    freeway_effective_lanes: dict = field(default_factory=lambda: {"a": [2.]})
++    ramp_queue: dict = field(default_factory=lambda: {"r": 3.})
++    mainline_origin_queue: dict = field(default_factory=lambda: {"a": 4.})
++    urban_queue: dict = field(default_factory=lambda: {"legacy": 999.})
++    boundary_queue: dict = field(default_factory=lambda: {"legacy": 999.})
++    urban_movement_queue: dict = field(default_factory=lambda: {"m": 5.})
++    urban_link_storage: dict = field(default_factory=lambda: {"urban": 40., "off": 23.})
++    freeway_buffer_up_density: dict = field(default_factory=lambda: {"a": [6.]})
++    freeway_buffer_down_density: dict = field(default_factory=lambda: {"a": [8.]})
++    urban_arrival_buffer: dict = field(default_factory=lambda: {"urban": {1: 999.}})
++    urban_storage_release_buffer: dict = field(default_factory=lambda: {"urban": {1: 999.}})
++
++
+ class FakeEnv:
+     def __init__(self, rt, **kwargs):
+         self.profile_hash = "training-profile"
+         self.observer = NS(names=SCHEMA["names"])
+         self.close_count = 0
+ 
+     def observe(self):
+-        return lr.np.zeros(2, dtype=lr.np.float32) if self.k == 80 else lr.np.array([self.k, .5], dtype=lr.np.float32)
++        if self.k == 80:
++            return lr.np.zeros(len(SCHEMA["names"]), dtype=lr.np.float32)
++        scale = lr.np.array([1000., 10000.])
++        return lr.np.array([self.k*180/14400., (80-self.k)/75.,
++            *(self.controller.action_anchor/scale), *(self.last_requested/scale),
++            *(self.last_executed/scale)], dtype=lr.np.float32)
+ 
+     def reset(self):
+         self.k, self.warmup_ttt = 5, 5.
+-        self.sim = NS(total_ttt=5., state=NS(time_sec=900.))
++        self.sim = NS(total_ttt=5., freeway_ttt=5., urban_ttt=0., state=FakeState(), cfg=copy.deepcopy(CONFIG))
+         self.controller = NS(action_anchor=lr.np.array([-10., 6000.]))
++        self.last_requested = lr.np.zeros(2)
++        self.last_executed = lr.np.zeros(2)
++        self.previous = {k: {"a": 1.} for k in validate.CONTROL_FIELDS}
+         return self.observe()
+ 
+     def step(self, action, mode, actor_wall, actor_cpu_seconds):
+         anchor = self.controller.action_anchor.copy()
+-        request = anchor + lr.np.array([50., 1000.])*action
++        raw = anchor + lr.np.array([50., 1000.])*action
++        request = raw.copy()
+         request[1] = lr.np.clip(request[1], 0., 6000.)
+         i = self.k-5
+         self.k += 1
+         self.sim.total_ttt += 1.
++        self.sim.freeway_ttt += 1.
+         self.sim.state.time_sec += 180.
+         self.controller.action_anchor = request.copy()
++        self.last_requested, self.last_executed = request.copy(), request.copy()
+         row = dict(action_anchor=anchor, action_requested=action, B_requested=[request], B_executed=request,
+-                   B_raw=request, selection_source="lower_solution", reference_source="pfo_initial" if i == 0 else "previous",
++                   B_raw=raw, selection_source="lower_solution", reference_source="pfo_initial" if i == 0 else "previous",
+                    reference_recovery=False, guard_mode="physical", h3_guard_enabled=False,
+                    execution_check=dict(physical_control_valid=True, budget_feasible=True),
+                    lower_candidate_count=1, pfo_calls=int(i == 0),
+                    step=i+5, control_step=i, time_sec=self.sim.state.time_sec, terminated=self.k == 80,
+                    truncated=False, interval_ttt=1., total_ttt=self.sim.total_ttt,
+-                   freeway_ttt=self.sim.total_ttt, urban_ttt=0., inventory=100.,
+-                   control={k: {"a": 1.} for k in validate.CONTROL_FIELDS})
++                   freeway_ttt=self.sim.total_ttt, urban_ttt=0., inventory=63.,
++                   plant_state=asdict(self.sim.state), control=copy.deepcopy(self.previous))
+         for p in ("forecast", "observation", "pfo", "reference", "lower", "guard"):
+             row[p+"_wall_seconds"] = row[p+"_cpu_seconds"] = .1
+         row.update(actor_wall_seconds=actor_wall, actor_cpu_seconds=actor_cpu_seconds,
+                    decision_wall_seconds=.6+actor_wall, decision_cpu_seconds=.6+actor_cpu_seconds)
+         return self.observe(), -.01, self.k == 80, row
+ 
+     def checkpoint(self):
+         return dict(k=self.k, profile_hash=self.profile_hash, sim=copy.deepcopy(self.sim),
+-                    anchor=self.controller.action_anchor.copy(), warmup_ttt=self.warmup_ttt)
++                    anchor=self.controller.action_anchor.copy(), warmup_ttt=self.warmup_ttt,
++                    previous=copy.deepcopy(self.previous), last_requested=self.last_requested.copy(),
++                    last_executed=self.last_executed.copy(),
++                    last_budget=self.last_executed.copy() if self.k > 5 else None,
++                    prepared=dict(budget=self.controller.action_anchor.copy(),
++                                  action_anchor=self.controller.action_anchor.copy()) if self.k < 80 else None)
+ 
+     def restore(self, ck):
+         self.k, self.sim, self.warmup_ttt = ck["k"], copy.deepcopy(ck["sim"]), ck["warmup_ttt"]
+         self.controller = NS(action_anchor=ck["anchor"].copy())
++        self.previous = copy.deepcopy(ck["previous"])
++        self.last_requested, self.last_executed = ck["last_requested"].copy(), ck["last_executed"].copy()
+         return self.observe()
+ 
+     def close(self):
+         self.close_count += 1
+ 
+ 
+ @pytest.fixture
+-def synthetic(monkeypatch):
++def synthetic(monkeypatch, tmp_path):
++    monkeypatch.setattr(lr, "COHORT_ROOT", tmp_path, raising=False)
+     lr.torch.set_num_threads(1)
+     for module in (collect, validate, run_wave):
+         monkeypatch.setattr(module, "verify_identity", lambda x: None)
+     monkeypatch.setattr(collect, "identity", lambda: copy.deepcopy(IDENTITY))
+     monkeypatch.setattr(run_wave, "identity", lambda: copy.deepcopy(IDENTITY))
+     monkeypatch.setattr(collect, "contract", lambda: copy.deepcopy(CONTRACT))
+     monkeypatch.setattr(validate, "contract", lambda: copy.deepcopy(CONTRACT))
+-    monkeypatch.setattr(collect, "boot", lambda *x: dict(cfg=NS(network=NS(total_ramp_capacity=6000.))))
++    monkeypatch.setattr(collect, "boot", lambda *x: dict(cfg=NS(network=NS(total_ramp_capacity=6000.)),
++        rc=NS(to_plain_dict=lambda cfg: copy.deepcopy(CONFIG))))
+     monkeypatch.setattr(collect, "verify_environment", lambda *a, **k: None)
+     monkeypatch.setattr(collect, "BudgetEnv", FakeEnv)
+     monkeypatch.setattr(collect, "observation_schema", lambda env: copy.deepcopy(SCHEMA))
+-    monkeypatch.setattr(validate, "sequence_validator", lambda: lambda *x: None)
+     monkeypatch.setattr(validate, "queue_exposure", lambda x: None)
+     return monkeypatch
+ 
+ 
+ def args(folder, behavior="local", resume=False, limit=None, scenario=None):
+     scenario = scenario or lr.SCENARIOS[0]
+@@ -94,50 +138,52 @@ def args(folder, behavior="local", resume=False, limit=None, scenario=None):
+               cpu_mask=lr.MASKS[lr.SCENARIOS.index(scenario)], resume=resume, abort_file=None,
+               max_new_steps=limit)
+ 
+ 
+ @pytest.mark.parametrize("behavior", lr.BEHAVIORS)
+ def test_actual_collector_checkpoint_resume_and_completed_loader(tmp_path, synthetic, behavior):
+-    folder = tmp_path / behavior
++    folder = tmp_path / behavior / lr.SCENARIOS[0]
+     assert collect.run(args(folder, behavior, limit=2)) == "checkpointed"
+     assert not (folder / "completion.json").exists()
+     ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
+     assert len(ck["transitions"]) == 2
+     assert collect.run(args(folder, behavior, resume=True)) == "completed"
+     result, settings, summary = validate.load_completed(folder, IDENTITY)
+     assert summary["ttt"] == 80. and summary["control_steps"] == 75
+     assert settings["evaluation"] is False and settings["model_sha256"] is None
+     assert summary["pfo_calls"] == 1 and summary["lower_candidate_solves"] == 75
+     assert summary["physical_control_unique"] == 1
+     with pytest.raises(ValueError, match="Already completed"):
+         collect.run(args(folder, behavior, resume=True))
+-    uninterrupted = tmp_path / (behavior+"_full")
++    synthetic.setattr(lr, "COHORT_ROOT", tmp_path / "independent")
++    uninterrupted = lr.COHORT_ROOT / behavior / lr.SCENARIOS[0]
+     collect.run(args(uninterrupted, behavior))
+     saved = lr.read(folder / "trace.json")
+     direct = lr.read(uninterrupted / "trace.json")
+     assert [r["exploration_audit"] for r in saved] == [r["exploration_audit"] for r in direct]
+ 
+ 
+ def test_resume_rejects_behavior_source_and_state_changes(tmp_path, synthetic):
+-    collect.run(args(tmp_path / "run", limit=1))
+-    with pytest.raises(ValueError, match="settings"):
+-        collect.run(args(tmp_path / "run", behavior="carry", resume=True))
+-    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    with pytest.raises(ValueError, match="cohort"):
++        collect.run(args(folder, behavior="carry", resume=True))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
+     ck["environment"]["sim"].total_ttt += 1
+     with pytest.raises(ValueError, match="boundary"):
+         collect.validate_checkpoint(ck, ck["settings"])
+ 
+ 
+ def test_stop_before_boot_and_checkpoint_boundary(tmp_path, synthetic):
+-    folder = tmp_path / "stopped"
+-    folder.mkdir()
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    folder.mkdir(parents=True)
+     (folder / "STOP").touch()
+     with pytest.raises(lr.Stopped):
+         collect.run(args(folder))
+     assert set(p.name for p in folder.iterdir()) == {"STOP"}
+-    folder = tmp_path / "mid"
++    (folder / "STOP").unlink()
+     original = FakeEnv.step
+     def stop_after_step(self, *a, **k):
+         result = original(self, *a, **k)
+         (folder / "STOP").touch()
+         return result
+     synthetic.setattr(FakeEnv, "step", stop_after_step)
+@@ -145,13 +191,13 @@ def test_stop_before_boot_and_checkpoint_boundary(tmp_path, synthetic):
+     ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
+     assert len(ck["trace"]) == 1
+     assert not (folder / "completion.json").exists()
+ 
+ 
+ def test_aborted_attempt_and_source_drift_never_complete(tmp_path, synthetic):
+-    folder = tmp_path / "run"
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
+     def reject(_):
+         raise ValueError("source drift")
+     synthetic.setattr(collect, "verify_identity", reject)
+     with pytest.raises(ValueError, match="source drift"):
+         collect.run(args(folder))
+     assert lr.read(folder / "status.json")["status"] == "failed"
+@@ -160,37 +206,40 @@ def test_aborted_attempt_and_source_drift_never_complete(tmp_path, synthetic):
+ 
+ 
+ @pytest.mark.parametrize("field,value", [("terminated", True), ("lower_candidate_count", 2),
+     ("h3_guard_enabled", True), ("pfo_calls", 2), ("reward", -4.), ("total_ttt", 6.1),
+     ("profile_sha256", "wrong"), ("policy_q", [1., 2.]), ("decision_wall_seconds", 100.)])
+ def test_trace_contract_rejection(tmp_path, synthetic, field, value):
+-    collect.run(args(tmp_path / "run", limit=1))
+-    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
+     ck["trace"][0][field] = value
+     with pytest.raises((ValueError, AssertionError)):
+         validate.validate_rows(ck["trace"], ck["transitions"], ck["settings"], SCHEMA, 6000., False)
+ 
+ 
+ def test_summary_excludes_nonphysical_budget_and_metadata_from_diversity(tmp_path, synthetic):
+-    collect.run(args(tmp_path / "run", limit=2))
+-    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=2))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
+     for i, row in enumerate(ck["trace"]):
+         row["control"].update(N_P_star=i, diagnostics={"iteration": i}, infeasibility={"gap": i})
+-    assert validate.summarize(ck["trace"], ck["settings"], 1.)["physical_control_unique"] == 1
++    assert validate.summarize(ck["trace"], ck["settings"])["physical_control_unique"] == 1
+ 
+ 
+ def test_exact_exploration_replay_mismatch(tmp_path, synthetic):
+-    collect.run(args(tmp_path / "run", limit=1))
+-    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
+     ck["trace"][0]["exploration_audit"]["fabricated"] = True
+     with pytest.raises(ValueError, match="audit"):
+         validate.replay_policy(ck["trace"], ck["settings"])
+ 
+ 
+ def test_manifest_detects_changed_output(tmp_path, synthetic):
+-    folder = tmp_path / "run"
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
+     collect.run(args(folder))
+     lr.save(folder / "summary.json", {"tampered": True})
+     with pytest.raises(ValueError, match="Output changed"):
+         validate.load_completed(folder, IDENTITY)
+ 
+ 
+@@ -218,13 +267,13 @@ def test_wave_jobs_and_resume_command(tmp_path):
+     assert "--resume" not in run_wave.command_for(tmp_path, job, tmp_path / "ABORT.json")
+     (folder / "checkpoint.pt").touch()
+     assert "--resume" in run_wave.command_for(tmp_path, job, tmp_path / "ABORT.json")
+ 
+ 
+ def test_existing_live_lock_prevents_any_dispatch(tmp_path, synthetic):
+-    output = tmp_path / "wave"
++    output = tmp_path
+     child = output / run_wave.jobs_for(output)[0]["key"]
+     synthetic.setattr(run_wave.subprocess, "Popen", lambda *a, **k: pytest.fail("must not dispatch"))
+     with lr.exclusive_run(child):
+         with pytest.raises(OSError):
+             run_wave.run(output, resume=True)
+ 
+@@ -253,18 +302,364 @@ def test_wave_worker_failure_drains_other_children(tmp_path, synthetic):
+         run_wave.run_stage(tmp_path, jobs, IDENTITY, abort, jobs)
+     assert abort.exists() and children[1].waited
+     assert not (tmp_path / "STOP").exists()
+ 
+ 
+ def test_wave_all_completed_skip_and_plan_changes(tmp_path, synthetic):
+-    output = tmp_path / "wave"
++    output = tmp_path
+     for j in run_wave.jobs_for(output):
+         folder = output / j["key"]
+         folder.mkdir(parents=True)
+         lr.save(folder / "completion.json", {"done": True})
+     synthetic.setattr(run_wave, "validate_job", lambda *x: {})
+     synthetic.setattr(run_wave, "compare_pairs", lambda *x: {"coverage_screen_pass": False})
+     synthetic.setattr(run_wave.subprocess, "Popen", lambda *a, **k: pytest.fail("duplicate"))
+     assert run_wave.run(output, resume=True) == "completed"
+     assert lr.read(output / "completion.json")["coverage_screen_pass"] is False
+     with pytest.raises(ValueError, match="already completed"):
+         run_wave.run(output, resume=True)
++
++
++def test_fix1_duplicate_destination_rejected(tmp_path, synthetic):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    collect.run(args(folder, "carry"))
++    with pytest.raises(ValueError, match="canonical|declared|cohort"):
++        collect.run(args(tmp_path / "duplicate" / "carry" / lr.SCENARIOS[0], "carry"))
++
++
++@pytest.mark.parametrize("field", SCHEMA["names"] + ["B_raw"])
++def test_fix1_prefix_fault_before_step(tmp_path, synthetic, field):
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    if field == "B_raw":
++        ck["trace"][0][field][0] += 1.
++    else:
++        ck["transitions"][0][0][SCHEMA["names"].index(field)] += .125
++    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", ck)
++    synthetic.setattr(FakeEnv, "step", lambda *a, **k: pytest.fail("corrupt prefix reached step"))
++    with pytest.raises((ValueError, AssertionError)):
++        collect.run(args(folder, resume=True))
++
++
++@pytest.mark.parametrize("fault", ["inventory", "state", "control", "area_ttt"])
++def test_fix1_terminal_physical_boundary(tmp_path, synthetic, fault):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    original = collect.validate_rows
++    def fail_publication(*a, **k):
++        if k.get("complete", True):
++            raise RuntimeError("synthetic terminal interruption")
++        return original(*a, **k)
++    synthetic.setattr(collect, "validate_rows", fail_publication)
++    with pytest.raises(RuntimeError, match="terminal interruption"):
++        collect.run(args(folder, "carry"))
++    synthetic.setattr(collect, "validate_rows", original)
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    if fault == "inventory":
++        ck["trace"][-1]["inventory"] = 0.
++    elif fault == "state":
++        ck["environment"]["sim"].state.ramp_queue["r"] += 1.
++    elif fault == "control":
++        ck["environment"]["previous"]["ramp_metering"]["a"] += 1.
++    else:
++        ck["environment"]["sim"].freeway_ttt -= 1.
++        ck["environment"]["sim"].urban_ttt += 1.
++    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", ck)
++    with pytest.raises((ValueError, AssertionError)):
++        collect.run(args(folder, "carry", resume=True))
++    assert not (folder / "completion.json").exists()
++
++
++@pytest.mark.parametrize("swap", ["behavior", "scenario"])
++def test_fix1_direct_pairs_reject_intact_swaps(tmp_path, synthetic, swap):
++    for behavior in lr.BEHAVIORS:
++        for scenario in lr.SCENARIOS:
++            collect.run(args(tmp_path / behavior / scenario, behavior, scenario=scenario))
++    if swap == "behavior":
++        a, b = tmp_path / "carry", tmp_path / "local"
++        a.rename(tmp_path / "swap")
++        b.rename(a)
++        (tmp_path / "swap").rename(b)
++    else:
++        for behavior in lr.BEHAVIORS:
++            a, b = [tmp_path / behavior / s for s in lr.SCENARIOS[:2]]
++            a.rename(tmp_path / "swap")
++            b.rename(a)
++            (tmp_path / "swap").rename(b)
++    with pytest.raises(ValueError, match="slot"):
++        validate.compare_pairs(tmp_path, IDENTITY)
++
++
++@pytest.mark.parametrize("prefix", [None, 2])
++def test_fix1_session_time_includes_writes_and_close(tmp_path, synthetic, prefix):
++    clock = [0.]
++    synthetic.setattr(collect.time, "perf_counter", lambda: clock[0])
++    original_checkpoint, original_save = collect.checkpoint_save, collect.save
++    def costly_checkpoint(*a, **k):
++        original_checkpoint(*a, **k)
++        clock[0] += 3.
++    def costly_save(path, value):
++        original_save(path, value)
++        if path.name == "status.json":
++            clock[0] += 2.
++    def costly_close(self):
++        clock[0] += 5.
++    synthetic.setattr(collect, "checkpoint_save", costly_checkpoint)
++    synthetic.setattr(collect, "save", costly_save)
++    synthetic.setattr(FakeEnv, "close", costly_close)
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=prefix))
++    if prefix is not None:
++        collect.run(args(folder, resume=True))
++    _, _, summary = validate.load_completed(folder, IDENTITY)
++    assert summary["elapsed_wall_seconds"] == clock[0]
++
++
++def test_fix1_alternate_coordinator_root_rejected(tmp_path, synthetic):
++    synthetic.setattr(run_wave, "identity", lambda: pytest.fail("must reject before preflight"))
++    with pytest.raises(ValueError, match="canonical"):
++        run_wave.run(tmp_path / "duplicate")
++
++
++def test_fix1_startup_intent_survives_coordinator_loss(tmp_path, synthetic):
++    job = run_wave.jobs_for(tmp_path)[0]
++    folder = tmp_path / job["key"]
++    token = lr.reserve_worker(folder, job["scenario"], job["behavior"], job["cpu_mask"], launch=True)
++    # The launching coordinator is gone; absence of child PID is not proof of no child.
++    synthetic.setattr(lr, "probe_process", lambda pid: ("dead", None))
++    synthetic.setattr(run_wave.subprocess, "Popen", lambda *a, **k: pytest.fail("startup overlap"))
++    with pytest.raises(OSError, match="UNKNOWN"):
++        run_wave.run(tmp_path, resume=True)
++    with pytest.raises(OSError, match="UNKNOWN"):
++        collect.run(args(folder, "carry"))
++    assert lr.read(tmp_path / ".ownership/reservations.json")[0]["token"] == token
++
++
++@pytest.mark.parametrize("status,created,blocked", [("live", 101, True), ("unknown", None, True),
++                                                  ("dead", None, False), ("live", 102, False)])
++def test_fix1_registered_orphan_identity(tmp_path, synthetic, status, created, blocked):
++    job = run_wave.jobs_for(tmp_path)[0]
++    synthetic.setattr(lr, "probe_process", lambda pid: ("live", 101))
++    token = lr.reserve_worker(tmp_path / job["key"], job["scenario"], job["behavior"], job["cpu_mask"], launch=True)
++    lr.bind_launch(token, 999, ["python", "collect.py"])
++    synthetic.setattr(lr, "probe_process", lambda pid: (status, created))
++    if blocked:
++        with pytest.raises(OSError, match="UNKNOWN"):
++            lr.ensure_cohort_idle(tmp_path)
++    else:
++        lr.ensure_cohort_idle(tmp_path)
++        assert lr.read(tmp_path / ".ownership/reservations.json")[0]["state"] == "exited"
++
++
++def test_fix1_shared_five_worker_cap_and_claim_once(tmp_path, synthetic):
++    jobs = run_wave.jobs_for(tmp_path)
++    first = jobs[0]
++    token = lr.reserve_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"])
++    for job in jobs[1:5]:
++        lr.reserve_worker(tmp_path / job["key"], job["scenario"], job["behavior"], job["cpu_mask"], launch=True)
++    synthetic.setattr(collect, "boot", lambda *a: pytest.fail("sixth worker booted"))
++    with pytest.raises(OSError, match="five"):
++        collect.run(args(tmp_path / jobs[5]["key"], "local"))
++    with pytest.raises(OSError, match="reservation"):
++        lr.reserve_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], launch=True)
++    lr.release_worker(token)
++    token = lr.reserve_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], launch=True)
++    assert lr.claim_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], token) == token
++    with pytest.raises(ValueError, match="claimed"):
++        lr.claim_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], token)
++
++
++def test_fix1_reservation_is_persisted_before_spawn(tmp_path, synthetic):
++    job = run_wave.jobs_for(tmp_path)[0]
++    def launch(command, **kwargs):
++        token = command[command.index("--reservation")+1]
++        records = lr.read(tmp_path / ".ownership/reservations.json")
++        assert records[-1]["token"] == token and records[-1]["state"] == "reserved"
++        assert records[-1]["worker"] is None
++        raise RuntimeError("synthetic spawn interruption")
++    synthetic.setattr(run_wave.subprocess, "Popen", launch)
++    with pytest.raises(RuntimeError, match="spawn interruption"):
++        run_wave.run_stage(tmp_path, [job], IDENTITY, tmp_path / "attempt/ABORT.json", [job])
++    with pytest.raises(OSError, match="UNKNOWN"):
++        lr.ensure_cohort_idle(tmp_path)
++
++
++@pytest.mark.parametrize("steps", [0, 1, 75])
++def test_fix1_saved_observation_boundary(tmp_path, synthetic, steps):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    if steps == 0:
++        synthetic.setattr(collect, "verify_identity", lambda _: (_ for _ in ()).throw(RuntimeError("zero boundary")))
++        with pytest.raises(RuntimeError, match="zero boundary"):
++            collect.run(args(folder, "carry"))
++    else:
++        collect.run(args(folder, "carry", limit=steps))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    collect.validate_checkpoint(ck, ck["settings"])
++    ck["observation"][0] += .125
++    if steps:
++        ck["transitions"][-1][3][0] += .125
++    with pytest.raises((ValueError, AssertionError)):
++        collect.validate_checkpoint(ck, ck["settings"])
++
++
++@pytest.mark.parametrize("field", ["last_requested", "last_executed", "last_budget", "prepared"])
++def test_fix1_checkpoint_budget_binding(tmp_path, synthetic, field):
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    value = ck["environment"][field]
++    if field == "prepared":
++        value["action_anchor"][0] += 1.
++    else:
++        value[0] += 1.
++    with pytest.raises((ValueError, AssertionError)):
++        collect.validate_checkpoint(ck, ck["settings"])
++
++
++def test_fix1_exact_frozen_inventory_components():
++    state = asdict(FakeState())
++    # 20 core + 3 ramp + 4 origin + 5 movement + 10 urban storage + 7 off-ramp + 14 buffers.
++    assert validate.inventory(state, CONFIG) == 63.
++    state["urban_arrival_buffer"]["urban"][1] += 10000.
++    state["urban_storage_release_buffer"]["urban"][1] += 10000.
++    state["urban_queue"]["legacy"] += 10000.
++    state["boundary_queue"]["legacy"] += 10000.
++    assert validate.inventory(state, CONFIG) == 63.
++    state["freeway_effective_lanes"]["a"] = [1.]
++    state["freeway_buffer_down_density"]["a"] = [9.]
++    assert validate.inventory(state, CONFIG) == 54.
++    del state["urban_link_storage"]
++    with pytest.raises(ValueError, match="Missing physical"):
++        validate.inventory(state, CONFIG)
++
++
++@pytest.mark.parametrize("missing", ["end", "both"])
++def test_fix1_missing_elapsed_survives_resume_as_unknown(tmp_path, synthetic, missing):
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    session = lr.session_ids(folder)[0]
++    start = folder / "sessions" / f"{session}.start.json"
++    preserved = start.read_bytes()
++    (folder / "sessions" / f"{session}.end.json").unlink()
++    if missing == "both":
++        start.unlink()
++    collect.run(args(folder, resume=True))
++    _, _, summary = validate.load_completed(folder, IDENTITY)
++    assert summary["timing_status"] == "UNKNOWN" and summary["elapsed_wall_seconds"] is None
++    assert summary["unknown_sessions"] == [session] and summary["known_elapsed_wall_seconds"] > 0
++    assert lr.read(folder / "summary.json")["timing_status"] == "UNKNOWN"
++    if missing == "end":
++        assert start.read_bytes() == preserved
++    assert not (folder / "sessions" / f"{session}.end.json").exists()
++
++
++def test_fix1_failed_session_retains_elapsed_and_completion_last(tmp_path, synthetic):
++    clock = [0.]
++    synthetic.setattr(collect.time, "perf_counter", lambda: clock[0])
++    original_step = FakeEnv.step
++    def fail_step(*a, **k):
++        clock[0] += 11.
++        raise RuntimeError("synthetic failed work")
++    synthetic.setattr(FakeEnv, "step", fail_step)
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    with pytest.raises(RuntimeError, match="failed work"):
++        collect.run(args(folder))
++    timing = lr.read(folder / "timing.json")
++    assert timing["elapsed_wall_seconds"] == 11.
++    session = timing["session_ids"][0]
++    end_file = folder / "sessions" / f"{session}.end.json"
++    assert lr.read(end_file)["outcome"] == "failed"
++    original_bytes = end_file.read_bytes()
++    writes, original_save = [], lr.save
++    def record_write(path, value):
++        writes.append(Path(path))
++        original_save(path, value)
++    synthetic.setattr(lr, "save", record_write)
++    synthetic.setattr(collect, "save", record_write)
++    synthetic.setattr(FakeEnv, "step", original_step)
++    collect.run(args(folder, resume=True))
++    assert writes[-1] == folder / "completion.json"
++    assert validate.load_completed(folder, IDENTITY)[2]["elapsed_wall_seconds"] == 11.
++    assert end_file.read_bytes() == original_bytes
++    before = {str(p.relative_to(folder)): lr.file_hash(p) for p in folder.rglob("*") if p.is_file()}
++    with pytest.raises(ValueError, match="Already completed"):
++        collect.run(args(folder, resume=True))
++    assert before == {str(p.relative_to(folder)): lr.file_hash(p) for p in folder.rglob("*") if p.is_file()}
++
++
++def test_fix1_loss_before_session_start_is_unknown(tmp_path, synthetic):
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    # A resume acquires ownership, then disappears before publishing its timing start.
++    token = lr.reserve_worker(folder, lr.SCENARIOS[0], "local", lr.MASKS[0])
++    lr.release_worker(token)  # Synthetic proof of process exit; no process was launched.
++    collect.run(args(folder, resume=True))
++    summary = validate.load_completed(folder, IDENTITY)[2]
++    assert summary["timing_status"] == "UNKNOWN" and summary["unknown_sessions"] == [token]
++
++
++def test_fix1_completed_identity_retained_in_cohort(tmp_path, synthetic):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    collect.run(args(folder, "carry"))
++    lr.ensure_cohort_idle(tmp_path)
++    folder.rename(tmp_path / "preserved")
++    with pytest.raises(ValueError, match="completed cohort"):
++        collect.run(args(folder, "carry"))
++    with pytest.raises(ValueError, match="canonical"):
++        collect.run(args(tmp_path / "another" / "carry" / lr.SCENARIOS[0], "carry"))
++
++
++def test_fix1_initial_live_observation_rejected_before_step(tmp_path, synthetic):
++    original = FakeEnv.reset
++    def invalid_reset(self):
++        obs = original(self)
++        obs[0] += .125
++        return obs
++    synthetic.setattr(FakeEnv, "reset", invalid_reset)
++    synthetic.setattr(FakeEnv, "step", lambda *a, **k: pytest.fail("invalid initial observation reached step"))
++    with pytest.raises(AssertionError):
++        collect.run(args(tmp_path / "carry" / lr.SCENARIOS[0], "carry"))
++
++
++def test_fix1_missing_prefix_schema_rejected(tmp_path, synthetic):
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    broken = copy.deepcopy(SCHEMA)
++    broken["names"][0] = "unrecognized_clock"
++    with pytest.raises(ValueError, match="Missing/duplicate"):
++        validate.validate_rows(ck["trace"], ck["transitions"], ck["settings"], broken, 6000., False)
++
++
++def test_fix1_prefix_projection_rejected(tmp_path, synthetic):
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=1))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    ck["trace"][0]["B_requested"][0][1] += 1.
++    with pytest.raises(AssertionError):
++        validate.validate_rows(ck["trace"], ck["transitions"], ck["settings"], SCHEMA, 6000., False)
++
++
++def test_fix1_session_file_change_rejected(tmp_path, synthetic):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    collect.run(args(folder, "carry"))
++    session = lr.session_ids(folder)[0]
++    path = folder / "sessions" / f"{session}.end.json"
++    end = lr.read(path)
++    end["elapsed_wall_seconds"] += 1.
++    lr.save(path, end)
++    with pytest.raises(ValueError, match="Timing reconciliation"):
++        validate.load_completed(folder, IDENTITY)
++
++
++@pytest.mark.parametrize("field", ["total_ttt", "freeway_ttt", "urban_ttt"])
++def test_fix1_zero_boundary_nonfinite_accounting(tmp_path, synthetic, field):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    def interrupt(_):
++        raise RuntimeError("zero boundary")
++    synthetic.setattr(collect, "verify_identity", interrupt)
++    with pytest.raises(RuntimeError, match="zero boundary"):
++        collect.run(args(folder, "carry"))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    setattr(ck["environment"]["sim"], field, float("nan"))
++    with pytest.raises(ValueError, match="finite|accounting"):
++        collect.validate_checkpoint(ck, ck["settings"])
+diff --git a/work/sdmpc_rl_local_20260930/frozen_inventory.py b/work/sdmpc_rl_local_20260930/frozen_inventory.py
+new file mode 100644
+index 0000000..1162bd9
+--- /dev/null
++++ b/work/sdmpc_rl_local_20260930/frozen_inventory.py
+@@ -0,0 +1,41 @@
++"""Reuse frozen accounting definitions without booting a physical runtime."""
++import ast
++import copy
++import importlib.util
++from functools import lru_cache
++from pathlib import Path
++import sys
++from types import SimpleNamespace
++
++ROOT = Path(__file__).resolve().parents[2] / "artifacts/sdmpc_budget_baseline_20260929/source/work/sdmpc_matrix_14400_20260912/historical_tree/src"
++
++
++@lru_cache(maxsize=1)
++def accounting():
++    # state.py has only standard-library imports. Keep it out of the physical src namespace.
++    spec = importlib.util.spec_from_file_location("local_frozen_state", ROOT / "models/state.py")
++    state = importlib.util.module_from_spec(spec)
++    sys.modules[spec.name] = state
++    spec.loader.exec_module(state)
++    namespace = dict(TrafficState=state.TrafficState, ExperimentConfig=state.ExperimentConfig)
++    # Compile the two unchanged pure functions, excluding solver/simulator imports.
++    for relative, name in (("simulation/player_cost_accounting.py", "freeway_buffer_vehicle_counts"),
++                           ("controllers/sensitivity_dmpc.py", "physical_inventory")):
++        path = ROOT / relative
++        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
++        nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name]
++        if len(nodes) != 1:
++            raise ValueError("Frozen accounting definition missing or ambiguous: " + name)
++        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), "exec"), namespace)
++    return state.TrafficState, namespace["physical_inventory"]
++
++
++def inventory(state, config):
++    state_type, compute = accounting()
++    required = ("freeway_density", "freeway_effective_lanes", "ramp_queue", "mainline_origin_queue",
++                "urban_queue", "boundary_queue", "urban_movement_queue", "urban_link_storage",
++                "freeway_buffer_up_density", "freeway_buffer_down_density")
++    if any(name not in state for name in required):
++        raise ValueError("Missing physical inventory state")
++    cfg = SimpleNamespace(network=SimpleNamespace(**config["network"]))
++    return compute(state_type(**copy.deepcopy(state)), cfg)

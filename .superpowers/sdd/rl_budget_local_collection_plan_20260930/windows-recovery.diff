@@ -1,0 +1,1247 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\identity_probe.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\identity_probe.py"
+new file mode 100644
+index 0000000..f62b5af
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\identity_probe.py"
+@@ -0,0 +1,41 @@
++"""Tiny nonnumerical probe of the same venv interpreter and identity verifier."""
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++from launch_identity import probe_process
++
++
++def main():
++    code = """import json,os,sys
++from launch_identity import probe_process,verify_claim
++request=json.loads(sys.stdin.readline())
++worker=dict(pid=os.getpid(),created=probe_process(os.getpid())[1])
++mode=verify_claim(request['launcher'],worker,request['owner'],os.getppid())
++print(json.dumps(dict(worker=worker,parent=os.getppid(),mode=mode,numerical_imports=any(m in sys.modules for m in ('numpy','torch')))),flush=True)
++sys.stdin.readline()
++"""
++    child = subprocess.Popen([sys.executable, "-B", "-c", code], cwd=Path(__file__).parent,
++        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
++        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    try:
++        request = dict(owner=dict(pid=os.getpid(), created=probe_process(os.getpid())[1]),
++                       launcher=dict(pid=child.pid, created=probe_process(child.pid)[1]))
++        out, err = child.communicate(json.dumps(request)+"\nexit\n", timeout=15)
++        if child.returncode:
++            raise RuntimeError(err)
++        result = dict(**request, result=json.loads(out), exit=child.returncode,
++                      executable=sys.executable, base_executable=sys._base_executable,
++                      parent_numerical_imports=any(m in sys.modules for m in ("numpy", "torch")))
++        if result["parent_numerical_imports"] or result["result"]["numerical_imports"]:
++            raise RuntimeError("Unexpected numerical imports")
++        print(json.dumps(result))
++    finally:
++        if child.poll() is None:
++            child.kill()
++            child.communicate(timeout=15)
++
++
++if __name__ == "__main__":
++    main()
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\launch_identity.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\launch_identity.py"
+new file mode 100644
+index 0000000..9005640
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\launch_identity.py"
+@@ -0,0 +1,49 @@
++"""Small stdlib-only Windows identity checks; no enumeration or numerical imports."""
++import os
++import sys
++
++
++def probe_process(pid):
++    """Query one PID without signals; creation time distinguishes reused PIDs."""
++    if os.name != "nt" or type(pid) is not int or not 0 < pid <= 0xffffffff:
++        return "unknown", None
++    import ctypes
++    from ctypes import wintypes
++    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
++    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
++    kernel.OpenProcess.restype = wintypes.HANDLE
++    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
++    kernel.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)]*4
++    kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
++    handle = kernel.OpenProcess(0x1000, False, pid)
++    if not handle:
++        return ("dead" if ctypes.get_last_error() == 87 else "unknown"), None
++    try:
++        created, exited, cpu, user = (wintypes.FILETIME() for _ in range(4))
++        code = wintypes.DWORD()
++        if not kernel.GetProcessTimes(handle, ctypes.byref(created), ctypes.byref(exited),
++                                      ctypes.byref(cpu), ctypes.byref(user)):
++            return "unknown", None
++        if not kernel.GetExitCodeProcess(handle, ctypes.byref(code)):
++            return "unknown", None
++        return ("live" if code.value == 259 else "dead"), (created.dwHighDateTime << 32) | created.dwLowDateTime
++    finally:
++        kernel.CloseHandle(handle)
++
++
++def verify_claim(launcher, worker, owner, parent_pid, probe=probe_process):
++    for record in (launcher, worker, owner):
++        if (record is None or type(record.get("created")) is not int or
++                probe(record["pid"]) != ("live", record["created"])):
++            raise ValueError("Launch reservation process identity is dead, reused or UNKNOWN")
++    if not owner["created"] <= launcher["created"] <= worker["created"]:
++        raise ValueError("Launch reservation creation order differs")
++    if worker["pid"] == launcher["pid"]:
++        if parent_pid != owner["pid"]:
++            raise ValueError("Direct worker parent differs from launch owner")
++        return "direct"
++    # Only the Windows venv redirector's immediate child is admissible.
++    if (os.name != "nt" or sys.executable == getattr(sys, "_base_executable", sys.executable) or
++            parent_pid != launcher["pid"]):
++        raise ValueError("Redirector worker parent differs from bound launcher")
++    return "windows-venv-redirector"
+diff --git "a/work\\sdmpc_rl_local_20260930\\local_runtime.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\local_runtime.py"
+index f483d30..3ca4a4a 100644
+--- "a/work\\sdmpc_rl_local_20260930\\local_runtime.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\local_runtime.py"
+@@ -9,24 +9,26 @@ import uuid
+ from contextlib import contextmanager
+ 
+ HERE = Path(__file__).resolve().parent
+ REPO = HERE.parents[1]
+ OLD = REPO / "work/sdmpc_rl_multi_20260929"
+ GOAL = REPO / "results/sdmpc_rl_balanced_goal_20260930"
+-COHORT_ROOT = GOAL / "local_budget_v1"
++COHORT_ROOT = GOAL / "local_budget_v2"
++REQUIRE_MIGRATION = True
+ GATE = GOAL / "value_audit_v1/projection/completion.json"
+ GATE_HASH = "b6fabf1ccaa095fed6b5bcb33dea88cf7f39de4a419ed41b2459a940db6857d3"
+ for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+     os.environ[key] = "1"
+ sys.dont_write_bytecode = True
+ sys.path[:0] = [str(REPO / ".deps-budget"), str(OLD)]
+ from budget_runtime import boot, DEFAULT_SNAPSHOT, read, plain, digest, save as atomic_save
+ from run_budget import exclusive_run, file_hash, runtime_versions, verify_pins, checkpoint_save, observation_schema
+ import numpy as np
+ import torch
+ from td3 import SCENARIOS
++from launch_identity import probe_process, verify_claim
+ 
+ BEHAVIORS = ("carry", "local")
+ MASKS = (1, 4, 16, 64, 256)
+ FORMAT = "sdmpc-local-training-v1"
+ COHORT_PHASES = ("started", "checkpointed", "finished")
+ TIMING_SCOPE = ("Aggregate locked worker sessions: from before session-start publication through boot, "
+@@ -47,50 +49,39 @@ def durable_save(path, value):
+         os.fsync(stream.fileno())
+ 
+ 
+ def canonical_root(output):
+     if Path(output).resolve() != COHORT_ROOT.resolve():
+         raise ValueError("Use the declared canonical cohort root")
++    migration_guard()
+     return COHORT_ROOT.resolve()
+ 
+ 
+ def canonical_worker(output, scenario, behavior, cpu_mask):
+     if scenario not in SCENARIOS or behavior not in BEHAVIORS or cpu_mask != MASKS[SCENARIOS.index(scenario)]:
+         raise ValueError("Worker differs from declared cohort slot")
+     expected = COHORT_ROOT.resolve() / behavior / scenario
+     if Path(output).resolve() != expected:
+         raise ValueError("Use the declared canonical cohort output")
++    migration_guard()
+     return f"{behavior}/{scenario}"
+ 
+ 
+-def probe_process(pid):
+-    """Query only: never send signals (including os.kill(pid, 0) on Windows)."""
+-    if os.name != "nt" or type(pid) is not int or not 0 < pid <= 0xffffffff:
+-        return "unknown", None
+-    import ctypes
+-    from ctypes import wintypes
+-    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+-    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+-    kernel.OpenProcess.restype = wintypes.HANDLE
+-    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+-    kernel.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)]*4
+-    kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+-    handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+-    if not handle:
+-        return ("dead" if ctypes.get_last_error() == 87 else "unknown"), None
+-    try:
+-        created, exited, cpu, user = (wintypes.FILETIME() for _ in range(4))
+-        code = wintypes.DWORD()
+-        if not kernel.GetProcessTimes(handle, ctypes.byref(created), ctypes.byref(exited),
+-                                      ctypes.byref(cpu), ctypes.byref(user)):
+-            return "unknown", None
+-        if not kernel.GetExitCodeProcess(handle, ctypes.byref(code)):
+-            return "unknown", None
+-        return ("live" if code.value == 259 else "dead"), (created.dwHighDateTime << 32) | created.dwLowDateTime
+-    finally:
+-        kernel.CloseHandle(handle)
++def migration_guard(allow_absent=False):
++    folder = COHORT_ROOT / ".migration"
++    if not folder.exists() and REQUIRE_MIGRATION and not allow_absent:
++        raise ValueError("v2 cohort requires committed prefix migration before collection")
++    if folder.exists():
++        if not (folder / "committed.json").exists():
++            raise ValueError("Migration incomplete; preserve staging for diagnosis")
++        receipt = read(folder / "committed.json")
++        pending = read(folder / "pending.json")
++        if (receipt.get("status") != "committed" or receipt.get("new_root") != str(COHORT_ROOT.resolve()) or
++                pending != dict(manifest_sha256=receipt.get("manifest_sha256"), root=str(COHORT_ROOT.resolve())) or
++                receipt.get("reused_transitions") != 2 or receipt.get("additional_transitions") != 748):
++            raise ValueError("Migration committed root/identity differs")
+ 
+ 
+ def process_identity(pid=None, command=None):
+     pid = os.getpid() if pid is None else pid
+     _, created = probe_process(pid)
+     return dict(pid=pid, created=created, command=list(sys.argv if command is None else command))
+@@ -114,21 +105,26 @@ def ownership():
+             break
+         except OSError:
+             if attempt == 100:
+                 raise
+             time.sleep(.05)
+     try:
++        migration_guard()
+         path = COHORT_ROOT / ".ownership/reservations.json"
+         records = read(path) if path.exists() else []
+         for record in records:
+             if record["state"] not in ("reserved", "active", "exited", "completed"):
+                 raise ValueError("Unknown cohort reservation state")
+             if (COHORT_ROOT / record["key"] / "completion.json").exists():
+                 record["state"] = "completed"
+                 record["cohort_phase"] = "finished"
+-            elif record["state"] in ("reserved", "active") and process_dead(record["worker"]):
++            elif record["state"] == "reserved" and process_dead(record["launcher"]):
++                # A claim requires a live bound launcher, so no future worker can start.
++                record["state"] = "exited"
++            elif (record["state"] == "active" and process_dead(record["worker"]) and
++                  (record["launcher"] is None or process_dead(record["launcher"]))):
+                 record["state"] = "exited"
+         yield records
+         durable_save(path, records)
+     finally:
+         lock.__exit__(None, None, None)
+ 
+@@ -161,46 +157,54 @@ def reserve_worker(output, scenario, behavior, cpu_mask, launch=False, resume=Fa
+                 raise ValueError("Cohort checkpoint run identity differs")
+         if launch:
+             with exclusive_run(Path(output)):
+                 pass
+         token = uuid.uuid4().hex
+         records.append(dict(key=key, token=token, state="reserved" if launch else "active",
+-            owner=process_identity(), worker=None if launch else process_identity(),
++            owner=process_identity(), launcher=None, worker=None if launch else process_identity(),
+             training_seed=seeds(scenario)[0], exploration_seed=seeds(scenario)[1], cpu_mask=cpu_mask,
+             resume=resume, run_id=history[-1]["run_id"] if history else uuid.uuid4().hex,
+             cohort_phase=max((r["cohort_phase"] for r in history), key=COHORT_PHASES.index, default="started"),
+             control_steps=max((r["control_steps"] for r in history), default=-1)))
+     return token
+ 
+ 
+ def bind_launch(token, pid, command):
+     with ownership() as records:
+         record = next(r for r in records if r["token"] == token)
+-        if record["state"] == "reserved":
+-            record["worker"] = process_identity(pid, command)
+-        elif record["state"] == "active" and record["worker"]["pid"] != pid:
+-            raise ValueError("Reservation claimed by a different process")
++        current = process_identity()
++        if (record["state"] != "reserved" or record["launcher"] is not None or
++                any(current[k] != record["owner"][k] for k in ("pid", "created"))):
++            raise ValueError("Launch binding is owner-only and once-only")
++        record["launcher"] = process_identity(pid, command)
+ 
+ 
+ def claim_worker(output, scenario, behavior, cpu_mask, token=None, resume=False):
+     key = canonical_worker(output, scenario, behavior, cpu_mask)
+     if token is None:
+         return reserve_worker(output, scenario, behavior, cpu_mask, resume=resume)
+-    with ownership() as records:
+-        record = next((r for r in records if r["token"] == token), None)
+-        if record is None or record["key"] != key or record["state"] != "reserved":
+-            raise ValueError("Invalid or already claimed launch reservation")
+-        if record["resume"] != resume:
+-            raise ValueError("Launch reservation resume mode differs")
+-        current = process_identity()
+-        worker = record["worker"]
+-        if worker is not None and (worker["pid"] != current["pid"] or
+-                worker["created"] is not None and worker["created"] != current["created"]):
+-            raise ValueError("Launch reservation process identity differs")
+-        record.update(state="active", worker=current)
+-    return token
++    for attempt in range(201):
++        with ownership() as records:
++            record = next((r for r in records if r["token"] == token), None)
++            if record is None or record["key"] != key or record["state"] != "reserved":
++                raise ValueError("Invalid or already claimed launch reservation")
++            if record["resume"] != resume:
++                raise ValueError("Launch reservation resume mode differs")
++            if record["launcher"] is not None:
++                current = process_identity()
++                current["parent_pid"] = os.getppid()
++                mode = verify_claim(record["launcher"], current, record["owner"],
++                                    current["parent_pid"], probe=probe_process)
++                record.update(state="active", worker=current, launch_mode=mode)
++                return token
++            if process_dead(record["owner"]):
++                raise OSError("Unbound launch owner exited; startup remains UNKNOWN")
++        if attempt == 200:
++            raise OSError("Launch binding timeout; startup remains UNKNOWN")
++        check_stop(output)
++        time.sleep(.05)
+ 
+ 
+ def reservation_run_id(token):
+     return next(r["run_id"] for r in read(COHORT_ROOT / ".ownership/reservations.json") if r["token"] == token)
+ 
+ 
+@@ -216,12 +220,21 @@ def checkpoint_progress(token, run_id, steps):
+             record["cohort_phase"] = "checkpointed"
+ 
+ 
+ def release_worker(token, finished=False):
+     with ownership() as records:
+         record = next(r for r in records if r["token"] == token)
++        current = process_identity()
++        worker = record["worker"]
++        is_worker = worker is not None and all(current[k] == worker[k] for k in ("pid", "created"))
++        if (record["state"] == "active" and not is_worker and
++                (not process_dead(worker) or
++                 record["launcher"] is not None and not process_dead(record["launcher"]))):
++            raise OSError("Actual worker/launcher is live or UNKNOWN; cannot release")
++        if record["state"] == "reserved" and not process_dead(record["launcher"]):
++            raise OSError("Unclaimed launcher is live or UNKNOWN; cannot release")
+         if finished:
+             if record["control_steps"] != 75:
+                 raise ValueError("Cannot finish a cohort without its terminal checkpoint")
+             record["cohort_phase"] = "finished"
+         if record["state"] != "completed":
+             record["state"] = "completed" if (COHORT_ROOT / record["key"] / "completion.json").exists() else "exited"
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\migrate_prefix.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\migrate_prefix.py"
+new file mode 100644
+index 0000000..2d8ac4e
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\migrate_prefix.py"
+@@ -0,0 +1,365 @@
++"""One-time pinned carry155 recovery. Default is dry-run; never reset or step."""
++import argparse
++import copy
++import hashlib
++from contextlib import contextmanager, ExitStack
++import json
++import os
++from pathlib import Path
++import pickle
++import shutil
++
++import local_runtime as lr
++from collect import validate_checkpoint
++from run_wave import jobs_for
++
++OLD_ROOT = lr.GOAL / "local_budget_v1"
++MANIFEST = lr.REPO / ".superpowers/sdd/rl_budget_local_collection_plan_20260930/v1-frozen-inputs.json"
++MANIFEST_SHA = "cdbbc81d260887ccd2e74221d9ea44befd88e5f00013988aeaf09be927994262"
++CHECKPOINT_SHA = "659f936702be59880760677d76a8ccc35957a03aa881a3fe85a9fb4ea1923816"
++SETTINGS_SHA = "933269729875452e776be948fc8a66b8af15423f6b63e732c6fcfb6328ee5571"
++RUN_ID = "2962784e595d4ee8b1272dda7762dbc6"
++PRIOR_SECONDS = 66.75636630004738
++ATTEMPT = "bae7788116f247999100f4ad6a2d3d19"
++KEY = "carry/sweet_155_w"
++FAILURE = "RuntimeError: Child failed/stopped: carry/sweet_155_w, exit=1"
++
++
++def wave_plan(root, identity):
++    return dict(format=lr.FORMAT, jobs=jobs_for(root), identity=identity, maximum_workers=5,
++                threads_per_worker=1, episodes=10, transitions=750, training_only=True)
++
++
++def check_stops():
++    for root in (OLD_ROOT, lr.COHORT_ROOT):
++        lr.check_stop(root)
++        for job in jobs_for(root):
++            lr.check_stop(root / job["key"])
++
++
++@contextmanager
++def existing_lock(path):
++    """Lock existing v1 bytes via a read-only handle; never create/rewrite them."""
++    import msvcrt
++    with path.open("rb") as stream:
++        msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
++        try:
++            yield stream
++        finally:
++            stream.seek(0)
++            msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
++
++
++def input_bytes(path, locked):
++    stream = locked.get(path.resolve())
++    if stream is None:
++        return path.read_bytes()
++    # Windows byte locks also deny reads through another handle in this process.
++    stream.seek(0)
++    return stream.read()
++
++
++def authenticate_files(locked):
++    if lr.file_hash(MANIFEST) != MANIFEST_SHA:
++        raise ValueError("Pinned v1 preservation manifest changed")
++    entries = lr.read(MANIFEST)
++    old_files = {}
++    for entry in entries:
++        path = lr.REPO / entry["path"]
++        if not path.resolve().is_relative_to(lr.REPO.resolve()):
++            raise ValueError("Pinned input moved outside repository")
++        if any(p.is_symlink() or p.is_junction() for p in (path, *path.parents) if p != p.parent):
++            raise ValueError("Pinned input uses a relocated link")
++        if path.stat().st_size != entry["length"] or hashlib.sha256(input_bytes(path, locked)).hexdigest() != entry["sha256"]:
++            raise ValueError("Pinned v1 input changed: " + str(path))
++        if path.resolve().is_relative_to(OLD_ROOT.resolve()):
++            old_files[path.relative_to(OLD_ROOT).as_posix()] = entry["sha256"]
++    actual = {p.relative_to(OLD_ROOT).as_posix() for p in OLD_ROOT.rglob("*") if p.is_file()}
++    if set(old_files) != actual or not old_files:
++        raise ValueError("Pinned v1 input inventory moved or changed")
++    folder = OLD_ROOT / KEY
++    if (lr.file_hash(folder / "checkpoint.pt") != CHECKPOINT_SHA or
++            lr.file_hash(folder / "settings.json") != SETTINGS_SHA):
++        raise ValueError("Exact two-interval checkpoint/settings pin differs")
++    return old_files
++
++
++def authenticate_evidence(new_identity):
++    settings = lr.read(OLD_ROOT / KEY / "settings.json")
++    old_identity = settings["identity"]
++    for key in ("physical", "runtime", "gate_sha256", "contract_sha256"):
++        if old_identity[key] != new_identity[key]:
++            raise ValueError("Old/new physical source/runtime/contract differs: " + key)
++    for name, sha in old_identity["local_sources"].items():
++        path = (lr.REPO / name).resolve()
++        if not path.is_relative_to(lr.REPO.resolve()) or lr.file_hash(path) != sha:
++            raise ValueError("Old pinned local source changed")
++    if (settings["contract"] != lr.contract() or settings["run_id"] != RUN_ID or
++            settings["scenario"] != lr.SCENARIOS[0] or settings["behavior"] != "carry" or
++            settings["evaluation"] is not False or settings["model_sha256"] is not None or
++            settings["cpu_mask"] != 1 or settings["capacity"] != 6000. or
++            (settings["training_seed"], settings["exploration_seed"]) != lr.seeds(lr.SCENARIOS[0])):
++        raise ValueError("Pinned training settings differ")
++    if lr.read(OLD_ROOT / "plan.json") != wave_plan(OLD_ROOT, old_identity):
++        raise ValueError("Pinned failed wave plan differs")
++    attempt = OLD_ROOT / "attempts" / ATTEMPT
++    process = lr.read(attempt / "process.json")
++    if (Path(process["attempt"]).resolve() != attempt.resolve() or
++            lr.read(OLD_ROOT / "process.json") != process or
++            lr.read(attempt / "failure.json") != {"error": FAILURE} or
++            lr.read(OLD_ROOT / "status.json") != {"status": "failed", "error": FAILURE} or
++            lr.read(attempt / "ABORT.json")["reason"] != "coordinator_draining"):
++        raise ValueError("Failed attempt evidence differs")
++    records = lr.read(OLD_ROOT / ".ownership/reservations.json")
++    if len(records) != 7 or len({r["token"] for r in records}) != 7:
++        raise ValueError("Expected two sessions and five failed launch intents")
++    for r in records:
++        if r["state"] != "exited" or not all(lr.process_dead(r[k]) for k in ("owner", "worker")):
++            raise OSError("Old numerical owner/worker is live or UNKNOWN")
++    prior, failed = records[:2], records[2:]
++    for i, r in enumerate(prior):
++        if (r["key"] != KEY or r["run_id"] != RUN_ID or r["control_steps"] != i+1 or
++                r["cohort_phase"] != "checkpointed" or r["resume"] is not bool(i)):
++            raise ValueError("Prior session history differs")
++        start = lr.read(OLD_ROOT / KEY / "sessions" / (r["token"] + ".start.json"))
++        end = lr.read(OLD_ROOT / KEY / "sessions" / (r["token"] + ".end.json"))
++        if start["process"] != r["worker"] or end["outcome"] != "checkpointed":
++            raise ValueError("Prior measured worker session differs")
++    for i, (r, job) in enumerate(zip(failed, jobs_for(OLD_ROOT)[:5])):
++        folder = OLD_ROOT / job["key"]
++        if (any(r[k] != job[k] for k in ("key", "cpu_mask", "training_seed", "exploration_seed")) or
++                r["owner"]["pid"] != process["pid"] or r["owner"]["command"] != process["command"] or
++                r["control_steps"] != (2 if i == 0 else -1) or r["resume"] is not (i == 0) or
++                r["cohort_phase"] != ("checkpointed" if i == 0 else "started")):
++            raise ValueError("Failed launch intent differs")
++        launcher = lr.read(folder / "launcher.json")
++        command = r["worker"]["command"]
++        if (launcher["pid"] != r["worker"]["pid"] or launcher["command"] != command or
++                Path(launcher["attempt"]).resolve() != attempt.resolve()):
++            raise ValueError("Failed launcher provenance differs")
++        for option, value in (("--reservation", r["token"]), ("--scenario", job["scenario"]),
++                              ("--behavior", "carry"), ("--cpu-mask", str(job["cpu_mask"]))):
++            if command.count(option) != 1 or command[command.index(option)+1] != value:
++                raise ValueError("Failed launcher command differs")
++        for option, expected in (("--output", folder), ("--abort-file", attempt / "ABORT.json")):
++            if command.count(option) != 1 or Path(command[command.index(option)+1]).resolve() != expected.resolve():
++                raise ValueError("Failed launch path moved")
++        error = (folder / "stderr.log").read_text(encoding="utf-8")
++        if ("claim_worker" not in error or not error.rstrip().endswith(
++                "ValueError: Launch reservation process identity differs") or
++                (folder / "stdout.log").stat().st_size != 0 or
++                any((folder / "sessions").glob(r["token"] + ".*"))):
++            raise ValueError("Missing pre-session claim failure evidence")
++        if i and {p.name for p in folder.iterdir()} != {"runner.lock", "launcher.json", "stdout.log", "stderr.log"}:
++            raise ValueError("Unclaimed slot has unexpected physical/session outputs")
++    for job in jobs_for(OLD_ROOT)[5:]:
++        if {p.name for p in (OLD_ROOT / job["key"]).iterdir()} != {"runner.lock"}:
++            raise ValueError("Local behavior has unexpected prior work")
++    ids = sorted(r["token"] for r in prior)
++    timing = lr.session_timing(OLD_ROOT / KEY, ids)
++    if (lr.session_ids(OLD_ROOT / KEY) != ids or timing != lr.read(OLD_ROOT / KEY / "timing.json") or
++            timing["timing_status"] != "KNOWN" or abs(timing["elapsed_wall_seconds"]-PRIOR_SECONDS) > 1e-7):
++        raise ValueError("Two prior measured sessions differ")
++    return settings, prior, failed, timing
++
++
++def load_physical(path, settings):
++    # Called only by the parent's explicit migration command, or mocked in synthetic tests.
++    from budget_env import BudgetEnv
++    rt = lr.boot(lr.DEFAULT_SNAPSHOT, settings["cpu_mask"])
++    env = BudgetEnv(rt, scenario=settings["scenario"], training_seed=settings["training_seed"], guard_mode="physical")
++    try:
++        lr.verify_environment(env, rt, settings["contract"])
++        ck = lr.torch.load(path, map_location="cpu", weights_only=False)
++        validate_checkpoint(ck, settings)
++        observation = env.restore(ck["environment"])
++        lr.np.testing.assert_array_equal(observation, ck["observation"])
++        lr.verify_environment(env, rt, settings["contract"], schema=True)
++        return ck
++    finally:
++        env.close()
++
++
++def exact_equal(a, b, path="payload", seen=None):
++    """Compare all saved physical attributes, including non-dataclass cache fields."""
++    seen = set() if seen is None else seen
++    if type(a) is not type(b):
++        raise ValueError("Migration equality type differs: " + path)
++    if (id(a), id(b)) in seen:
++        return
++    seen.add((id(a), id(b)))
++    if isinstance(a, lr.np.ndarray):
++        equal = a.dtype == b.dtype and a.shape == b.shape and a.tobytes() == b.tobytes()
++    elif isinstance(a, dict):
++        if a.keys() != b.keys():
++            raise ValueError("Migration equality keys differ: " + path)
++        for k in a:
++            exact_equal(a[k], b[k], path + "/" + str(k), seen)
++        return
++    elif isinstance(a, (list, tuple)):
++        if len(a) != len(b):
++            raise ValueError("Migration equality length differs: " + path)
++        for i, (x, y) in enumerate(zip(a, b)):
++            exact_equal(x, y, path + "/" + str(i), seen)
++        return
++    elif hasattr(a, "__dict__") and not callable(a):
++        exact_equal(vars(a), vars(b), path, seen)
++        return
++    else:
++        equal = pickle.dumps(a, protocol=5) == pickle.dumps(b, protocol=5)
++    if not equal:
++        raise ValueError("Migration equality differs: " + path)
++
++
++def assert_equal_payload(old, new):
++    exact_equal({k: v for k, v in old.items() if k != "settings"},
++                {k: v for k, v in new.items() if k != "settings"})
++    exact_equal({k: v for k, v in old["settings"].items() if k != "identity"},
++                {k: v for k, v in new["settings"].items() if k != "identity"}, "settings")
++
++
++def publish_file(source, destination):
++    destination.parent.mkdir(parents=True, exist_ok=True)
++    with source.open("rb") as src, destination.open("xb") as dst:
++        shutil.copyfileobj(src, dst)
++        dst.flush()
++        os.fsync(dst.fileno())
++
++
++def verify_committed(root, identity):
++    lr.migration_guard()
++    receipt = lr.read(root / ".migration/committed.json")
++    if receipt["new_identity"] != identity or receipt["old_root"] != str(OLD_ROOT.resolve()):
++        raise ValueError("Committed migration identity/root differs")
++    stage = root / ".migration/stage"
++    for name, sha in receipt["stage_sha256"].items():
++        if lr.file_hash(stage / name) != sha:
++            raise ValueError("Committed migration staging/provenance changed")
++    for name, sha in receipt["published_sha256"].items():
++        if lr.file_hash(root / name) != sha:
++            raise ValueError("Committed migration published output changed; never overwrite")
++    return receipt
++
++
++def migrate(dry_run=True):
++    root = lr.COHORT_ROOT.resolve()
++    check_stops()
++    # Pending/partly published migrations require review; never clean or overwrite them.
++    lr.migration_guard(allow_absent=True)
++    new_identity = lr.identity()
++    with ExitStack() as locks:
++        locked = {}
++        for folder in [OLD_ROOT, OLD_ROOT / ".ownership", *[OLD_ROOT / j["key"] for j in jobs_for(OLD_ROOT)]]:
++            path = folder / "runner.lock"
++            locked[path.resolve()] = locks.enter_context(existing_lock(path))
++        old_files = authenticate_files(locked)
++        settings, prior, failed, timing = authenticate_evidence(new_identity)
++        if (root / ".migration/committed.json").exists():
++            # No boot/deserialization or writes on an idempotent invocation.
++            locks.enter_context(existing_lock(root / "runner.lock"))
++            locks.enter_context(existing_lock(root / ".ownership/runner.lock"))
++            for job in jobs_for(root):
++                locks.enter_context(existing_lock(root / job["key"] / "runner.lock"))
++            records = lr.read(root / ".ownership/reservations.json")
++            if any(not lr.process_dead(r["worker"]) or
++                   r["launcher"] is not None and not lr.process_dead(r["launcher"]) for r in records):
++                raise OSError("New numerical worker is live or UNKNOWN")
++            return verify_committed(root, new_identity)
++        if root.exists():
++            raise ValueError("New migration root is nonempty or incomplete; preserve for diagnosis")
++        ck = load_physical(OLD_ROOT / KEY / "checkpoint.pt", settings)
++        validate_checkpoint(ck, settings)
++        if len(ck["transitions"]) != 2 or sorted(ck["session_ids"]) != sorted(r["token"] for r in prior):
++            raise ValueError("Expected exactly two nonterminal prior transitions/sessions")
++        updated = copy.deepcopy(ck)
++        updated["settings"]["identity"] = new_identity
++        validate_checkpoint(updated, updated["settings"])
++        assert_equal_payload(ck, updated)
++        receipt = dict(status="dry-run" if dry_run else "committed", old_root=str(OLD_ROOT.resolve()),
++            new_root=str(root), old_identity=settings["identity"], new_identity=new_identity,
++            manifest_sha256=MANIFEST_SHA, run_id=RUN_ID, reused_transitions=2, additional_transitions=748,
++            total_transitions=750, transitions_per_scenario=150,
++            prior_session_ids=ck["session_ids"], prior_locked_session_seconds=timing["elapsed_wall_seconds"],
++            timing_scope=lr.TIMING_SCOPE, excluded_costs="Failed coordinator and five unclaimed launcher startup costs are outside locked worker-session timing; elapsed cost is not measured here, not zero.",
++            failed_unclaimed_intents=[dict(old_intent=r, new_slot=str(root / r["key"]),
++                disposition="resume two-interval prefix" if r["key"] == KEY else "first physical episode allowed") for r in failed],
++            equality=dict(non_settings_payload="exact recursive types, array dtype/shape/bytes and every saved object attribute", settings="only identity changes", physical_contract="exact", transitions=2,
++                          boundary_k=7, simulation_seconds=1260, policy_and_rng="exact", sessions="byte-exact"))
++        if dry_run:
++            authenticate_files(locked)
++            check_stops()
++            return receipt
++        # Block admission first, then own every destination lock before publication.
++        locks.enter_context(lr.exclusive_run(root))
++        if set(p.name for p in root.iterdir()) != {"runner.lock"}:
++            raise ValueError("New migration root changed during preparation")
++        lr.durable_save(root / ".migration/pending.json", dict(manifest_sha256=MANIFEST_SHA, root=str(root)))
++        locks.enter_context(lr.exclusive_run(root / ".ownership"))
++        for job in jobs_for(root):
++            locks.enter_context(lr.exclusive_run(root / job["key"]))
++        check_stops()
++        stage = root / ".migration/stage"
++        outputs = stage / "outputs"
++        provenance = stage / "provenance/original"
++        for name in old_files:
++            target = provenance / name
++            target.parent.mkdir(parents=True, exist_ok=True)
++            with target.open("xb") as stream:
++                stream.write(input_bytes(OLD_ROOT / name, locked))
++                stream.flush()
++                os.fsync(stream.fileno())
++            if lr.file_hash(target) != old_files[name]:
++                raise ValueError("Original provenance copy differs")
++        for entry in lr.read(MANIFEST):
++            source = lr.REPO / entry["path"]
++            if not source.resolve().is_relative_to(OLD_ROOT.resolve()):
++                target = stage / "provenance/sources" / source.relative_to(lr.REPO)
++                publish_file(source, target)
++                if lr.file_hash(target) != entry["sha256"]:
++                    raise ValueError("Original source provenance copy differs")
++        publish_file(MANIFEST, stage / "provenance/v1-frozen-inputs.json")
++        slot = outputs / KEY
++        slot.mkdir(parents=True)
++        lr.durable_save(slot / "settings.json", updated["settings"])
++        lr.checkpoint_save(lr.torch, slot / "checkpoint.pt", updated)
++        with (slot / "checkpoint.pt").open("r+b") as stream:
++            os.fsync(stream.fileno())
++        # Compare a fresh deserialization, not just the in-memory copy.
++        loaded = lr.torch.load(slot / "checkpoint.pt", map_location="cpu", weights_only=False)
++        validate_checkpoint(loaded, updated["settings"])
++        assert_equal_payload(ck, loaded)
++        for name in ("observation_schema.json", "timing.json"):
++            publish_file(OLD_ROOT / KEY / name, slot / name)
++        for path in (OLD_ROOT / KEY / "sessions").iterdir():
++            publish_file(path, slot / "sessions" / path.name)
++        history = [dict(r, launcher=None) for r in prior]
++        lr.durable_save(outputs / ".ownership/reservations.json", history)
++        lr.durable_save(outputs / "plan.json", wave_plan(root, new_identity))
++        receipt["published_sha256"] = {p.relative_to(outputs).as_posix(): lr.file_hash(p)
++                                       for p in sorted(outputs.rglob("*")) if p.is_file()}
++        receipt["stage_sha256"] = {p.relative_to(stage).as_posix(): lr.file_hash(p)
++                                   for p in sorted(stage.rglob("*")) if p.is_file()}
++        lr.verify_identity(new_identity)
++        authenticate_files(locked)
++        check_stops()
++        for name in receipt["published_sha256"]:
++            publish_file(outputs / name, root / name)
++        for name, sha in receipt["published_sha256"].items():
++            if lr.file_hash(root / name) != sha:
++                raise ValueError("Migration publication verification failed")
++        check_stops()
++        lr.verify_identity(new_identity)
++        authenticate_files(locked)
++        lr.durable_save(root / ".migration/committed.json", receipt)
++        return receipt
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--execute", action="store_true", help="Commit the one-time migration; default only validates")
++    args = parser.parse_args()
++    print(json.dumps(migrate(dry_run=not args.execute), indent=2, ensure_ascii=True))
++
++
++if __name__ == "__main__":
++    main()
+diff --git "a/work\\sdmpc_rl_local_20260930\\run_wave.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\run_wave.py"
+index c205388..886d5d4 100644
+--- "a/work\\sdmpc_rl_local_20260930\\run_wave.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\run_wave.py"
+@@ -94,17 +94,24 @@ def run_stage(output, jobs, expected, abort, all_jobs):
+             if active:
+                 time.sleep(5)
+     finally:
+         if active:
+             # A per-attempt abort is distinct from persistent user STOP markers.
+             save(abort, dict(reason="coordinator_draining", created=time.time()))
++            release_error = None
+             for child, out, err, _, token in active.values():
+                 child.wait()
+                 out.close()
+                 err.close()
+-                release_worker(token)
++                try:
++                    release_worker(token)
++                except OSError as exc:
++                    # A dead redirector does not prove its actual worker is dead.
++                    release_error = exc
++            if release_error is not None:
++                raise release_error
+ 
+ 
+ def run(output, resume=False):
+     output = Path(output).resolve()
+     canonical_root(output)
+     check_stop(output)
+@@ -158,13 +165,13 @@ def run(output, resume=False):
+             save(attempt / "failure.json", dict(error=f"{type(exc).__name__}: {exc}"))
+             raise
+ 
+ 
+ def main(argv=None):
+     p = argparse.ArgumentParser(description=__doc__)
+-    p.add_argument("--output", type=Path, default=GOAL / "local_budget_v1")
++    p.add_argument("--output", type=Path, default=GOAL / "local_budget_v2")
+     p.add_argument("--resume", action="store_true")
+     args = p.parse_args(argv)
+     return 2 if run(args.output, args.resume) == "stopped" else 0
+ 
+ 
+ if __name__ == "__main__":
+diff --git "a/work\\sdmpc_rl_local_20260930\\test_collection.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_collection.py"
+index ab441e4..c34ddfb 100644
+--- "a/work\\sdmpc_rl_local_20260930\\test_collection.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_collection.py"
+@@ -113,12 +113,13 @@ class FakeEnv:
+         self.close_count += 1
+ 
+ 
+ @pytest.fixture
+ def synthetic(monkeypatch, tmp_path):
+     monkeypatch.setattr(lr, "COHORT_ROOT", tmp_path, raising=False)
++    monkeypatch.setattr(lr, "REQUIRE_MIGRATION", False)  # Fresh synthetic episodes, no real v1 inputs.
+     lr.torch.set_num_threads(1)
+     for module in (collect, validate, run_wave):
+         monkeypatch.setattr(module, "verify_identity", lambda x: None)
+     monkeypatch.setattr(collect, "identity", lambda: copy.deepcopy(IDENTITY))
+     monkeypatch.setattr(run_wave, "identity", lambda: copy.deepcopy(IDENTITY))
+     monkeypatch.setattr(collect, "contract", lambda: copy.deepcopy(CONTRACT))
+@@ -461,12 +462,14 @@ def test_fix1_shared_five_worker_cap_and_claim_once(tmp_path, synthetic):
+         collect.run(args(tmp_path / jobs[5]["key"], "local"))
+     with pytest.raises(OSError, match="reservation"):
+         lr.reserve_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], launch=True)
+     lr.release_worker(token)
+     first = jobs[5]
+     token = lr.reserve_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], launch=True)
++    lr.bind_launch(token, lr.os.getpid(), ["synthetic-direct-worker"])
++    synthetic.setattr(lr.os, "getppid", lr.os.getpid)
+     assert lr.claim_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], token) == token
+     with pytest.raises(ValueError, match="claimed"):
+         lr.claim_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], token)
+ 
+ 
+ def test_fix1_reservation_is_persisted_before_spawn(tmp_path, synthetic):
+@@ -690,12 +693,14 @@ def test_fix2_complete_nested_config_preserves_runtime_extra():
+ @pytest.mark.parametrize("phase", ["started", "checkpointed", "finished", "coordinator_finished"])
+ def test_fix2_immediate_relocation_cannot_restart_slot(tmp_path, synthetic, phase):
+     folder = tmp_path / "carry" / lr.SCENARIOS[0]
+     request = args(folder, "carry", limit=1 if phase in ("started", "checkpointed") else None)
+     if phase == "coordinator_finished":
+         request.reservation = lr.reserve_worker(folder, request.scenario, "carry", request.cpu_mask, launch=True)
++        lr.bind_launch(request.reservation, lr.os.getpid(), ["synthetic-direct-worker"])
++        synthetic.setattr(lr.os, "getppid", lr.os.getpid)
+         # Emulate the child claiming a dispatched intent. No parent post-exit release follows.
+     if phase == "started":
+         original_identity = collect.identity
+         def fail_initialization():
+             raise RuntimeError("synthetic initialization loss")
+         synthetic.setattr(collect, "identity", fail_initialization)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_migration.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_migration.py"
+new file mode 100644
+index 0000000..9e7d7b5
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_migration.py"
+@@ -0,0 +1,247 @@
++"""Synthetic one-time migration fixtures; never read or load actual checkpoints."""
++import copy
++from pathlib import Path
++import sys
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++import local_runtime as lr
++import collect
++import run_wave
++import migrate_prefix as migration
++from test_collection import synthetic, FakeEnv, args, CONTRACT, CONFIG
++
++LOAD_PHYSICAL = migration.load_physical
++
++
++def hashes(root):
++    return {p.relative_to(root).as_posix(): lr.file_hash(p) for p in root.rglob("*") if p.is_file()}
++
++
++@pytest.fixture
++def old_prefix(tmp_path, synthetic):
++    old, new = tmp_path / "old", tmp_path / "new"
++    source = tmp_path / "old_code.py"
++    source.write_text("# synthetic pinned source\n", encoding="ascii")
++    identity = dict(physical={}, runtime={}, gate_sha256="fixture-gate",
++                    contract_sha256=lr.digest(CONTRACT), local_sources={"old_code.py": lr.file_hash(source)})
++    synthetic.setattr(lr, "REPO", tmp_path)
++    synthetic.setattr(lr, "COHORT_ROOT", old)
++    synthetic.setattr(collect, "identity", lambda: copy.deepcopy(identity))
++    folder = old / migration.KEY
++    collect.run(args(folder, "carry", limit=1))
++    collect.run(args(folder, "carry", resume=True, limit=1))
++    settings = lr.read(folder / "settings.json")
++    records = lr.read(old / ".ownership/reservations.json")
++    for r in records:
++        r.pop("launcher")
++    owner = dict(pid=900, created=900, command=["old/run_wave.py", "--resume"])
++    attempt = old / "attempts" / migration.ATTEMPT
++    process = dict(pid=900, command=owner["command"], started=1., attempt=str(attempt))
++    lr.save(attempt / "process.json", process)
++    lr.save(old / "process.json", process)
++    lr.save(attempt / "failure.json", {"error": migration.FAILURE})
++    lr.save(attempt / "ABORT.json", {"reason": "coordinator_draining", "created": 2.})
++    lr.save(old / "status.json", {"status": "failed", "error": migration.FAILURE})
++    for i, job in enumerate(run_wave.jobs_for(old)):
++        slot = old / job["key"]
++        with lr.exclusive_run(slot):
++            pass
++        if job["behavior"] != "carry":
++            continue
++        token = f"{100+i:032x}"
++        command = [sys.executable, "-B", "collect.py", "--output", str(slot), "--scenario", job["scenario"],
++                   "--behavior", "carry", "--cpu-mask", str(job["cpu_mask"]), "--abort-file", str(attempt / "ABORT.json")]
++        if i == 0:
++            command.append("--resume")
++        command.extend(["--reservation", token])
++        records.append(dict(**{k: job[k] for k in ("key", "training_seed", "exploration_seed", "cpu_mask")},
++            token=token, owner=owner, worker=dict(pid=1000+i, created=1000+i, command=command),
++            state="exited", resume=i == 0, run_id=settings["run_id"] if i == 0 else f"{200+i:032x}",
++            cohort_phase="checkpointed" if i == 0 else "started", control_steps=2 if i == 0 else -1))
++        lr.save(slot / "launcher.json", dict(pid=1000+i, command=command, attempt=str(attempt), started=1.))
++        (slot / "stderr.log").write_text('reservation = claim_worker(...)\nValueError: Launch reservation process identity differs\n', encoding="ascii")
++        (slot / "stdout.log").write_bytes(b"")
++    lr.save(old / ".ownership/reservations.json", records)
++    lr.save(old / "plan.json", migration.wave_plan(old, identity))
++    with lr.exclusive_run(old):
++        pass
++    manifest = tmp_path / "pins.json"
++    entries = [dict(path=p.relative_to(tmp_path).as_posix(), length=p.stat().st_size, sha256=lr.file_hash(p))
++               for p in sorted(old.rglob("*")) if p.is_file()]
++    entries.append(dict(path="old_code.py", length=source.stat().st_size, sha256=lr.file_hash(source)))
++    lr.save(manifest, entries)
++    synthetic.setattr(migration, "OLD_ROOT", old)
++    synthetic.setattr(migration, "MANIFEST", manifest)
++    for name, value in dict(MANIFEST_SHA=lr.file_hash(manifest),
++                            CHECKPOINT_SHA=lr.file_hash(folder / "checkpoint.pt"),
++                            SETTINGS_SHA=lr.file_hash(folder / "settings.json"), RUN_ID=settings["run_id"],
++                            PRIOR_SECONDS=lr.read(folder / "timing.json")["elapsed_wall_seconds"]).items():
++        synthetic.setattr(migration, name, value)
++    new_identity = dict(identity, local_sources={"new": "fixture"})
++    synthetic.setattr(lr, "COHORT_ROOT", new)
++    assert migration.OLD_ROOT.resolve().is_relative_to(tmp_path.resolve())
++    assert lr.COHORT_ROOT.resolve().is_relative_to(tmp_path.resolve())
++    assert migration.MANIFEST.resolve().is_relative_to(tmp_path.resolve())
++    synthetic.setattr(lr, "identity", lambda: copy.deepcopy(new_identity))
++    synthetic.setattr(lr, "contract", lambda: copy.deepcopy(CONTRACT))
++    synthetic.setattr(lr, "verify_identity", lambda expected: None)
++    synthetic.setattr(lr, "probe_process", lambda pid: ("dead", None))
++    synthetic.setattr(migration, "load_physical", lambda path, settings: lr.torch.load(path, weights_only=False))
++    return old, new, synthetic, new_identity
++
++
++def test_dry_run_has_no_writes_and_commit_preserves_two_sessions(old_prefix):
++    old, new, patch, identity = old_prefix
++    before = hashes(old)
++    result = migration.migrate(dry_run=True)
++    assert result["reused_transitions"] == 2 and result["additional_transitions"] == 748
++    assert not new.exists() and hashes(old) == before
++    result = migration.migrate(dry_run=False)
++    assert result["status"] == "committed" and hashes(old) == before
++    assert migration.migrate(dry_run=False) == result
++    ck = lr.torch.load(new / migration.KEY / "checkpoint.pt", weights_only=False)
++    original = lr.torch.load(old / migration.KEY / "checkpoint.pt", weights_only=False)
++    migration.assert_equal_payload(original, ck)
++    assert len(ck["session_ids"]) == 2
++    history = lr.read(new / ".ownership/reservations.json")
++    assert len(history) == 2 and all(r["key"] == migration.KEY for r in history)
++    assert len(result["failed_unclaimed_intents"]) == 5
++    assert result["prior_locked_session_seconds"] == migration.PRIOR_SECONDS
++    assert (new / ".migration/stage/provenance/original" / migration.KEY / "checkpoint.pt").read_bytes() == (old / migration.KEY / "checkpoint.pt").read_bytes()
++    patch.setattr(collect, "identity", lambda: copy.deepcopy(identity))
++    patch.setattr(lr, "probe_process", lambda pid: ("live", 777))
++    original_step = FakeEnv.step
++    seen = []
++    def continuation(self, *a, **kw):
++        seen.append(self.k)
++        return original_step(self, *a, **kw)
++    patch.setattr(FakeEnv, "step", continuation)
++    assert collect.run(args(new / migration.KEY, "carry", resume=True, limit=1)) == "checkpointed"
++    assert seen == [7]
++    resumed = lr.torch.load(new / migration.KEY / "checkpoint.pt", weights_only=False)
++    assert len(resumed["transitions"]) == 3 and resumed["settings"]["run_id"] == migration.RUN_ID
++
++
++@pytest.mark.parametrize("fault", ["checkpoint", "settings", "source", "moved", "extra_session", "old_stop", "new_stop", "active", "unknown"])
++def test_rejects_changed_or_nonidle_inputs(old_prefix, fault):
++    old, new, patch, _ = old_prefix
++    if fault in ("checkpoint", "settings"):
++        with (old / migration.KEY / ("checkpoint.pt" if fault == "checkpoint" else "settings.json")).open("ab") as f:
++            f.write(b"bad")
++    elif fault == "source":
++        (old.parent / "old_code.py").write_text("changed", encoding="ascii")
++    elif fault == "moved":
++        (old / migration.KEY).rename(old / "relocated")
++    elif fault == "extra_session":
++        lr.save(old / migration.KEY / "sessions/extra.start.json", {})
++    elif fault == "old_stop":
++        (old / "STOP").touch()
++    elif fault == "new_stop":
++        new.mkdir()
++        (new / "STOP").touch()
++    else:
++        patch.setattr(lr, "probe_process", lambda pid: ("live", None) if fault == "active" else ("unknown", None))
++    with pytest.raises((ValueError, OSError, lr.Stopped, FileNotFoundError)):
++        migration.migrate(dry_run=False)
++    assert not (new / ".migration/committed.json").exists()
++
++
++@pytest.mark.parametrize("after", [0, 1, 4])
++def test_partial_publication_is_preserved_and_blocks_collection(old_prefix, after):
++    _, new, patch, _ = old_prefix
++    original = migration.publish_file
++    calls = []
++    def interrupt(source, destination):
++        if destination.relative_to(new).parts[0] != ".migration":
++            if len(calls) == after:
++                raise RuntimeError("synthetic publication interruption")
++            calls.append(destination)
++        original(source, destination)
++    patch.setattr(migration, "publish_file", interrupt)
++    with pytest.raises(RuntimeError, match="publication interruption"):
++        migration.migrate(dry_run=False)
++    before = hashes(new)
++    with pytest.raises(ValueError, match="incomplete"):
++        migration.migrate(dry_run=False)
++    assert hashes(new) == before
++    with pytest.raises(ValueError, match="incomplete"):
++        lr.canonical_root(new)
++    with pytest.raises(ValueError, match="incomplete"):
++        lr.claim_worker(new / migration.KEY, lr.SCENARIOS[0], "carry", lr.MASKS[0], resume=True)
++
++
++def repin_fixture(patch):
++    entries = lr.read(migration.MANIFEST)
++    for entry in entries:
++        path = lr.REPO / entry["path"]
++        entry.update(length=path.stat().st_size, sha256=lr.file_hash(path))
++    lr.save(migration.MANIFEST, entries)
++    patch.setattr(migration, "MANIFEST_SHA", lr.file_hash(migration.MANIFEST))
++    patch.setattr(migration, "CHECKPOINT_SHA", lr.file_hash(migration.OLD_ROOT / migration.KEY / "checkpoint.pt"))
++
++
++@pytest.mark.parametrize("fault", ["transition", "physical", "policy", "terminal", "sessions"])
++def test_semantic_prefix_corruption_rejected_before_publication(old_prefix, fault):
++    old, new, patch, _ = old_prefix
++    path = old / migration.KEY / "checkpoint.pt"
++    ck = lr.torch.load(path, weights_only=False)
++    if fault == "transition":
++        ck["transitions"][0][0][0] += .1
++    elif fault == "physical":
++        ck["environment"]["sim"].state.ramp_queue["r"] += 1
++    elif fault == "policy":
++        ck["policy"]["rng"]["state"]["state"] += 1
++    elif fault == "terminal":
++        ck["transitions"][1] = (*ck["transitions"][1][:4], True)
++    else:
++        ck["session_ids"].append("f"*32)
++    lr.checkpoint_save(lr.torch, path, ck)
++    repin_fixture(patch)
++    with pytest.raises((ValueError, AssertionError)):
++        migration.migrate(dry_run=False)
++    assert not new.exists()
++
++
++def test_physical_loader_restore_only(old_prefix):
++    import budget_env
++    old, _, patch, _ = old_prefix
++    patch.setattr(budget_env, "BudgetEnv", FakeEnv)
++    patch.setattr(lr, "boot", collect.boot)
++    patch.setattr(lr, "verify_environment", lambda *a, **k: None)
++    patch.setattr(FakeEnv, "reset", lambda *a: pytest.fail("migration reset"))
++    patch.setattr(FakeEnv, "step", lambda *a: pytest.fail("migration step/PFO"))
++    restored = LOAD_PHYSICAL(old / migration.KEY / "checkpoint.pt", lr.read(old / migration.KEY / "settings.json"))
++    assert restored["environment"]["k"] == 7
++
++
++def test_existing_new_worker_lock_blocks_idempotent_migration(old_prefix):
++    _, new, _, _ = old_prefix
++    migration.migrate(dry_run=False)
++    with lr.exclusive_run(new / migration.KEY):
++        with pytest.raises(OSError):
++            migration.migrate(dry_run=False)
++
++
++def test_production_admission_requires_committed_migration(old_prefix):
++    _, new, patch, _ = old_prefix
++    patch.setattr(lr, "REQUIRE_MIGRATION", True)
++    with pytest.raises(ValueError, match="requires committed"):
++        lr.canonical_root(new)
++    with pytest.raises(ValueError, match="requires committed"):
++        collect.run(args(new / migration.KEY, "carry", limit=1))
++    assert not new.exists()
++    migration.migrate(dry_run=False)
++    assert lr.canonical_root(new) == new.resolve()
++
++
++def test_committed_corruption_never_overwrites(old_prefix):
++    _, new, _, _ = old_prefix
++    migration.migrate(dry_run=False)
++    path = new / migration.KEY / "checkpoint.pt"
++    path.write_bytes(b"corrupt")
++    before = hashes(new)
++    with pytest.raises(ValueError, match="published"):
++        migration.migrate(dry_run=False)
++    assert hashes(new) == before
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_windows_recovery.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_windows_recovery.py"
+new file mode 100644
+index 0000000..a3a4898
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930_v2\\test_windows_recovery.py"
+@@ -0,0 +1,201 @@
++"""Ownership regressions, using fake identities and process-only subprocesses."""
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++import local_runtime as lr
++import run_wave
++from test_collection import synthetic
++
++
++@pytest.fixture
++def launch(monkeypatch, tmp_path):
++    monkeypatch.setattr(lr, "COHORT_ROOT", tmp_path)
++    monkeypatch.setattr(lr, "REQUIRE_MIGRATION", False)
++    identities = {10: ("live", 100), 20: ("live", 200), 30: ("live", 300)}
++    current = [10]
++    monkeypatch.setattr(lr, "probe_process", lambda pid: identities.get(pid, ("unknown", None)))
++    monkeypatch.setattr(lr.os, "getpid", lambda: current[0])
++    monkeypatch.setattr(lr.os, "getppid", lambda: 20)
++    job = run_wave.jobs_for(tmp_path)[0]
++    call = (tmp_path / job["key"], job["scenario"], job["behavior"], job["cpu_mask"])
++    token = lr.reserve_worker(*call, launch=True)
++    lr.bind_launch(token, 20, [sys.executable, "-B", "collect.py"])
++    current[0] = 30
++    return call, token, identities, current
++
++
++def test_redirector_claim_records_both_identities(launch):
++    call, token, _, _ = launch
++    assert lr.claim_worker(*call, token) == token
++    record = lr.read(lr.COHORT_ROOT / ".ownership/reservations.json")[-1]
++    assert record["launcher"]["pid"] == 20 and record["worker"]["pid"] == 30
++    assert record["worker"]["parent_pid"] == 20
++    with pytest.raises(ValueError, match="claimed"):
++        lr.claim_worker(*call, token)
++
++
++@pytest.mark.parametrize("fault", ["parent", "launcher_reuse", "launcher_unknown", "worker_unknown", "older_worker"])
++def test_claim_rejects_unproven_identity(launch, monkeypatch, fault):
++    call, token, identities, _ = launch
++    if fault == "parent":
++        monkeypatch.setattr(lr.os, "getppid", lambda: 99)
++    elif fault == "launcher_reuse":
++        identities[20] = ("live", 201)
++    elif fault == "launcher_unknown":
++        identities[20] = ("unknown", None)
++    elif fault == "worker_unknown":
++        identities[30] = ("unknown", None)
++    else:
++        identities[30] = ("live", 199)
++    with pytest.raises((ValueError, OSError)):
++        lr.claim_worker(*call, token)
++    assert lr.read(lr.COHORT_ROOT / ".ownership/reservations.json")[-1]["state"] != "active"
++
++
++def test_actual_worker_blocks_recovery_after_launcher_exit(launch):
++    call, token, identities, current = launch
++    lr.claim_worker(*call, token)
++    identities[20] = ("dead", 200)
++    current[0] = 10
++    with pytest.raises(OSError, match="live|UNKNOWN"):
++        lr.ensure_cohort_idle(lr.COHORT_ROOT)
++    with pytest.raises(OSError, match="live|UNKNOWN"):
++        lr.release_worker(token)
++    identities[30] = ("unknown", None)
++    with pytest.raises(OSError):
++        lr.ensure_cohort_idle(lr.COHORT_ROOT)
++    identities[30] = ("live", 301)  # Old worker exited and PID was reused.
++    lr.ensure_cohort_idle(lr.COHORT_ROOT)
++
++
++def test_direct_child_claim_and_wrong_parent(launch, monkeypatch):
++    call, token, _, current = launch
++    current[0] = 20
++    with pytest.raises(ValueError, match="parent"):
++        lr.claim_worker(*call, token)
++    monkeypatch.setattr(lr.os, "getppid", lambda: 10)
++    assert lr.claim_worker(*call, token) == token
++    assert lr.read(lr.COHORT_ROOT / ".ownership/reservations.json")[-1]["launch_mode"] == "direct"
++
++
++def test_bind_is_owner_only_and_once_only(launch):
++    _, token, _, current = launch
++    with pytest.raises(ValueError, match="once-only"):
++        lr.bind_launch(token, 30, [])
++    current[0] = 10
++    with pytest.raises(ValueError, match="once-only"):
++        lr.bind_launch(token, 20, [])
++
++
++def test_child_waits_for_binding_without_claiming_early(launch, monkeypatch):
++    call, token, _, current = launch
++    path = lr.COHORT_ROOT / ".ownership/reservations.json"
++    records = lr.read(path)
++    records[-1]["launcher"] = None
++    lr.save(path, records)
++    sleeps = []
++    def delayed_bind(_):
++        record = lr.read(path)[-1]
++        assert record["worker"] is None and record["state"] == "reserved"
++        sleeps.append(True)
++        current[0] = 10
++        lr.bind_launch(token, 20, [])
++        current[0] = 30
++    monkeypatch.setattr(lr.time, "sleep", delayed_bind)
++    lr.claim_worker(*call, token)
++    assert sleeps == [True]
++
++
++def test_unbound_dead_owner_stays_unknown(launch):
++    call, token, identities, _ = launch
++    path = lr.COHORT_ROOT / ".ownership/reservations.json"
++    records = lr.read(path)
++    records[-1]["launcher"] = None
++    lr.save(path, records)
++    identities[10] = ("dead", 100)
++    with pytest.raises(OSError, match="UNKNOWN"):
++        lr.claim_worker(*call, token)
++    with pytest.raises(OSError, match="UNKNOWN"):
++        lr.ensure_cohort_idle(lr.COHORT_ROOT)
++
++
++def test_five_redirected_workers_still_consume_five_slots(launch, monkeypatch):
++    call, token, identities, current = launch
++    lr.claim_worker(*call, token)
++    jobs = run_wave.jobs_for(lr.COHORT_ROOT)
++    for i, job in enumerate(jobs[1:5], 1):
++        current[0] = 10
++        request = (lr.COHORT_ROOT / job["key"], job["scenario"], job["behavior"], job["cpu_mask"])
++        launcher, worker = 20+i, 30+i
++        identities[launcher], identities[worker] = ("live", 200+i), ("live", 300+i)
++        reserved = lr.reserve_worker(*request, launch=True)
++        lr.bind_launch(reserved, launcher, [])
++        current[0] = worker
++        monkeypatch.setattr(lr.os, "getppid", lambda pid=launcher: pid)
++        lr.claim_worker(*request, reserved)
++    job = jobs[5]
++    with pytest.raises(OSError, match="five"):
++        lr.reserve_worker(lr.COHORT_ROOT / job["key"], job["scenario"], job["behavior"], job["cpu_mask"])
++    records = lr.read(lr.COHORT_ROOT / ".ownership/reservations.json")
++    assert len(records) == 5 and all(r["state"] == "active" for r in records)
++
++
++def test_real_venv_redirector_process_only():
++    # This child imports only the stdlib ownership verifier, never local_runtime.
++    code = """import json,os,sys
++from launch_identity import probe_process, verify_claim
++launch = json.loads(sys.stdin.readline())
++worker = dict(pid=os.getpid(), created=probe_process(os.getpid())[1])
++verify_claim(launch['launcher'], worker, launch['owner'], os.getppid())
++print(json.dumps(dict(worker=worker,parent=os.getppid(),numerical_imports=any(x in sys.modules for x in ('numpy','torch')))),flush=True)
++sys.stdin.readline()
++"""
++    command = [sys.executable, "-B", "-c", code]
++    child = subprocess.Popen(command, cwd=Path(__file__).parent, stdin=subprocess.PIPE,
++                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
++                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    try:
++        from launch_identity import probe_process
++        request = dict(launcher=dict(pid=child.pid, created=probe_process(child.pid)[1]),
++                       owner=dict(pid=os.getpid(), created=probe_process(os.getpid())[1]))
++        out, err = child.communicate(json.dumps(request)+"\nexit\n", timeout=15)
++        assert child.returncode == 0, err
++        result = json.loads(out)
++        assert result["worker"]["pid"] != child.pid
++        assert result["parent"] == child.pid and not result["numerical_imports"]
++        print(json.dumps(dict(launcher=child.pid, **result)))
++    finally:
++        if child.poll() is None:
++            child.kill()
++            child.communicate(timeout=15)
++
++
++def test_drain_waits_all_launchers_even_if_actual_worker_is_unknown(tmp_path, synthetic):
++    children = []
++    class Child:
++        def __init__(self):
++            self.pid = 100 + len(children)
++            self.waited = False
++        def poll(self):
++            return 1
++        def wait(self):
++            self.waited = True
++            return 1
++    def spawn(*a, **kw):
++        child = Child()
++        children.append(child)
++        return child
++    def blocked_release(token):
++        raise OSError("Actual worker is UNKNOWN")
++    synthetic.setattr(run_wave.subprocess, "Popen", spawn)
++    synthetic.setattr(run_wave, "release_worker", blocked_release)
++    jobs = run_wave.jobs_for(tmp_path)[:2]
++    with pytest.raises(OSError, match="UNKNOWN"):
++        run_wave.run_stage(tmp_path, jobs, {}, tmp_path / "attempt/ABORT.json", jobs)
++    assert len(children) == 2 and all(child.waited for child in children)

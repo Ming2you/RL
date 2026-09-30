@@ -7,4 +7,5 @@ data/** -text
 results/** -text
 models/** -text
 checkpoints/** -text
+.superpowers/** -text
 *.zip.part* binary

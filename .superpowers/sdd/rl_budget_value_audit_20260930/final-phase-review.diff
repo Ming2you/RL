@@ -1,0 +1,2920 @@
+diff --git a/work/sdmpc_rl_value_audit_20260930/terminal_fit.py b/work/sdmpc_rl_value_audit_20260930/terminal_fit.py
+new file mode 100644
+index 0000000..061338a
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/terminal_fit.py
+@@ -0,0 +1,433 @@
++"""Bounded terminal-reward fitting only; no plant, policy export, or evaluation."""
++
++import argparse
++from contextlib import contextmanager
++from copy import deepcopy
++from datetime import datetime, timezone
++import hashlib
++from importlib.util import module_from_spec, spec_from_file_location
++import json
++import os
++from pathlib import Path
++import random
++import sys
++
++HERE = Path(__file__).resolve().parent
++sys.dont_write_bytecode = True
++THREAD_VARIABLES = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")
++for _name in THREAD_VARIABLES:
++    os.environ[_name] = "1"
++
++_spec = spec_from_file_location(
++    "terminal_fit_common", HERE.parent / "sdmpc_rl_recovery_20260929/common.py")
++common = module_from_spec(_spec)
++_spec.loader.exec_module(common)
++load_base, BASE, BASE_HASH, REPO = common.load_base, common.BASE, common.BASE_HASH, common.REPO
++TD3, SCENARIOS, torch = common.TD3, common.SCENARIOS, common.torch
++save, file_hash = common.save, common.file_hash
++runtime_versions, exclusive_run = common.runtime_versions, common.exclusive_run
++import numpy as np
++
++GOAL_ROOT = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++UPDATES = 1000
++LOG_UPDATES = (0, 50, 250, 1000)
++FRESH_SEED = 8100
++LEARNING_RATE = 0.0003
++TERMINALS = (74, 149)
++TOLERANCE = 0.01
++ARMS = ("original_critics", "fresh_critics")
++HOLDOUT_NOTES = {
++    "original_critics": (
++        "The original critic previously saw both folds during joint TD3 training. "
++        "Diagnostic holdout excludes only these extra supervised updates."),
++    "fresh_critics": (
++        "Fresh-critic holdout is untrained in this diagnostic. There is only one "
++        "sample per scenario; no out-of-sample generalization claim."),
++}
++CAVEAT = (
++    "Train max absolute error <=0.01 reward units is descriptive per critic. "
++    "Holdout errors are diagnostic only, never used for updates, stopping, arm "
++    "selection, or policy admission. This experiment does not test traffic control.")
++
++
++def json_save(path, value):
++    # The existing atomic writer permits NaN; validate before it touches a file.
++    json.dumps(value, allow_nan=False)
++    save(path, value)
++
++
++def fingerprint(value):
++    """Hash in-memory state without serializing a model or advancing any RNG."""
++    def plain(item):
++        if isinstance(item, torch.Tensor):
++            item = item.detach().cpu().contiguous().numpy()
++        if isinstance(item, np.ndarray):
++            return dict(dtype=str(item.dtype), shape=list(item.shape),
++                        sha256=hashlib.sha256(item.tobytes()).hexdigest())
++        if isinstance(item, np.generic):
++            return item.item()
++        if isinstance(item, dict):
++            return {str(k): plain(v) for k, v in item.items()}
++        if isinstance(item, (list, tuple)):
++            return [plain(v) for v in item]
++        return item
++    return hashlib.sha256(json.dumps(plain(value), sort_keys=True, allow_nan=False).encode()).hexdigest()
++
++
++def learner_fingerprint(learner):
++    controls = {}
++    for name in ("actor", "actor_target", "critics", "critic_targets"):
++        module = getattr(learner, name)
++        controls[name] = dict(
++            modes={key: child.training for key, child in module.named_modules()},
++            parameters={key: dict(requires_grad=p.requires_grad, grad=p.grad)
++                        for key, p in module.named_parameters()})
++    return fingerprint(dict(state=learner.state_dict(), controls=controls))
++
++
++def global_rng_fingerprint():
++    return fingerprint((random.getstate(), np.random.get_state(), torch.get_rng_state()))
++
++
++@contextmanager
++def preserve_rng():
++    python_state, numpy_state = random.getstate(), np.random.get_state()
++    with torch.random.fork_rng(devices=[]):
++        try:
++            yield
++        finally:
++            random.setstate(python_state)
++            np.random.set_state(numpy_state)
++
++
++def single_thread():
++    torch.set_num_threads(1)
++    if torch.get_num_interop_threads() != 1:
++        torch.set_num_interop_threads(1)
++    for name in THREAD_VARIABLES:
++        os.environ[name] = "1"
++
++
++def extract_terminals(state):
++    """Validate the stored replay schema and copy only its ten true terminals."""
++    dim = state["observation_dim"]
++    if type(dim) is not int or dim < 1 or set(state["replay"]) != set(SCENARIOS):
++        raise ValueError("Expected a valid observation dimension and exactly five scenarios")
++    inputs, targets, rows = [], [], []
++    for scenario in SCENARIOS:
++        group = state["replay"][scenario]
++        shapes = {"observations": (150, dim), "actions": (150, 2), "rewards": (150,),
++                  "next_observations": (150, dim), "terminated": (150,)}
++        for name, shape in shapes.items():
++            value = group.get(name)
++            dtype = torch.bool if name == "terminated" else torch.float32
++            if (not isinstance(value, torch.Tensor) or tuple(value.shape) != shape
++                    or value.dtype != dtype or value.device.type != "cpu"
++                    or value.layout != torch.strided or not torch.isfinite(value).all()):
++                raise ValueError(f"Invalid finite CPU replay shape/dtype: {scenario}/{name}")
++        if group["terminated"].nonzero().flatten().tolist() != list(TERMINALS):
++            raise ValueError(f"Expected true terminals at rows 74 and 149: {scenario}")
++        for round_index, index in enumerate(TERMINALS):
++            inputs.append(torch.cat((group["observations"][index], group["actions"][index])))
++            targets.append(group["rewards"][index].detach().clone())
++            rows.append(dict(scenario=scenario, round=round_index, row_index=index))
++    return dict(inputs=torch.stack(inputs).detach().clone(),
++                targets=torch.stack(targets).reshape(10, 1), rows=rows)
++
++
++def fold_data(data, train_round):
++    if train_round not in (0, 1):
++        raise ValueError("Only collection rounds 0 and 1 are available")
++    def select(round_index):
++        indices = [i for i, row in enumerate(data["rows"]) if row["round"] == round_index]
++        rows = [deepcopy(data["rows"][i]) for i in indices]
++        if [row["scenario"] for row in rows] != list(SCENARIOS):
++            raise ValueError("Each fold must have exactly one row per scenario")
++        return dict(inputs=data["inputs"][indices].clone(),
++                    targets=data["targets"][indices].clone(), rows=rows)
++    return select(train_round), select(1 - train_round)
++
++
++def fresh_critics(learner):
++    with preserve_rng():
++        return deepcopy(TD3(learner.observation_dim, FRESH_SEED, learner.hidden).critics)
++
++
++def critic_copy(template):
++    critics = deepcopy(template).requires_grad_(True).train()
++    for parameter in critics.parameters():
++        parameter.grad = None
++    optimizer = torch.optim.Adam(critics.parameters(), lr=LEARNING_RATE)
++    return critics, optimizer
++
++
++def predictions(critics, data):
++    if len(critics) != 2:
++        raise ValueError("Expected twin critics")
++    values = [critic(data["inputs"]) for critic in critics]
++    if any(value.shape != data["targets"].shape or not torch.isfinite(value).all()
++           for value in values):
++        raise ValueError("Invalid/nonfinite critic predictions")
++    return values
++
++
++def critic_step(critics, optimizer, train):
++    values = predictions(critics, train)
++    loss = sum(torch.nn.functional.mse_loss(value, train["targets"]) for value in values)
++    if not torch.isfinite(loss):
++        raise ValueError("Nonfinite supervised loss")
++    optimizer.zero_grad(set_to_none=True)
++    loss.backward()
++    if any(p.grad is None or not torch.isfinite(p.grad).all() for p in critics.parameters()):
++        raise ValueError("Missing/nonfinite critic gradient")
++    optimizer.step()
++    if any(not torch.isfinite(p).all() for p in critics.parameters()):
++        raise ValueError("Nonfinite critic parameter after update")
++    if any(isinstance(v, torch.Tensor) and not torch.isfinite(v).all()
++           for state in optimizer.state.values() for v in state.values()):
++        raise ValueError("Nonfinite Adam state")
++    return float(loss.detach())
++
++
++@torch.no_grad()
++def metrics(critics, data, update, train_rows):
++    q1, q2 = predictions(critics, data)
++    heads = {"q1": q1, "q2": q2, "min_q": torch.minimum(q1, q2)}
++    rows = [dict(**row, target=float(data["targets"][i, 0]), predictions={}, errors={},
++                 abs_errors={}) for i, row in enumerate(data["rows"])]
++    aggregate = {}
++    for name, values in heads.items():
++        error = values.double() - data["targets"].double()
++        aggregate[name] = dict(mse=float(error.square().mean()), mae=float(error.abs().mean()),
++                               max_abs_error=float(error.abs().max()))
++        for i, row in enumerate(rows):
++            row["predictions"][name] = float(values[i, 0])
++            row["errors"][name] = float(error[i, 0])
++            row["abs_errors"][name] = float(error[i, 0].abs())
++    result = dict(update=update, sample_count=len(rows), rows=rows, aggregate=aggregate,
++                  diagnostic_training_rows=deepcopy(train_rows),
++                  training_draws_by_scenario=dict.fromkeys(SCENARIOS, update),
++                  total_training_draws=5 * update)
++    json.dumps(result, allow_nan=False)
++    return result
++
++
++class Stopped(RuntimeError):
++    pass
++
++
++def check_stop(paths):
++    found = [str(path) for path in paths if path.exists()]
++    if found:
++        raise Stopped("STOP present: " + ", ".join(found))
++
++
++def capture_identity(stop):
++    """Only frozen training input, source pins, and local runtime identities."""
++    stop()
++    model_path = BASE / "train_round1/model_final.pt"
++    model_hash = file_hash(model_path)
++    if model_hash != BASE_HASH:
++        raise ValueError("Frozen base model SHA-256 differs")
++    stop()
++    expected_folder = REPO / "work/sdmpc_rl_multi_20260929"
++    for helper in (TD3, save, file_hash, runtime_versions, exclusive_run):
++        if Path(sys.modules[helper.__module__].__file__).resolve().parent != expected_folder:
++            raise ValueError("Mixed runtime helper modules")
++    sources = (Path(__file__), Path(common.__file__), HERE / "terminal-brief.md")
++    runtime = dict(
++        versions=runtime_versions(), executable=sys.executable,
++        torch_threads=torch.get_num_threads(), torch_interop_threads=torch.get_num_interop_threads(),
++        thread_environment={name: os.environ[name] for name in THREAD_VARIABLES},
++        entrypoint_sha256={str(Path(path).resolve()): file_hash(path) for path in
++                           (sys.executable, torch.__file__, torch._C.__file__, np.__file__)})
++    identity = dict(
++        input_sha256={str(model_path): model_hash,
++                      str(BASE / "completion.json"): file_hash(BASE / "completion.json")},
++        source_sha256={str(path): file_hash(path) for path in sources},
++        base_source_pins=common.pins(common.DEFAULT_SNAPSHOT),
++        runtime=runtime, runtime_sha256=fingerprint(runtime))
++    stop()
++    return identity
++
++
++def fit(learner, state, result, stop, record, *, updates=UPDATES, log_updates=LOG_UPDATES):
++    """Only tests inject a smaller budget; the CLI exposes no budget override."""
++    if type(updates) is not int or updates < 1 or tuple(sorted(set(log_updates))) != tuple(log_updates):
++        raise ValueError("Invalid fixed update/log budget")
++    if not log_updates or log_updates[0] != 0 or log_updates[-1] != updates:
++        raise ValueError("Metrics must include update zero and the final update")
++    if state["spec"]["learning_rate"] != LEARNING_RATE or learner.learning_rate != LEARNING_RATE:
++        raise ValueError("Original learning rate differs from 0.0003")
++    stop()
++    data = extract_terminals(state)
++    result["original_all_terminals"] = metrics(deepcopy(learner.critics), data, 0, [])
++    record()
++    stop()
++    templates = {"original_critics": deepcopy(learner.critics), "fresh_critics": fresh_critics(learner)}
++    for train_round in (0, 1):
++        stop()
++        train, holdout = fold_data(data, train_round)
++        fold = dict(train_round=train_round, holdout_round=1 - train_round,
++                    training_rows=train["rows"], holdout_rows=holdout["rows"], arms={})
++        result["folds"].append(fold)
++        for name in ARMS:
++            stop()
++            critics, optimizer = critic_copy(templates[name])
++            arm = dict(holdout_note=HOLDOUT_NOTES[name], updates_completed=0,
++                       initialization_sha256=fingerprint(critics.state_dict()),
++                       trainable_parameters=[key for key, _ in critics.named_parameters()],
++                       training_draws_by_scenario=dict.fromkeys(SCENARIOS, 0), checkpoints=[])
++            fold["arms"][name] = arm
++
++            def snapshot(update):
++                arm["checkpoints"].append(dict(
++                    update=update, train=metrics(critics, train, update, train["rows"]),
++                    holdout=metrics(critics, holdout, update, train["rows"])))
++                record()
++
++            snapshot(0)
++            for update in range(1, updates + 1):
++                stop()
++                critic_step(critics, optimizer, train)
++                arm["updates_completed"] = update
++                arm["training_draws_by_scenario"] = dict.fromkeys(SCENARIOS, update)
++                stop()
++                if update in log_updates:
++                    snapshot(update)
++            final = arm["checkpoints"][-1]["train"]["aggregate"]
++            arm["descriptive_train_max_abs_error_le_0_01"] = {
++                head: final[head]["max_abs_error"] <= TOLERANCE for head in ("q1", "q2")}
++    stop()
++    record()
++
++
++def run_diagnostic(output, *, updates=UPDATES, log_updates=LOG_UPDATES, command=None):
++    output = Path(output).resolve()
++    paths = tuple(folder / "STOP" for folder in (output, GOAL_ROOT, REPO))
++    run = dict(command=list(command or [sys.executable, *sys.argv]), pid=os.getpid(),
++               cwd=str(Path.cwd()), started_at=datetime.now(timezone.utc).isoformat(),
++               output=str(output), stop_paths=[str(path) for path in paths])
++    try:
++        check_stop(paths)
++    except Stopped as exc:
++        # An occupied output with STOP is left completely untouched.
++        return dict(**run, status="stopped", reason=str(exc), output_created=False,
++                    ended_at=datetime.now(timezone.utc).isoformat())
++    output.mkdir(parents=True, exist_ok=False)
++    with exclusive_run(output):
++        status, error, reason = "running", None, None
++        identity_before = identity_after = learner_before = learner_after = None
++        state_before = state_after = None
++        learner = state = None
++        result = dict(original_all_terminals=None, folds=[], caveat=CAVEAT)
++        settings = dict(
++            format="sdmpc-terminal-fit-v1", **run,
++            updates_per_arm_per_fold=updates, log_updates=list(log_updates),
++            arms=list(ARMS), folds=[dict(train_round=0, holdout_round=1),
++                                    dict(train_round=1, holdout_round=0)],
++            rows_per_scenario=150, terminal_indices=list(TERMINALS),
++            fullbatch_size=5, scenario_contribution=dict.fromkeys(SCENARIOS, 0.2),
++            learning_rate=LEARNING_RATE, optimizer="fresh Adam in each arm and fold",
++            fresh_seed=FRESH_SEED, fresh_initialization="same TD3 architecture; identical in both folds",
++            target="exact stored immediate reward", loss="sum of twin-critic fullbatch MSE",
++            bootstrap=False, reward_normalization=False, reward_clipping=False,
++            augmentation=False, noise=False, actor_updates=0, target_updates=0,
++            learned_weights_export=False, holdout_notes=HOLDOUT_NOTES, caveat=CAVEAT)
++        json_save(output / "settings.json", settings)
++
++        def record():
++            json_save(output / "metrics.json", result)
++            progress = [dict(train_round=fold["train_round"], arm=name,
++                             updates_completed=arm["updates_completed"],
++                             training_draws_by_scenario=arm["training_draws_by_scenario"])
++                        for fold in result["folds"] for name, arm in fold["arms"].items()]
++            json_save(output / "status.json", dict(**run, status="running", progress=progress))
++
++        stop = lambda: check_stop(paths)
++        rng_before = global_rng_fingerprint()
++        try:
++            with preserve_rng():
++                stop()
++                single_thread()
++                record()
++                identity_before = capture_identity(stop)
++                settings["identity_before"] = identity_before
++                json_save(output / "settings.json", settings)
++                stop()
++                model, learner = load_base()
++                state = model["learner"]
++                learner_before, state_before = learner_fingerprint(learner), fingerprint(state)
++                settings["original_spec"] = deepcopy(state["spec"])
++                settings["original_learner_sha256"] = learner_before
++                json_save(output / "settings.json", settings)
++                fit(learner, state, result, stop, record, updates=updates, log_updates=log_updates)
++                status = "completed"
++        except Stopped as exc:
++            status, reason = "stopped", str(exc)
++        except Exception as exc:
++            status, error, reason = "failed", exc, f"{type(exc).__name__}: {exc}"
++        try:
++            if identity_before is not None:
++                # Finish read-only verification even on STOP; never resume fitting.
++                identity_after = capture_identity(lambda: None)
++                if identity_before != identity_after:
++                    raise ValueError("Input/source/runtime identity changed during diagnostic")
++            if learner_before is not None:
++                learner_after, state_after = learner_fingerprint(learner), fingerprint(state)
++                if learner_before != learner_after or state_before != state_after:
++                    raise ValueError("Original learner or model state changed during diagnostic")
++            if rng_before != global_rng_fingerprint():
++                raise ValueError("Global RNG state changed during diagnostic")
++            if status == "completed":
++                stop()
++        except Stopped as exc:
++            status, reason = "stopped", str(exc)
++        except Exception as exc:
++            status, error, reason = "failed", exc, f"{type(exc).__name__}: {exc}"
++        summary = dict(
++            **run, status=status, reason=reason, ended_at=datetime.now(timezone.utc).isoformat(),
++            identity_after=identity_after,
++            immutability=dict(
++                input_source_runtime_unchanged=(identity_before == identity_after)
++                if identity_before is not None and identity_after is not None else None,
++                learner_before_sha256=learner_before, learner_after_sha256=learner_after,
++                model_state_before_sha256=state_before, model_state_after_sha256=state_after,
++                original_learner_unchanged=(learner_before == learner_after)
++                if learner_before is not None and learner_after is not None else None,
++                original_model_state_unchanged=(state_before == state_after)
++                if state_before is not None and state_after is not None else None,
++                global_rng_unchanged=rng_before == global_rng_fingerprint()),
++            progress=[dict(train_round=fold["train_round"], arm=name,
++                           updates_completed=arm["updates_completed"],
++                           training_draws_by_scenario=arm["training_draws_by_scenario"])
++                      for fold in result["folds"] for name, arm in fold["arms"].items()],
++            caveat=CAVEAT)
++        json_save(output / "metrics.json", result)
++        json_save(output / "status.json", summary)
++        if status == "completed":
++            # Recheck after final JSON writes so a late STOP cannot claim completion.
++            try:
++                stop()
++            except Stopped as exc:
++                summary.update(status="stopped", reason=str(exc))
++                json_save(output / "status.json", summary)
++            else:
++                json_save(output / "completion.json", summary)
++        if error is not None:
++            raise error
++        return summary
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--output", required=True, type=Path)
++    args = parser.parse_args(argv)
++    command = [sys.executable, str(Path(__file__).resolve()), *(sys.argv[1:] if argv is None else argv)]
++    summary = run_diagnostic(args.output, command=command)
++    print(json.dumps(summary, allow_nan=False))
++    return 0 if summary["status"] == "completed" else 2
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/work/sdmpc_rl_value_audit_20260930/test_terminal_fit.py b/work/sdmpc_rl_value_audit_20260930/test_terminal_fit.py
+new file mode 100644
+index 0000000..9c5edd4
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/test_terminal_fit.py
+@@ -0,0 +1,479 @@
++"""Synthetic-only terminal fitting tests; production loading is prohibited."""
++
++from copy import deepcopy
++import json
++from pathlib import Path
++import random
++
++import terminal_fit as diagnostic
++import numpy as np
++import pytest
++
++torch = diagnostic.torch
++
++
++def read(path):
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++@pytest.fixture(autouse=True)
++def prohibit_production(monkeypatch):
++    def forbidden(*args, **kwargs):
++        raise AssertionError("Production model/source loading or model export forbidden in tests")
++    monkeypatch.setattr(diagnostic, "load_base", forbidden)
++    monkeypatch.setattr(diagnostic.common, "pins", forbidden)
++    monkeypatch.setattr(torch, "load", forbidden)
++    monkeypatch.setattr(torch, "save", forbidden)
++    diagnostic.single_thread()
++
++
++@pytest.fixture
++def learner():
++    value = diagnostic.TD3(3, seed=17, hidden=8)
++    rng = np.random.default_rng(23)
++    for number, scenario in enumerate(diagnostic.SCENARIOS):
++        for index in range(150):
++            reward = -0.25 * (number + 1) - index / 200 if index in (74, 149) else -99.0
++            value.add(rng.uniform(0.1, 1, 3), rng.uniform(-0.5, 0.5, 2), reward,
++                      rng.uniform(2, 3, 3), index in (74, 149), scenario)
++    value.update()
++    value.update()
++    return value
++
++
++@pytest.fixture
++def sandbox(tmp_path, monkeypatch, learner):
++    repository = tmp_path / "repository"
++    goal = repository / "goal"
++    goal.mkdir(parents=True)
++    monkeypatch.setattr(diagnostic, "REPO", repository)
++    monkeypatch.setattr(diagnostic, "GOAL_ROOT", goal)
++    source = tmp_path / "synthetic-source.txt"
++    model = tmp_path / "synthetic-input.txt"
++    source.write_text("synthetic source", encoding="utf-8")
++    model.write_text("synthetic input; never deserialized", encoding="utf-8")
++    state = learner.state_dict()
++    calls = []
++
++    def load():
++        calls.append("load")
++        return {"learner": state}, learner
++
++    def identity(stop):
++        stop()
++        return dict(input_sha256={str(model): diagnostic.file_hash(model)},
++                    source_sha256={str(source): diagnostic.file_hash(source)},
++                    runtime_sha256="synthetic")
++
++    monkeypatch.setattr(diagnostic, "load_base", load)
++    monkeypatch.setattr(diagnostic, "capture_identity", identity)
++    return dict(repository=repository, goal=goal, source=source, model=model,
++                state=state, calls=calls, output=tmp_path / "output")
++
++
++def run(output, **kwargs):
++    return diagnostic.run_diagnostic(output, updates=3, log_updates=(0, 1, 3), **kwargs)
++
++
++def fit(learner, state=None, updates=3, logs=(0, 1, 3)):
++    result = dict(folds=[])
++    diagnostic.fit(learner, learner.state_dict() if state is None else state, result,
++                   lambda: None, lambda: None, updates=updates, log_updates=logs)
++    return result
++
++
++def test_terminal_only_exact_immediate_rewards_and_disjoint_balanced_folds(learner):
++    state = learner.state_dict()
++    data = diagnostic.extract_terminals(state)
++    assert data["inputs"].shape == (10, 5) and data["targets"].shape == (10, 1)
++    assert [row["row_index"] for row in data["rows"]] == [74, 149] * 5
++    for train_round in (0, 1):
++        train, holdout = diagnostic.fold_data(data, train_round)
++        assert len(train["rows"]) == len(holdout["rows"]) == 5
++        assert [row["scenario"] for row in train["rows"]] == list(diagnostic.SCENARIOS)
++        assert [row["scenario"] for row in holdout["rows"]] == list(diagnostic.SCENARIOS)
++        assert {r["row_index"] for r in train["rows"]} == {diagnostic.TERMINALS[train_round]}
++        assert {r["row_index"] for r in holdout["rows"]} == {diagnostic.TERMINALS[1 - train_round]}
++    for i, row in enumerate(data["rows"]):
++        group = state["replay"][row["scenario"]]
++        index = row["row_index"]
++        assert torch.equal(data["inputs"][i], torch.cat((group["observations"][index], group["actions"][index])))
++        assert torch.equal(data["targets"][i, 0], group["rewards"][index])
++    before = diagnostic.fingerprint(state)
++    data["inputs"].zero_()
++    data["targets"].zero_()
++    assert diagnostic.fingerprint(state) == before
++
++
++@pytest.mark.parametrize("invalid", ["missing_scenario", "extra_scenario", "missing_terminal",
++                                    "misplaced_terminal", "extra_terminal", "terminal_dtype",
++                                    "short_replay", "observation_shape", "action_shape",
++                                    "reward_shape", "next_shape", "nonfinite_observation",
++                                    "nonfinite_action", "nonfinite_reward", "nonfinite_next",
++                                    "reward_dtype"])
++def test_rejects_invalid_terminal_positions_shapes_and_finiteness(learner, invalid):
++    state = learner.state_dict()
++    group = state["replay"][diagnostic.SCENARIOS[0]]
++    if invalid == "missing_scenario":
++        state["replay"].pop(diagnostic.SCENARIOS[-1])
++    elif invalid == "extra_scenario":
++        state["replay"]["unexpected"] = deepcopy(group)
++    elif invalid == "missing_terminal":
++        group["terminated"][149] = False
++    elif invalid == "misplaced_terminal":
++        group["terminated"][74], group["terminated"][73] = False, True
++    elif invalid == "extra_terminal":
++        group["terminated"][20] = True
++    elif invalid == "terminal_dtype":
++        group["terminated"] = group["terminated"].float()
++    elif invalid == "short_replay":
++        group["rewards"] = group["rewards"][:-1]
++    elif invalid in ("observation_shape", "action_shape", "next_shape"):
++        key = {"observation_shape": "observations", "action_shape": "actions", "next_shape": "next_observations"}[invalid]
++        group[key] = group[key][:, :-1]
++    elif invalid == "reward_shape":
++        group["rewards"] = group["rewards"].unsqueeze(1)
++    elif invalid.startswith("nonfinite_"):
++        key = {"nonfinite_observation": "observations", "nonfinite_action": "actions",
++               "nonfinite_reward": "rewards", "nonfinite_next": "next_observations"}[invalid]
++        group[key][74] = float("nan")
++    else:
++        group["rewards"] = group["rewards"].double()
++    with pytest.raises(ValueError):
++        diagnostic.extract_terminals(state)
++
++
++def test_all_layers_eligible_fresh_adam_and_no_original_mutation(learner):
++    learner.critics.requires_grad_(False).eval()
++    before = diagnostic.learner_fingerprint(learner)
++    critics, optimizer = diagnostic.critic_copy(learner.critics)
++    assert len(optimizer.state) == 0
++    assert optimizer.param_groups[0]["lr"] == 0.0003
++    assert all(p.requires_grad for p in critics.parameters())
++    assert {id(p) for p in critics.parameters()} == {id(p) for p in optimizer.param_groups[0]["params"]}
++    assert {p.data_ptr() for p in critics.parameters()}.isdisjoint(p.data_ptr() for p in learner.critics.parameters())
++    with torch.no_grad():
++        for p in critics.parameters():
++            p.fill_(0.2)
++    train, _ = diagnostic.fold_data(diagnostic.extract_terminals(learner.state_dict()), 0)
++    parameters_before = [p.clone() for p in critics.parameters()]
++    expected_loss = sum((q(train["inputs"]) - train["targets"]).square().mean() for q in critics)
++    assert diagnostic.critic_step(critics, optimizer, train) == float(expected_loss.detach())
++    assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in critics.parameters())
++    assert all(not torch.equal(old, p) for old, p in zip(parameters_before, critics.parameters()))
++    assert diagnostic.learner_fingerprint(learner) == before
++
++
++def test_metrics_errors_minimum_and_aggregate_are_exact(learner):
++    data = diagnostic.extract_terminals(learner.state_dict())
++    critics, _ = diagnostic.critic_copy(learner.critics)
++    with torch.no_grad():
++        for critic, bias in zip(critics, (2.0, -1.0)):
++            for p in critic.parameters():
++                p.zero_()
++            critic[-1].bias.fill_(bias)
++    result = diagnostic.metrics(critics, data, 0, [])
++    for name, prediction in (("q1", 2.0), ("q2", -1.0), ("min_q", -1.0)):
++        errors = [prediction - float(target) for target in data["targets"].flatten()]
++        assert result["aggregate"][name] == dict(mse=np.mean(np.square(errors)),
++                                                 mae=np.mean(np.abs(errors)), max_abs_error=max(map(abs, errors)))
++        for i, row in enumerate(result["rows"]):
++            assert row["predictions"][name] == prediction
++            assert row["errors"][name] == errors[i]
++            assert row["abs_errors"][name] == abs(errors[i])
++
++
++def test_fresh_initialization_matches_seed8100_td3_and_restores_rng(learner):
++    before = diagnostic.global_rng_fingerprint()
++    first = diagnostic.fresh_critics(learner)
++    random.random()
++    np.random.random()
++    torch.rand(1)
++    after_draw = diagnostic.global_rng_fingerprint()
++    second = diagnostic.fresh_critics(learner)
++    assert diagnostic.global_rng_fingerprint() == after_draw
++    expected = diagnostic.TD3(3, 8100, 8).critics
++    assert diagnostic.fingerprint(first.state_dict()) == diagnostic.fingerprint(second.state_dict())
++    assert diagnostic.fingerprint(first.state_dict()) == diagnostic.fingerprint(expected.state_dict())
++    assert before != after_draw
++
++
++def test_separation_balance_determinism_labels_and_no_td3_updates(learner, monkeypatch):
++    calls = []
++    original = diagnostic.critic_step
++
++    def forbidden(*args, **kwargs):
++        raise AssertionError("TD3 target/actor/joint updates must never run")
++
++    def observe(critics, optimizer, train):
++        calls.append(deepcopy(train))
++        return original(critics, optimizer, train)
++
++    monkeypatch.setattr(diagnostic.TD3, "update", forbidden)
++    monkeypatch.setattr(diagnostic.TD3, "_target_values", forbidden)
++    monkeypatch.setattr(diagnostic, "critic_step", observe)
++    before, rng_before = diagnostic.learner_fingerprint(learner), diagnostic.global_rng_fingerprint()
++    result = fit(learner)
++    assert diagnostic.learner_fingerprint(learner) == before
++    assert diagnostic.global_rng_fingerprint() == rng_before
++    assert len(calls) == 12
++    for i, call in enumerate(calls):
++        assert [r["scenario"] for r in call["rows"]] == list(diagnostic.SCENARIOS)
++        assert {r["row_index"] for r in call["rows"]} == {74 if i < 6 else 149}
++    for fold in result["folds"]:
++        for name, arm in fold["arms"].items():
++            assert arm["holdout_note"] == diagnostic.HOLDOUT_NOTES[name]
++            assert arm["training_draws_by_scenario"] == dict.fromkeys(diagnostic.SCENARIOS, 3)
++            assert [c["update"] for c in arm["checkpoints"]] == [0, 1, 3]
++            for checkpoint in arm["checkpoints"]:
++                for split in ("train", "holdout"):
++                    metric = checkpoint[split]
++                    assert metric["sample_count"] == 5
++                    assert metric["training_draws_by_scenario"] == dict.fromkeys(diagnostic.SCENARIOS, checkpoint["update"])
++                    assert metric["diagnostic_training_rows"] == fold["training_rows"]
++            for head in ("q1", "q2"):
++                assert arm["descriptive_train_max_abs_error_le_0_01"][head] == (
++                    arm["checkpoints"][-1]["train"]["aggregate"][head]["max_abs_error"] <= 0.01)
++    assert "previously saw both folds" in diagnostic.HOLDOUT_NOTES["original_critics"]
++    assert "no out-of-sample generalization claim" in diagnostic.HOLDOUT_NOTES["fresh_critics"]
++    for name in diagnostic.ARMS:
++        assert result["folds"][0]["arms"][name]["initialization_sha256"] == result["folds"][1]["arms"][name]["initialization_sha256"]
++    assert result == fit(learner)
++
++
++def test_holdout_targets_and_logging_do_not_affect_training(learner):
++    first = fit(learner)
++    changed = learner.state_dict()
++    for group in changed["replay"].values():
++        group["rewards"][149] = 1000
++        group["next_observations"].fill_(10000)
++        group["rewards"][:74] = -10000
++    second = fit(learner, changed, logs=(0, 3))
++    for name in diagnostic.ARMS:
++        a, b = [r["folds"][0]["arms"][name]["checkpoints"][-1] for r in (first, second)]
++        assert a["train"] == b["train"]
++        assert a["holdout"] != b["holdout"]
++
++
++def test_runner_json_only_preserves_every_input_and_rng(sandbox, learner):
++    before = diagnostic.learner_fingerprint(learner)
++    rng_before = diagnostic.global_rng_fingerprint()
++    result = run(sandbox["output"])
++    assert result["status"] == "completed"
++    assert sandbox["calls"] == ["load"]
++    assert diagnostic.learner_fingerprint(learner) == before
++    assert diagnostic.global_rng_fingerprint() == rng_before
++    assert all(result["immutability"][key] is True for key in
++               ("input_source_runtime_unchanged", "original_learner_unchanged",
++                "original_model_state_unchanged", "global_rng_unchanged"))
++    output = sandbox["output"]
++    assert {p.name for p in output.iterdir()} == {"runner.lock", "settings.json", "status.json", "metrics.json", "completion.json"}
++    assert read(output / "completion.json") == result == read(output / "status.json")
++    settings = read(output / "settings.json")
++    assert settings["scenario_contribution"] == dict.fromkeys(diagnostic.SCENARIOS, 0.2)
++    assert settings["fresh_seed"] == 8100 and settings["learning_rate"] == 0.0003
++    assert settings["learned_weights_export"] is False
++    assert settings["actor_updates"] == settings["target_updates"] == 0
++    assert all(not settings[key] for key in ("noise", "bootstrap", "reward_normalization", "reward_clipping", "augmentation"))
++    assert settings["identity_before"] == result["identity_after"]
++    assert result["pid"] > 0 and result["started_at"] <= result["ended_at"]
++    assert len(result["progress"]) == 4
++
++
++@pytest.mark.parametrize("where", ["output", "goal", "repository"])
++def test_early_stop_preserved_before_loading_or_hashing(sandbox, where, monkeypatch):
++    folder = sandbox[where]
++    folder.mkdir(parents=True, exist_ok=True)
++    stop = folder / "STOP"
++    stop.write_text("keep", encoding="utf-8")
++    monkeypatch.setattr(diagnostic, "capture_identity", lambda _: pytest.fail("No early hashing"))
++    result = run(sandbox["output"])
++    assert result["status"] == "stopped" and result["output_created"] is False
++    assert sandbox["calls"] == [] and stop.read_text() == "keep"
++    assert not (sandbox["output"] / "completion.json").exists()
++
++
++@pytest.mark.parametrize("where", ["output", "goal", "repository"])
++def test_loop_stop_writes_honest_partial_without_completion(sandbox, where, monkeypatch):
++    original = diagnostic.critic_step
++    count = []
++
++    def stop_after_step(*args):
++        loss = original(*args)
++        count.append(1)
++        (sandbox[where] / "STOP").touch()
++        return loss
++
++    monkeypatch.setattr(diagnostic, "critic_step", stop_after_step)
++    result = run(sandbox["output"])
++    assert result["status"] == "stopped" and len(count) == 1
++    assert result["progress"][0]["updates_completed"] == 1
++    assert result["progress"][0]["training_draws_by_scenario"] == dict.fromkeys(diagnostic.SCENARIOS, 1)
++    assert (sandbox[where] / "STOP").exists()
++    assert not (sandbox["output"] / "completion.json").exists()
++    assert read(sandbox["output"] / "status.json")["status"] == "stopped"
++    assert result["immutability"]["original_learner_unchanged"] is True
++
++
++def test_stop_arriving_during_loading_prevents_fitting(sandbox, monkeypatch):
++    load = diagnostic.load_base
++
++    def stop_after_load():
++        result = load()
++        (sandbox["goal"] / "STOP").touch()
++        return result
++
++    monkeypatch.setattr(diagnostic, "load_base", stop_after_load)
++    monkeypatch.setattr(diagnostic, "critic_step", lambda *args: pytest.fail("No fitting after STOP"))
++    result = run(sandbox["output"])
++    assert result["status"] == "stopped" and result["progress"] == []
++
++
++def test_late_stop_after_status_write_prevents_completion(sandbox, monkeypatch):
++    writer = diagnostic.json_save
++
++    def stop_on_final(path, value):
++        writer(path, value)
++        if path.name == "status.json" and value.get("status") == "completed":
++            (sandbox["goal"] / "STOP").touch()
++
++    monkeypatch.setattr(diagnostic, "json_save", stop_on_final)
++    assert run(sandbox["output"])["status"] == "stopped"
++    assert not (sandbox["output"] / "completion.json").exists()
++    assert read(sandbox["output"] / "status.json")["status"] == "stopped"
++
++
++@pytest.mark.parametrize("kind", ["empty_directory", "occupied_directory", "file"])
++def test_refuses_all_existing_outputs_without_writes(sandbox, kind):
++    output = sandbox["output"]
++    if kind == "file":
++        output.write_text("keep", encoding="utf-8")
++    else:
++        output.mkdir()
++        if kind == "occupied_directory":
++            (output / "old.json").write_text("keep", encoding="utf-8")
++    with pytest.raises(FileExistsError):
++        run(output)
++    assert sandbox["calls"] == []
++    if kind == "file":
++        assert output.read_text() == "keep"
++    else:
++        assert {p.name for p in output.iterdir()} == ({"old.json"} if kind == "occupied_directory" else set())
++
++
++def test_existing_helper_enforces_exclusive_lock(tmp_path):
++    with diagnostic.exclusive_run(tmp_path):
++        with pytest.raises(OSError):
++            with diagnostic.exclusive_run(tmp_path):
++                pytest.fail("Second lock admitted")
++
++
++@pytest.mark.parametrize("changed", ["source", "model"])
++def test_changed_source_or_input_cannot_complete(sandbox, changed, monkeypatch):
++    original = diagnostic.critic_step
++
++    def mutate(*args):
++        loss = original(*args)
++        sandbox[changed].write_text("changed synthetic input", encoding="utf-8")
++        return loss
++
++    monkeypatch.setattr(diagnostic, "critic_step", mutate)
++    with pytest.raises(ValueError, match="identity changed"):
++        run(sandbox["output"])
++    assert read(sandbox["output"] / "status.json")["status"] == "failed"
++    assert not (sandbox["output"] / "completion.json").exists()
++
++
++@pytest.mark.parametrize("bad", ["prediction", "loss", "gradient", "parameter", "adam"])
++def test_finite_training_guards(learner, bad, monkeypatch):
++    train, _ = diagnostic.fold_data(diagnostic.extract_terminals(learner.state_dict()), 0)
++    critics, optimizer = diagnostic.critic_copy(learner.critics)
++    if bad == "prediction":
++        with torch.no_grad():
++            critics[0][-1].bias.fill_(float("nan"))
++    elif bad == "loss":
++        train["targets"].fill_(1e30)
++    elif bad == "gradient":
++        next(critics.parameters()).register_hook(lambda grad: torch.full_like(grad, float("nan")))
++    else:
++        step = optimizer.step
++
++        def poison():
++            step()
++            with torch.no_grad():
++                parameter = next(critics.parameters())
++                if bad == "parameter":
++                    parameter.fill_(float("inf"))
++                else:
++                    optimizer.state[parameter]["exp_avg"].fill_(float("inf"))
++
++        monkeypatch.setattr(optimizer, "step", poison)
++    with pytest.raises(ValueError, match="[Nn]onfinite"):
++        diagnostic.critic_step(critics, optimizer, train)
++
++
++def test_failed_fit_preserves_rng_and_no_completion(sandbox, monkeypatch):
++    before = diagnostic.global_rng_fingerprint()
++
++    def failure(*args):
++        random.random()
++        np.random.random()
++        torch.rand(1)
++        raise ValueError("injected nonfinite failure")
++
++    monkeypatch.setattr(diagnostic, "critic_step", failure)
++    with pytest.raises(ValueError, match="nonfinite"):
++        run(sandbox["output"])
++    assert diagnostic.global_rng_fingerprint() == before
++    assert read(sandbox["output"] / "status.json")["status"] == "failed"
++    assert not (sandbox["output"] / "completion.json").exists()
++
++
++def test_json_guard_leaves_existing_file_untouched(tmp_path):
++    path = tmp_path / "metric.json"
++    diagnostic.json_save(path, {"finite": 1})
++    before = path.read_bytes()
++    with pytest.raises(ValueError):
++        diagnostic.json_save(path, {"bad": float("nan")})
++    assert path.read_bytes() == before and not path.with_suffix(".json.tmp").exists()
++
++
++def test_real_provenance_helper_only_with_synthetic_input(tmp_path, monkeypatch):
++    base = tmp_path / "base"
++    (base / "train_round1").mkdir(parents=True)
++    model = base / "train_round1/model_final.pt"
++    model.write_bytes(b"not a model; synthetic hash input only")
++    (base / "completion.json").write_text('{"status":"completed"}', encoding="utf-8")
++    monkeypatch.setattr(diagnostic, "BASE", base)
++    monkeypatch.setattr(diagnostic, "BASE_HASH", diagnostic.file_hash(model))
++    monkeypatch.setattr(diagnostic.common, "pins", lambda _: {"synthetic_source_pins": "test"})
++    before = diagnostic.capture_identity(lambda: None)
++    assert before == diagnostic.capture_identity(lambda: None)
++    assert before["runtime"]["torch_threads"] == before["runtime"]["torch_interop_threads"] == 1
++    assert set(before["runtime"]["thread_environment"].values()) == {"1"}
++    assert before["runtime_sha256"] == diagnostic.fingerprint(before["runtime"])
++    assert before["input_sha256"][str(model)] == diagnostic.file_hash(model)
++    model.write_bytes(b"changed")
++    with pytest.raises(ValueError, match="SHA-256"):
++        diagnostic.capture_identity(lambda: None)
++
++
++def test_production_cli_is_fixed_and_has_no_training_budget_switch(tmp_path, monkeypatch, capsys):
++    assert diagnostic.UPDATES == 1000 and diagnostic.LOG_UPDATES == (0, 50, 250, 1000)
++    assert diagnostic.FRESH_SEED == 8100 and diagnostic.LEARNING_RATE == 0.0003
++    calls = []
++
++    def inspect(output, **kwargs):
++        calls.append((output, kwargs))
++        return {"status": "completed"}
++
++    monkeypatch.setattr(diagnostic, "run_diagnostic", inspect)
++    output = tmp_path / "new"
++    assert diagnostic.main(["--output", str(output)]) == 0
++    assert calls[0][0] == output and set(calls[0][1]) == {"command"}
++    assert calls[0][1]["command"][-2:] == ["--output", str(output)]
++    with pytest.raises(SystemExit) as exc:
++        diagnostic.main(["--output", str(output), "--updates", "1"])
++    assert exc.value.code == 2
++    assert len(calls) == 1
++    capsys.readouterr()
+diff --git a/work/sdmpc_rl_value_audit_20260930/projection_audit.py b/work/sdmpc_rl_value_audit_20260930/projection_audit.py
+new file mode 100644
+index 0000000..20c93de
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/projection_audit.py
+@@ -0,0 +1,241 @@
++"""Audit preserved training transitions and Q on identical projected requests."""
++import argparse
++import os
++from pathlib import Path
++import sys
++import time
++
++HERE = Path(__file__).resolve().parent
++ROOT = HERE.parents[1]
++sys.path.insert(0, str(ROOT / "work/sdmpc_rl_recovery_20260929"))
++from common import (BASE, BASE_HASH, REPO, DEFAULT_SNAPSHOT, SCENARIOS, torch,
++                    load_base, read, save, file_hash, verify_pins, runtime_versions,
++                    exclusive_run)
++import numpy as np
++from budget_controller import residual_budget
++from budget_runtime import boot, digest
++from train_round import load_collections
++
++GOAL_ROOT = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++
++
++def stopped(output):
++    return any((folder / "STOP").exists() for folder in (output, GOAL_ROOT, REPO))
++
++
++def input_manifest():
++    paths = [BASE / "completion.json", BASE / "train_round0/model_final.pt",
++             BASE / "train_round1/model_final.pt"]
++    for round_index in (0, 1):
++        for scenario in SCENARIOS:
++            folder = BASE / f"collect_round{round_index}" / scenario
++            paths.extend(folder / name for name in (
++                "completion.json", "settings.json", "experience.pt", "episode_00_trace.json",
++                "episode_00_summary.json", "observation_schema.json", "runtime_versions.json"))
++    return {str(path.relative_to(REPO)): file_hash(path) for path in paths}
++
++
++def verify_input_manifest(manifest):
++    for name, expected in manifest.items():
++        try:
++            actual = file_hash(REPO / name)
++        except OSError as exc:
++            raise ValueError("Input missing or changed: " + name) from exc
++        if actual != expected:
++            raise ValueError("Input changed: " + name)
++
++
++def verify_collection_provenance(model, runs, round_index):
++    profiles = model.get("training_profiles")
++    start = round_index * len(SCENARIOS)
++    if (not isinstance(profiles, list) or len(profiles) != 2 * len(SCENARIOS) or
++            profiles[start:start + len(SCENARIOS)] != [runs[s]["provenance"] for s in SCENARIOS]):
++        raise ValueError("Collection provenance differs from authenticated final model")
++
++
++def column(names, name):
++    if names.count(name) != 1:
++        raise ValueError("Missing/duplicate observation field: " + name)
++    return names.index(name)
++
++
++def validate_sequence(transitions, trace, names, capacity):
++    if len(transitions) != 75 or len(trace) != 75:
++        raise ValueError("Need a complete 75-interval training episode")
++    remaining = column(names, "memory/remaining/0")
++    clock = column(names, "state/time_sec")
++    anchor_columns = [column(names, f"memory/action_anchor/{i}") for i in range(2)]
++    memory_columns = {key: [column(names, f"memory/{key}/{i}") for i in range(2)]
++                      for key in ("previous_requested", "previous_executed")}
++    for i, ((obs, action, reward, next_obs, terminal), row) in enumerate(zip(transitions, trace)):
++        if (np.asarray(obs).shape != (len(names),) or np.asarray(next_obs).shape != (len(names),)
++                or not np.isfinite(obs).all() or not np.isfinite(next_obs).all()
++                or not np.isfinite(reward)):
++            raise ValueError("Invalid replay observation or reward")
++        if type(terminal) is not bool or terminal != (i == 74) or row["terminated"] != terminal:
++            raise ValueError("True terminal differs")
++        if row["control_step"] != i or row["time_sec"] != 1080. + 180. * i:
++            raise ValueError("Interval clock differs")
++        np.testing.assert_equal(obs[remaining], np.float32((75 - i) / 75.))
++        np.testing.assert_equal(obs[clock], np.float32((900. + 180. * i) / 14400.))
++        np.testing.assert_array_equal(obs[anchor_columns],
++            np.asarray(np.asarray(row["action_anchor"]) / [1000., 10000.], dtype=np.float32))
++        for key, source in (("previous_requested", "B_requested"), ("previous_executed", "B_executed")):
++            expected = np.zeros(2) if i == 0 else np.asarray(trace[i-1][source])
++            if i and source == "B_requested":
++                expected = expected[0]
++            np.testing.assert_array_equal(obs[memory_columns[key]], np.asarray(expected / [1000., 10000.], dtype=np.float32))
++        if row["interval_ttt"] < 0 or abs(reward + row["interval_ttt"] / 100.) > 1e-8:
++            raise ValueError("Reward differs from actual interval accounting")
++        np.testing.assert_array_equal(action, np.asarray(row["action_requested"], dtype=np.float32))
++        raw, request = residual_budget(action, row["action_anchor"], capacity)
++        np.testing.assert_allclose(raw, row["B_raw"], rtol=0, atol=1e-10)
++        np.testing.assert_allclose(request, row["B_requested"][0], rtol=0, atol=1e-10)
++        if terminal:
++            np.testing.assert_array_equal(next_obs, np.zeros(len(names), dtype=np.float32))
++        else:
++            np.testing.assert_array_equal(next_obs, transitions[i+1][0])
++    return dict(transitions=75, true_terminals=1, horizon_and_clock="matched",
++                previous_budget_memory="matched", reward_accounting="matched", projection="matched")
++
++
++def alias_actions(anchor, capacity, np_action):
++    """Use the physical transform itself to prove equality, never a rounded key."""
++    threshold = (capacity - float(anchor[1])) / 1000.
++    if threshold > 1.:
++        return []
++    low = np.float32(max(-1., threshold))
++    # Select a representable boundary action using the actual physical transform.
++    if residual_budget(np.array([np_action, low], dtype=np.float32), anchor, capacity)[1][1] < capacity:
++        low = np.nextafter(low, np.float32(1.))
++    candidates = [np.array([np_action, value], dtype=np.float32)
++                  for value in (low, (float(low)+1.)/2., 1.)]
++    groups = []
++    for action in candidates:
++        _, request = residual_budget(action, anchor, capacity)
++        for group in groups:
++            if np.array_equal(request, group["request"]):
++                if not any(np.array_equal(action, other) for other in group["actions"]):
++                    group["actions"].append(action)
++                break
++        else:
++            groups.append(dict(request=request, actions=[action]))
++    return [group for group in groups if len(group["actions"]) >= 2]
++
++
++@torch.no_grad()
++def q_aliases(learner, obs, anchor, capacity):
++    records = []
++    for np_action in (-1., 0., 1.):
++        for group in alias_actions(anchor, capacity, np_action):
++            actions = torch.unique(torch.tensor(np.stack(group["actions"]), dtype=torch.float32), dim=0)
++            if len(actions) < 2:
++                continue
++            # Conversion to float32 must preserve the physical equivalence.
++            requests = [residual_budget(a.numpy(), anchor, capacity)[1] for a in actions]
++            if not all(np.array_equal(r, requests[0]) for r in requests):
++                continue
++            inputs = torch.cat((torch.tensor(obs).repeat(len(actions), 1), actions), dim=1)
++            q = torch.stack([critic(inputs).flatten() for critic in learner.critics], dim=1)
++            if not torch.isfinite(q).all():
++                raise ValueError("Nonfinite alias Q")
++            records.append(dict(np_action=np_action, projected_request=requests[0].tolist(),
++                nominal_actions=actions.tolist(), twin_q=q.tolist(),
++                twin_q_spread=(q.max(dim=0).values-q.min(dim=0).values).tolist()))
++    return records
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    output = args.output.resolve()
++    if stopped(output):
++        print("PROJECTION_AUDIT_STOPPED", flush=True)
++        return
++    if output.exists() and any(output.iterdir()):
++        raise FileExistsError(output)
++    with exclusive_run(output):
++        if stopped(output):
++            print("PROJECTION_AUDIT_STOPPED", flush=True)
++            return
++        if any(path.name != "runner.lock" for path in output.iterdir()):
++            raise FileExistsError(output)
++        started = time.time()
++        save(output / "process.json", dict(pid=os.getpid(), started=started, command=sys.argv))
++        source = {str(path.relative_to(REPO)): file_hash(path) for path in (
++            Path(__file__), REPO / "work/sdmpc_rl_recovery_20260929/common.py")}
++        inputs = input_manifest()
++        model, learner = load_base()
++        rt = boot(DEFAULT_SNAPSHOT, 1)
++        contract = model["contract"]
++        if (digest(rt["rc"].to_plain_dict(rt["cfg"])) != contract["environment_contract"]["config_sha256"] or
++                digest(rt["rc"].to_plain_dict(rt["options"])) != contract["environment_contract"]["options_sha256"]):
++            raise ValueError("Physical configuration differs")
++        capacity = rt["cfg"].network.total_ramp_capacity
++        settings = dict(base_sha256=BASE_HASH, source_sha256=source, contract=contract,
++                        input_sha256=inputs, capacity=capacity, scope="training_replay_only_no_new_simulation")
++        save(output / "settings.json", settings)
++        save(output / "status.json", dict(status="running"))
++        names = contract["observation_schema"]["names"]
++        data, episodes, alias_rows, identities = model["learner"]["replay"], [], [], []
++        for round_index in (0, 1):
++            if stopped(output):
++                save(output / "status.json", dict(status="stopped"))
++                return
++            predecessor = None if round_index == 0 else inputs[str((BASE / "train_round0/model_final.pt").relative_to(REPO))]
++            loaded_contract, runs = load_collections(
++                [BASE / f"collect_round{round_index}" / s for s in SCENARIOS], round_index,
++                contract["source_pins"], contract["runtime_versions"], predecessor)
++            if loaded_contract != contract:
++                raise ValueError("Collection and final model contracts differ")
++            verify_collection_provenance(model, runs, round_index)
++            for scenario in SCENARIOS:
++                if stopped(output):
++                    save(output / "status.json", dict(status="stopped"))
++                    return
++                run = runs[scenario]
++                folder = Path(run["identity"]["folder"])
++                trace = read(folder / "episode_00_trace.json")
++                transitions = run["transitions"]
++                check = validate_sequence(transitions, trace, names, capacity)
++                for index, (transition, row) in enumerate(zip(transitions, trace)):
++                    i = round_index*75 + index
++                    for key, value in zip(("observations", "actions", "rewards", "next_observations", "terminated"), transition):
++                        expected = torch.as_tensor(value, dtype=data[scenario][key].dtype)
++                        torch.testing.assert_close(data[scenario][key][i], expected, rtol=0, atol=0)
++                    aliases = q_aliases(learner, transition[0], row["action_anchor"], capacity)
++                    alias_rows.extend(dict(scenario=scenario, round=round_index, control_step=index,
++                                           **record) for record in aliases)
++                episodes.append(dict(scenario=scenario, round=round_index, **check))
++                identities.append(run["identity"])
++        if stopped(output):
++            save(output / "status.json", dict(status="stopped"))
++            return
++        spreads = np.array([r["twin_q_spread"] for r in alias_rows]).reshape(-1, 2)
++        save(output / "aliases.json", alias_rows)
++        result = dict(status="completed", settings=settings, episodes=episodes, collections=identities,
++            alias_groups=len(alias_rows), aliased_states=len({(r["scenario"],r["round"],r["control_step"]) for r in alias_rows}),
++            q_spread_mean=spreads.mean(axis=0).tolist() if len(spreads) else None,
++            q_spread_max=spreads.max(axis=0).tolist() if len(spreads) else None,
++            alias_groups_above_1e_6=int(np.any(spreads > 1e-6, axis=1).sum()),
++            aliases_sha256=file_hash(output / "aliases.json"), elapsed_seconds=time.time()-started,
++            caveat="Same projected request at the same saved training state; no counterfactual solver run. "
++                   "Nominal actions enter the physical controller only through this projection. "
++                   "A Q difference violates action equivalence, but does not measure optimal ranking or traffic gain.")
++        verify_pins(DEFAULT_SNAPSHOT, contract["source_pins"])
++        if file_hash(BASE / "train_round1/model_final.pt") != BASE_HASH or runtime_versions() != contract["runtime_versions"]:
++            raise ValueError("Input/runtime changed")
++        if any(file_hash(REPO / key) != value for key, value in source.items()):
++            raise ValueError("Diagnostic source changed")
++        verify_input_manifest(inputs)
++        if stopped(output):
++            save(output / "status.json", dict(status="stopped"))
++            return
++        save(output / "completion.json", result)
++        save(output / "status.json", dict(status="completed"))
++        print("PROJECTION_AUDIT_PASS", result["aliased_states"], result["q_spread_max"], flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py b/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py
+new file mode 100644
+index 0000000..8736350
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py
+@@ -0,0 +1,308 @@
++import copy
++from contextlib import contextmanager
++from pathlib import Path
++from types import SimpleNamespace
++import numpy as np
++import pytest
++import torch
++import projection_audit as audit
++
++
++NAMES = ["memory/remaining/0", "state/time_sec", "memory/action_anchor/0",
++         "memory/action_anchor/1", "memory/previous_requested/0", "memory/previous_requested/1",
++         "memory/previous_executed/0", "memory/previous_executed/1"]
++
++
++@pytest.fixture(autouse=True)
++def isolate_production(tmp_path, monkeypatch):
++    repo = tmp_path / "repo"
++    monkeypatch.setattr(audit, "REPO", repo)
++    monkeypatch.setattr(audit, "BASE", repo / "pilot")
++    monkeypatch.setattr(audit, "GOAL_ROOT", repo / "goal")
++    monkeypatch.setattr(audit, "DEFAULT_SNAPSHOT", repo / "snapshot")
++
++    def forbidden(*args, **kwargs):
++        pytest.fail("Production loader/runtime called by a synthetic test")
++
++    for name in ("load_base", "load_collections", "boot", "verify_pins", "runtime_versions"):
++        monkeypatch.setattr(audit, name, forbidden)
++
++
++@pytest.fixture
++def synthetic_audit(tmp_path, monkeypatch):
++    cfg = SimpleNamespace(network=SimpleNamespace(total_ramp_capacity=6000.))
++    cfg_plain, options = {"capacity": 6000.}, {"horizon": 3}
++    contract = dict(source_pins={"fixture": "source"}, runtime_versions={"fixture": "runtime"},
++        observation_schema={"names": NAMES}, environment_contract=dict(
++            config_sha256=audit.digest(cfg_plain), options_sha256=audit.digest(options)))
++    ctx = SimpleNamespace(output=tmp_path / "output", runs={}, inputs=[], hash_reads=[],
++                          loaded_rounds=[], q_calls=0, hashed_before_load=set())
++    source = audit.REPO / "work/audit/projection_audit.py"
++    for path in (source, audit.REPO / "work/sdmpc_rl_recovery_20260929/common.py"):
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_text("# Synthetic diagnostic source\n", encoding="ascii")
++    monkeypatch.setattr(audit, "__file__", str(source))
++    for name in ("completion.json", "train_round0/model_final.pt", "train_round1/model_final.pt"):
++        path = audit.BASE / name
++        audit.save(path, {"fixture": name})
++        ctx.inputs.append(path)
++    profiles = []
++    for round_index in (0, 1):
++        ctx.runs[round_index] = {}
++        for index, scenario in enumerate(audit.SCENARIOS):
++            folder = audit.BASE / f"collect_round{round_index}" / scenario
++            transitions, rows = episode()
++            for name in ("completion.json", "settings.json", "experience.pt",
++                         "episode_00_trace.json", "episode_00_summary.json",
++                         "observation_schema.json", "runtime_versions.json"):
++                path = folder / name
++                audit.save(path, rows if name == "episode_00_trace.json" else {"fixture": str(path)})
++                ctx.inputs.append(path)
++            provenance = dict(scenario=scenario, seed=6301 + round_index * 100 + index,
++                profile_sha256=audit.file_hash(folder / "settings.json"),
++                run_id=f"round{round_index}-{scenario}",
++                experience_sha256=audit.file_hash(folder / "experience.pt"))
++            ctx.runs[round_index][scenario] = dict(transitions=transitions, provenance=provenance,
++                identity=dict(folder=str(folder), completion_sha256=audit.file_hash(folder / "completion.json"),
++                    settings_sha256=audit.file_hash(folder / "settings.json"),
++                    experience_sha256=provenance["experience_sha256"]))
++            profiles.append(copy.deepcopy(provenance))
++    replay = {}
++    for scenario in audit.SCENARIOS:
++        transitions = ctx.runs[0][scenario]["transitions"] + ctx.runs[1][scenario]["transitions"]
++        replay[scenario] = {
++            key: torch.tensor(np.asarray(values), dtype=torch.bool if key == "terminated" else torch.float32)
++            for key, values in zip(("observations", "actions", "rewards", "next_observations", "terminated"),
++                                   zip(*transitions))}
++    ctx.model = dict(contract=contract, learner={"replay": replay}, training_profiles=profiles)
++    ctx.before = {str(path.relative_to(audit.REPO)): audit.file_hash(path) for path in ctx.inputs}
++    monkeypatch.setattr(audit, "BASE_HASH", audit.file_hash(audit.BASE / "train_round1/model_final.pt"))
++    original_hash = audit.file_hash
++
++    def fixture_hash(path):
++        path = Path(path)
++        assert path.is_relative_to(tmp_path), "Hashing must stay inside the synthetic fixture"
++        ctx.hash_reads.append(path)
++        return original_hash(path)
++
++    def load_base():
++        ctx.hashed_before_load = set(ctx.hash_reads)
++        return ctx.model, None
++
++    def load_collections(folders, round_index, source_pins, runtime, model_hash):
++        assert folders == [audit.BASE / f"collect_round{round_index}" / s for s in audit.SCENARIOS]
++        assert source_pins == contract["source_pins"] and runtime == contract["runtime_versions"]
++        assert model_hash == (None if round_index == 0 else
++                              original_hash(audit.BASE / "train_round0/model_final.pt"))
++        ctx.loaded_rounds.append(round_index)
++        return contract, ctx.runs[round_index]
++
++    def q_aliases(*args):
++        ctx.q_calls += 1
++        return []
++
++    @contextmanager
++    def lock(output):
++        output.mkdir(parents=True, exist_ok=True)
++        (output / "runner.lock").write_bytes(b"0")
++        yield
++
++    monkeypatch.setattr(audit, "file_hash", fixture_hash)
++    monkeypatch.setattr(audit, "load_base", load_base)
++    monkeypatch.setattr(audit, "load_collections", load_collections)
++    monkeypatch.setattr(audit, "boot", lambda *args: dict(cfg=cfg, options=options,
++        rc=SimpleNamespace(to_plain_dict=lambda value: cfg_plain if value is cfg else value)))
++    monkeypatch.setattr(audit, "runtime_versions", lambda: contract["runtime_versions"])
++    monkeypatch.setattr(audit, "verify_pins", lambda *args: None)
++    monkeypatch.setattr(audit, "q_aliases", q_aliases)
++    monkeypatch.setattr(audit, "exclusive_run", lock)
++    monkeypatch.setattr(audit.sys, "argv", [str(source), "--output", str(ctx.output)])
++    return ctx
++
++
++def episode():
++    observations, rows = [], []
++    for i in range(75):
++        previous = [0., 0.] if i == 0 else [0., .6]
++        observations.append(np.array([(75-i)/75., (900+180*i)/14400., 0., .6,
++                                      *previous, *previous], dtype=np.float32))
++        rows.append(dict(terminated=i == 74, control_step=i, time_sec=1080.+180*i,
++            action_anchor=[0.,6000.], B_requested=[[0.,6000.]], B_executed=[0.,6000.],
++            B_raw=[0.,6500.], interval_ttt=100., action_requested=[0.,.5]))
++    transitions = [(obs,np.array([0.,.5], dtype=np.float32),-1.,
++                    np.zeros(len(NAMES), dtype=np.float32) if i == 74 else observations[i+1],i == 74)
++                   for i,obs in enumerate(observations)]
++    return transitions, rows
++
++
++def test_sequence_accepts_clock_memory_reward_and_projection():
++    transitions, rows = episode()
++    result = audit.validate_sequence(transitions, rows, NAMES, 6000.)
++    assert result["transitions"] == 75 and result["true_terminals"] == 1
++
++
++@pytest.mark.parametrize("fault", ["clock", "remaining", "terminal", "reward", "anchor", "memory", "projection", "next"])
++def test_sequence_rejects_contract_drift(fault):
++    transitions, rows = episode()
++    if fault == "clock": transitions[5][0][1] += .01
++    elif fault == "remaining": transitions[74][0][0] = 0
++    elif fault == "terminal": rows[0]["terminated"] = True
++    elif fault == "reward": rows[20]["interval_ttt"] = 200.
++    elif fault == "anchor": rows[15]["action_anchor"][0] = 3.
++    elif fault == "memory": transitions[7][0][6] = 1.
++    elif fault == "projection": rows[7]["B_requested"] = [[0.,6500.]]
++    elif fault == "next": transitions[74][3][0] = 1.
++    with pytest.raises((AssertionError, ValueError)):
++        audit.validate_sequence(transitions, rows, NAMES, 6000.)
++
++
++def test_projection_aliases_cap_without_inventing_interior_aliases():
++    groups = audit.alias_actions([12.,6000.],6000.,0.)
++    assert len(groups) == 1 and len(groups[0]["actions"]) == 3
++    assert np.array_equal(groups[0]["request"], [12.,6000.])
++    assert audit.alias_actions([12.,4000.],6000.,0.) == []
++    assert audit.alias_actions([12.,5000.],6000.,0.) == []
++
++
++def test_alias_q_detects_raw_action_dependence_without_mutating_network():
++    from types import SimpleNamespace
++    critics = [torch.nn.Linear(len(NAMES)+2,1) for _ in range(2)]
++    with torch.no_grad():
++        for critic in critics:
++            critic.weight.zero_(); critic.bias.zero_(); critic.weight[0,-1] = 2.
++    state = copy.deepcopy([c.state_dict() for c in critics])
++    rows = audit.q_aliases(SimpleNamespace(critics=critics), np.zeros(len(NAMES),np.float32), [0.,6000.],6000.)
++    assert len(rows) == 3
++    for row in rows:
++        assert min(row["twin_q_spread"]) > 1.99
++    for saved,critic in zip(state,critics):
++        for key,value in saved.items(): assert torch.equal(value,critic.state_dict()[key])
++
++
++def test_stop_scope(tmp_path,monkeypatch):
++    monkeypatch.setattr(audit,"REPO",tmp_path/"repo")
++    monkeypatch.setattr(audit,"GOAL_ROOT",tmp_path/"goal")
++    output=tmp_path/"output"
++    for folder in (audit.REPO,audit.GOAL_ROOT,output):
++        folder.mkdir(); (folder/"STOP").touch()
++        assert audit.stopped(output)
++        (folder/"STOP").unlink()
++    assert not audit.stopped(output)
++
++
++def test_unique_schema_column():
++    with pytest.raises(ValueError): audit.column(["x","x"],"x")
++    with pytest.raises(ValueError): audit.column(["y"],"x")
++
++
++def test_main_records_manifest_before_loading_and_covers_all_replay(synthetic_audit):
++    ctx = synthetic_audit
++    audit.main()
++    result = audit.read(ctx.output / "completion.json")
++    assert result["settings"]["input_sha256"] == ctx.before
++    assert audit.read(ctx.output / "settings.json")["input_sha256"] == ctx.before
++    assert set(ctx.inputs) <= ctx.hashed_before_load
++    assert all(ctx.hash_reads.count(path) >= 2 for path in ctx.inputs)
++    assert ctx.loaded_rounds == [0, 1] and ctx.q_calls == 750
++    assert {(row["round"], row["scenario"]) for row in result["episodes"]} == {
++        (r, s) for r in (0, 1) for s in audit.SCENARIOS}
++    assert audit.read(ctx.output / "status.json")["status"] == "completed"
++    assert {str(path.relative_to(audit.REPO)): audit.file_hash(path) for path in ctx.inputs} == ctx.before
++
++
++@pytest.mark.parametrize("relative", [
++    "completion.json", "train_round0/model_final.pt", "train_round1/model_final.pt",
++    *[f"collect_round{r}/sweet_155_w/{name}" for r in (0, 1) for name in (
++        "completion.json", "settings.json", "experience.pt", "episode_00_trace.json",
++        "episode_00_summary.json", "observation_schema.json", "runtime_versions.json")]])
++def test_main_rejects_input_drift_before_completion(synthetic_audit, monkeypatch, relative):
++    ctx = synthetic_audit
++    target = audit.BASE / relative
++    original_q = audit.q_aliases
++
++    def mutate_after_loading(*args):
++        result = original_q(*args)
++        if ctx.q_calls == 750:
++            target.write_bytes(target.read_bytes() + b"\n")
++        return result
++
++    monkeypatch.setattr(audit, "q_aliases", mutate_after_loading)
++    with pytest.raises(ValueError, match="Input.*changed"):
++        audit.main()
++    assert not (ctx.output / "completion.json").exists()
++    assert audit.read(ctx.output / "status.json")["status"] != "completed"
++
++
++@pytest.mark.parametrize("round_index", [0, 1])
++@pytest.mark.parametrize("field", ["scenario", "seed", "profile_sha256", "run_id", "experience_sha256"])
++def test_main_rejects_changed_provenance_before_comparison(synthetic_audit, round_index, field):
++    ctx = synthetic_audit
++    run = ctx.runs[round_index][audit.SCENARIOS[0]]
++    run["provenance"][field] = 9999 if field == "seed" else "different"
++    with pytest.raises(ValueError, match="Collection provenance"):
++        audit.main()
++    assert ctx.q_calls == round_index * 375
++    assert not (ctx.output / "completion.json").exists()
++
++
++def test_main_rejects_repackaged_collection_with_identical_transitions(synthetic_audit):
++    ctx = synthetic_audit
++    run = ctx.runs[1][audit.SCENARIOS[0]]
++    folder = Path(run["identity"]["folder"])
++    audit.save(folder / "experience.pt", {"fixture": "repackaged, identical transition values"})
++    run["provenance"].update(run_id="replacement-run", experience_sha256=audit.file_hash(folder / "experience.pt"))
++    run["identity"]["experience_sha256"] = run["provenance"]["experience_sha256"]
++    with pytest.raises(ValueError, match="Collection provenance"):
++        audit.main()
++    assert ctx.q_calls == 375
++    assert not (ctx.output / "completion.json").exists()
++
++
++@pytest.mark.parametrize("entry", ["completion.json", "STOP", "goal-stop", "repo-stop"])
++def test_main_rechecks_guards_under_lock(synthetic_audit, monkeypatch, entry):
++    ctx = synthetic_audit
++
++    def no_start(*args):
++        pytest.fail("Audit started despite an entry created while acquiring its lock")
++
++    @contextmanager
++    def racing_lock(output):
++        output.mkdir()
++        (output / "runner.lock").write_bytes(b"0")
++        target = (audit.GOAL_ROOT / "STOP" if entry == "goal-stop" else
++                  audit.REPO / "STOP" if entry == "repo-stop" else output / entry)
++        target.parent.mkdir(parents=True, exist_ok=True)
++        target.write_bytes(b"preserve this entry")
++        yield
++        assert target.read_bytes() == b"preserve this entry"
++
++    monkeypatch.setattr(audit, "exclusive_run", racing_lock)
++    monkeypatch.setattr(audit, "load_base", no_start)
++    monkeypatch.setattr(audit, "boot", no_start)
++    if entry == "completion.json":
++        with pytest.raises(FileExistsError):
++            audit.main()
++        assert (ctx.output / entry).read_bytes() == b"preserve this entry"
++    else:
++        audit.main()
++    assert not (ctx.output / "process.json").exists()
++    assert not (ctx.output / "settings.json").exists()
++
++
++@pytest.mark.parametrize("anchor_metering, expected_groups", [(5000.00012, 3), (5000.00001, 0)])
++def test_alias_q_uses_distinct_float32_boundary_actions(anchor_metering, expected_groups):
++    critics = [torch.nn.Linear(len(NAMES) + 2, 1) for _ in range(2)]
++    with torch.no_grad():
++        for critic in critics:
++            critic.weight.zero_()
++            critic.bias.zero_()
++            critic.weight[0, -1] = 2.
++    anchor = [0., anchor_metering]
++    records = audit.q_aliases(SimpleNamespace(critics=critics), np.zeros(len(NAMES), np.float32), anchor, 6000.)
++    assert len(records) == expected_groups
++    for row in records:
++        actions = np.asarray(row["nominal_actions"], dtype=np.float32)
++        assert len(np.unique(actions, axis=0)) == len(actions) >= 2
++        for action in actions:
++            np.testing.assert_array_equal(audit.residual_budget(action, anchor, 6000.)[1], row["projected_request"])
++        assert min(row["twin_q_spread"]) > 0.
+diff --git a/work/sdmpc_rl_value_audit_20260930/terminal_quota.py b/work/sdmpc_rl_value_audit_20260930/terminal_quota.py
+new file mode 100644
+index 0000000..99cd703
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/terminal_quota.py
+@@ -0,0 +1,425 @@
++"""Bounded paired terminal-quota ablation on authenticated training replay only."""
++
++import argparse
++from copy import deepcopy
++from datetime import datetime, timezone
++import hashlib
++from importlib.util import module_from_spec, spec_from_file_location
++import json
++import os
++from pathlib import Path
++import sys
++import time
++
++sys.dont_write_bytecode = True
++import terminal_fit as terminal
++
++HERE = Path(__file__).resolve().parent
++REPO, BASE, BASE_HASH = terminal.REPO, terminal.BASE, terminal.BASE_HASH
++GOAL_ROOT = terminal.GOAL_ROOT
++PROJECTION = GOAL_ROOT / "value_audit_v1/projection/completion.json"
++_spec = spec_from_file_location(
++    "terminal_quota_critic", HERE.parent / "sdmpc_rl_recovery_20260929/critic_diagnostic.py")
++critic = module_from_spec(_spec)
++_spec.loader.exec_module(critic)
++torch, np, SCENARIOS = terminal.torch, terminal.np, terminal.SCENARIOS
++load_base, exclusive_run = terminal.load_base, terminal.exclusive_run
++fingerprint, file_hash, json_save = terminal.fingerprint, terminal.file_hash, terminal.json_save
++SEEDS = (6529, 6530)
++UPDATES = 3750
++LOG_UPDATES = (0, 375, 750, 1500, 3750)
++ARMS = ("uniform", "terminal_quota")
++TAU = 0.005
++INITIAL_MAE = 5.701837813854217
++EVALUATION_SEED = 86529
++CAVEAT = (
++    "Observed behavior returns are not current fixed-policy Q ground truth. "
++    "Exact terminal rewards are ground truth only at the ten stored state-actions. "
++    "The old saturated actor is frozen; this diagnostic cannot justify deployment, "
++    "policy admission, traffic improvement, holdout or generalization claims. "
++    "Metrics never stop, select or export a policy. If the predeclared criterion "
++    "fails, do not keep increasing this same update budget.")
++
++
++def input_paths():
++    paths = [BASE / "completion.json", BASE / "train_round0/model_final.pt",
++             BASE / "train_round1/model_final.pt"]
++    for episode in (0, 1):
++        for scenario in SCENARIOS:
++            folder = BASE / f"collect_round{episode}" / scenario
++            paths.extend(folder / name for name in (
++                "completion.json", "settings.json", "experience.pt", "episode_00_trace.json",
++                "episode_00_summary.json", "observation_schema.json", "runtime_versions.json"))
++    return paths
++
++
++def capture_identity(stop):
++    """Read the prior audit as evidence; never import or run its physical runtime."""
++    stop()
++    identity = terminal.capture_identity(stop)
++    sources = (Path(__file__), HERE / "terminal_quota_brief.md", Path(terminal.__file__),
++               Path(terminal.common.__file__), Path(critic.__file__), Path(critic._td3.__file__),
++               *(REPO / "work/sdmpc_rl_multi_20260929" / name for name in
++                 ("td3.py", "run_budget.py", "budget_runtime.py", "freeze_runtime.py")))
++    for path in sources:
++        stop()
++        identity["source_sha256"][str(path)] = file_hash(path)
++    stop()
++    payload = PROJECTION.read_bytes()
++    completion_hash = hashlib.sha256(payload).hexdigest()
++    completion = json.loads(payload)
++    settings = completion.get("settings", {})
++    if completion.get("status") != "completed" or settings.get("base_sha256") != BASE_HASH:
++        raise ValueError("Successful projection audit with exact base hash required")
++    expected = {str(path.relative_to(REPO)): path for path in input_paths()}
++    manifest = settings.get("input_sha256", {})
++    if len(manifest) != 73 or set(manifest) != set(expected):
++        raise ValueError("Projection audit must contain the exact 73-file input manifest")
++    for name, path in expected.items():
++        stop()
++        if file_hash(path) != manifest[name]:
++            raise ValueError("Projection input changed: " + name)
++    model_key = str((BASE / "train_round1/model_final.pt").relative_to(REPO))
++    if manifest[model_key] != BASE_HASH:
++        raise ValueError("Projection manifest base hash differs")
++    projection_sources = settings.get("source_sha256", {})
++    expected_sources = (HERE / "projection_audit.py", Path(terminal.common.__file__))
++    if set(projection_sources) != {str(path.relative_to(REPO)) for path in expected_sources}:
++        raise ValueError("Projection source manifest differs")
++    for path in expected_sources:
++        stop()
++        digest = file_hash(path)
++        if digest != projection_sources[str(path.relative_to(REPO))]:
++            raise ValueError("Projection source changed: " + str(path))
++        identity["source_sha256"][str(path)] = digest
++    contract = settings.get("contract", {})
++    if (contract.get("source_pins") != identity["base_source_pins"] or
++            contract.get("runtime_versions") != identity["runtime"]["versions"]):
++        raise ValueError("Projection source/runtime contract differs")
++    stop()
++    if file_hash(PROJECTION) != completion_hash:
++        raise ValueError("Projection completion changed while reading")
++    identity.update(projection_completion=dict(path=str(PROJECTION), sha256=completion_hash),
++                    projection_input_sha256=manifest, projection_contract=contract)
++    stop()
++    return identity
++
++
++def smoothing_noise(rows, generator):
++    return torch.randn((rows, 2), generator=generator, device="cpu", dtype=torch.float32).mul(
++        critic.TD3.policy_noise).clamp(-critic.TD3.noise_clip, critic.TD3.noise_clip)
++
++
++def paired_indices(uniform_rng, replacement_rng):
++    uniform = np.stack([uniform_rng.integers(150, size=8) for _ in SCENARIOS])
++    quota = uniform.copy()
++    quota[:, 0] = np.asarray(terminal.TERMINALS)[replacement_rng.integers(2, size=5)]
++    offsets = np.arange(5, dtype=np.int64)[:, None] * 150
++    return {name: torch.from_numpy((values + offsets).reshape(-1))
++            for name, values in zip(ARMS, (uniform, quota))}
++
++
++def frozen_fingerprints(learner):
++    result = {}
++    for name in ("actor", "actor_target"):
++        module = getattr(learner, name)
++        result[name] = fingerprint(dict(
++            state=module.state_dict(), modes={k: m.training for k, m in module.named_modules()},
++            controls={k: (p.requires_grad, p.grad) for k, p in module.named_parameters()}))
++    result["actor_optimizer"] = fingerprint(learner.actor_optimizer.state_dict())
++    return result
++
++
++def clone_arms(original):
++    arms = {}
++    source = fingerprint(original.state_dict())
++    for name in ARMS:
++        learner = deepcopy(original)
++        if fingerprint(learner.state_dict()) != source:
++            raise ValueError("Full initial learner copy differs")
++        learner.actor_target.load_state_dict(original.actor.state_dict())
++        for module in (learner.actor, learner.actor_target):
++            module.requires_grad_(False).eval()
++            module.zero_grad(set_to_none=True)
++        arms[name] = learner
++    if terminal.learner_fingerprint(arms[ARMS[0]]) != terminal.learner_fingerprint(arms[ARMS[1]]):
++        raise ValueError("Paired initial learner states differ")
++    return arms
++
++
++def finite_state(learner):
++    for name in ("actor", "actor_target", "critics", "critic_targets"):
++        for p in getattr(learner, name).parameters():
++            if not torch.isfinite(p).all() or (p.grad is not None and not torch.isfinite(p.grad).all()):
++                raise ValueError("Nonfinite parameter/gradient: " + name)
++    for optimizer in (learner.actor_optimizer, learner.critic_optimizer):
++        for state in optimizer.state.values():
++            if any(isinstance(value, torch.Tensor) and not torch.isfinite(value).all()
++                   for value in state.values()):
++                raise ValueError("Nonfinite Adam state")
++
++
++def checked_step(learner, batch, noise, update, stop):
++    stop()
++    finite_state(learner)
++
++    def before_adam(optimizer, args, kwargs):
++        stop()
++        if any(p.grad is None or not torch.isfinite(p.grad).all() for p in learner.critics.parameters()):
++            raise ValueError("Missing/nonfinite critic gradient before Adam")
++
++    hook = learner.critic_optimizer.register_step_pre_hook(before_adam)
++    try:
++        loss = critic.critic_step(learner, batch, noise, TAU, update)
++    finally:
++        hook.remove()
++    finite_state(learner)
++    stop()
++    return loss
++
++
++def terminal_metrics(learner, terminals, update):
++    result = terminal.metrics(learner.critics, terminals, update, [])
++    # Sampling counts come from actual minibatches, not the supervised fit helper.
++    for key in ("diagnostic_training_rows", "training_draws_by_scenario", "total_training_draws"):
++        result.pop(key)
++    result["per_scenario"] = {}
++    for scenario in SCENARIOS:
++        rows = [row for row in result["rows"] if row["scenario"] == scenario]
++        result["per_scenario"][scenario] = {
++            name: dict(mae=sum(row["abs_errors"][name] for row in rows) / len(rows),
++                       max_abs_error=max(row["abs_errors"][name] for row in rows))
++            for name in ("q1", "q2", "min_q")}
++    return result
++
++
++def fit_seed(original, state, seed, stop, record, *, updates=UPDATES, log_updates=LOG_UPDATES):
++    """Internal shorter budgets are for synthetic tests only."""
++    if (type(updates) is not int or updates < 1 or not log_updates or
++            tuple(sorted(set(log_updates))) != tuple(log_updates) or
++            log_updates[0] != 0 or log_updates[-1] != updates):
++        raise ValueError("Invalid update/log budget")
++    for key, expected in dict(gamma=1., tau=TAU, policy_delay=2, learning_rate=0.0003,
++                              policy_noise=0.2, noise_clip=0.5).items():
++        if (state["spec"][key] != expected or getattr(original, key) != expected or
++                getattr(critic.TD3, key) != expected):
++            raise ValueError("Original TD3 specification differs: " + key)
++    stop()
++    terminals = terminal.extract_terminals(state)
++    data = critic.replay_tensors(state)
++    data_before = fingerprint(data)
++    arms = clone_arms(original)
++    initial = terminal.learner_fingerprint(arms[ARMS[0]])
++    uniform_rng = np.random.default_rng(seed)
++    replacement_rng = np.random.default_rng(seed + 100000)
++    noise_rng = torch.Generator(device="cpu").manual_seed(seed)
++    eval_noise = smoothing_noise(750, torch.Generator(device="cpu").manual_seed(EVALUATION_SEED))
++    digests = {name: hashlib.sha256() for name in (*ARMS, "noise")}
++    result = dict(seed=seed, replacement_seed=seed + 100000, noise_seed=seed,
++                  evaluation_seed=EVALUATION_SEED, evaluation_noise_sha256=fingerprint(eval_noise),
++                  original_state_sha256=fingerprint(original.state_dict()),
++                  initial_state_sha256=initial, arms={})
++    frozen = {name: frozen_fingerprints(value) for name, value in arms.items()}
++    unchanged = {name: fingerprint({k: v for k, v in value.state_dict().items()
++                                   if k not in ("critics", "critic_targets", "critic_optimizer")})
++                 for name, value in arms.items()}
++    for name, value in arms.items():
++        finite_state(value)
++        result["arms"][name] = dict(
++            initial_state_sha256=initial, frozen_initial=frozen[name],
++            initial_critic_sha256=fingerprint(value.critics.state_dict()),
++            initial_critic_target_sha256=fingerprint(value.critic_targets.state_dict()),
++            initial_critic_optimizer_sha256=fingerprint(value.critic_optimizer.state_dict()),
++            online_critic_updates=0, target_critic_updates=0, actor_updates=0, actor_target_updates=0,
++            sample_counts=dict.fromkeys(SCENARIOS, 0), terminal_counts=dict.fromkeys(SCENARIOS, 0),
++            total_samples=0, checkpoints=[])
++    loss_sums = dict.fromkeys(ARMS, 0.)
++    losses = dict.fromkeys(ARMS, None)
++
++    def snapshot(update):
++        for name, value in arms.items():
++            stop()
++            arm = result["arms"][name]
++            arm["index_stream_sha256"] = digests[name].hexdigest()
++            arm["noise_stream_sha256"] = digests["noise"].hexdigest()
++            arm["checkpoints"].append(dict(
++                update=update, online_critic_updates=arm["online_critic_updates"],
++                target_critic_updates=arm["target_critic_updates"],
++                sample_counts=deepcopy(arm["sample_counts"]), total_samples=arm["total_samples"],
++                terminal_counts=deepcopy(arm["terminal_counts"]),
++                index_stream_sha256=arm["index_stream_sha256"], noise_stream_sha256=arm["noise_stream_sha256"],
++                last_batch_td_loss=losses[name], mean_training_td_loss=loss_sums[name] / update if update else None,
++                diagnostics=critic.diagnostics(value, data, eval_noise),
++                terminals=terminal_metrics(value, terminals, update)))
++        json.dumps(result, allow_nan=False)
++        stop()
++        record(result)
++
++    started = time.perf_counter()
++    snapshot(0)
++    for update in range(1, updates + 1):
++        stop()
++        indices = paired_indices(uniform_rng, replacement_rng)
++        noise = smoothing_noise(40, noise_rng)
++        noise_before = fingerprint(noise)
++        digests["noise"].update(noise.numpy().tobytes())
++        for name, value in arms.items():
++            stop()
++            batch = {key: tensor[indices[name]] for key, tensor in data.items()}
++            losses[name] = checked_step(value, batch, noise, update, stop)
++            if fingerprint(noise) != noise_before:
++                raise ValueError("Shared smoothing noise changed")
++            loss_sums[name] += losses[name]
++            arm = result["arms"][name]
++            arm["online_critic_updates"] += 1
++            arm["target_critic_updates"] += int(update % 2 == 0)
++            arm["total_samples"] += 40
++            for i, scenario in enumerate(SCENARIOS):
++                arm["sample_counts"][scenario] += 8
++                arm["terminal_counts"][scenario] += int(batch["terminated"][i * 8:(i + 1) * 8].sum())
++            digests[name].update(indices[name].numpy().tobytes())
++        if update in log_updates:
++            snapshot(update)
++    for name, value in arms.items():
++        stop()
++        arm = result["arms"][name]
++        arm["frozen_final"] = frozen_fingerprints(value)
++        after = fingerprint({k: v for k, v in value.state_dict().items()
++                             if k not in ("critics", "critic_targets", "critic_optimizer")})
++        if arm["frozen_final"] != frozen[name] or after != unchanged[name]:
++            raise ValueError("Frozen actor, optimizer, replay or learner controls changed")
++        arm["final_critic_sha256"] = fingerprint(value.critics.state_dict())
++        arm["final_critic_target_sha256"] = fingerprint(value.critic_targets.state_dict())
++        arm["final_critic_optimizer_sha256"] = fingerprint(value.critic_optimizer.state_dict())
++    if fingerprint(data) != data_before:
++        raise ValueError("Diagnostic replay changed")
++    result["elapsed_seconds"] = time.perf_counter() - started
++    stop()
++    record(result)
++    return result
++
++
++def interpretation(seeds):
++    finals = {name: [seed["arms"][name]["checkpoints"][-1]["terminals"]["aggregate"]["min_q"]["mae"]
++                     for seed in seeds] for name in ARMS}
++    pooled = {name: sum(values) / len(values) for name, values in finals.items()}
++    checks = dict(lower_than_uniform_both_seeds=all(q < u for q, u in zip(finals[ARMS[1]], finals[ARMS[0]])),
++                  pooled_mae_at_least_50_percent_lower=pooled[ARMS[1]] <= 0.5 * pooled[ARMS[0]],
++                  below_initial_both_seeds=all(q < INITIAL_MAE for q in finals[ARMS[1]]))
++    return dict(final_min_q_terminal_mae=finals, pooled_min_q_terminal_mae=pooled,
++                initial_threshold=INITIAL_MAE, checks=checks, supports_sampling_hypothesis=all(checks.values()),
++                caveat=CAVEAT)
++
++
++def require_empty(output, *, locked=False):
++    if output.exists() and (not output.is_dir() or any(
++            not (locked and path.name == "runner.lock" and path.is_file()) for path in output.iterdir())):
++        raise FileExistsError("Refusing nonempty output: " + str(output))
++
++
++def run_diagnostic(output, *, updates=UPDATES, log_updates=LOG_UPDATES, command=None):
++    output = Path(output).resolve()
++    paths = tuple(folder / "STOP" for folder in (REPO, GOAL_ROOT, output))
++    stop = lambda: terminal.check_stop(paths)
++    started = time.perf_counter()
++    run = dict(pid=os.getpid(), started_at=datetime.now(timezone.utc).isoformat(), output=str(output),
++               command=list(command or [sys.executable, *sys.argv]), stop_paths=list(map(str, paths)))
++    seeds = []
++    try:
++        stop()
++        require_empty(output)
++        stop()
++        with exclusive_run(output):
++            stop()
++            require_empty(output, locked=True)
++
++            def write(name, value):
++                stop()
++                json_save(output / name, value)
++
++            def record(value):
++                if seeds and seeds[-1]["seed"] == value["seed"]:
++                    seeds[-1] = value
++                else:
++                    seeds.append(value)
++                write("metrics.json", dict(seeds=seeds, caveat=CAVEAT))
++
++            rng_before = terminal.global_rng_fingerprint()
++            try:
++                with terminal.preserve_rng():
++                    stop()
++                    terminal.single_thread()
++                    identity_before = capture_identity(stop)
++                    stop()
++                    model, learner = load_base()
++                    stop()
++                    learner_before = terminal.learner_fingerprint(learner)
++                    model_before = fingerprint(model)
++                    if capture_identity(stop) != identity_before:
++                        raise ValueError("Input/source/runtime identity changed during load")
++                    settings = dict(
++                        format="sdmpc-terminal-quota-v1", **run, identity_before=identity_before,
++                        seeds=list(SEEDS), updates_per_arm_per_seed=updates, log_updates=list(log_updates),
++                        arms=list(ARMS), samples_per_scenario=8, batch_size=40, replay_transitions=750,
++                        sampling="with replacement; quota replaces first draw only, at least one terminal per scenario",
++                        terminal_indices=list(terminal.TERMINALS), evaluation_seed=EVALUATION_SEED,
++                        gamma=1., critic_target_tau=TAU, critic_target_period=2,
++                        actor_updates=0, actor_target_updates=0, actor_optimizer_updates=0,
++                        initialization="independent full final TD3 copies including critic Adam and critic targets; both actors = final online actor",
++                        learned_weights_export=False, original_spec=deepcopy(model["learner"]["spec"]),
++                        original_learner_before=learner_before, original_model_before=model_before,
++                        global_rng_before=rng_before, caveat=CAVEAT,
++                        criterion="quota final min-Q terminal MAE lower in both seeds, pooled >=50% lower, both <5.701837813854217")
++                    write("settings.json", settings)
++                    write("status.json", dict(**run, status="running"))
++                    for seed in SEEDS:
++                        stop()
++                        fit_seed(learner, model["learner"], seed, stop, record,
++                                 updates=updates, log_updates=log_updates)
++                    write("status.json", dict(**run, status="verifying"))
++                    stop()
++                    identity_after = capture_identity(stop)
++                    if identity_after != identity_before:
++                        raise ValueError("Input/source/runtime identity changed during diagnostic")
++                    stop()
++                    learner_after = terminal.learner_fingerprint(learner)
++                    model_after = fingerprint(model)
++                    if learner_after != learner_before or model_after != model_before:
++                        raise ValueError("Original learner/model changed")
++                rng_after = terminal.global_rng_fingerprint()
++                if rng_after != rng_before:
++                    raise ValueError("Global RNG state changed")
++                result = dict(**run, status="completed", elapsed_seconds=time.perf_counter() - started,
++                              ended_at=datetime.now(timezone.utc).isoformat(),
++                              interpretation=interpretation(seeds), original_learner_before=learner_before,
++                              original_learner_after=learner_after, original_model_before=model_before,
++                              original_model_after=model_after, global_rng_before=rng_before, global_rng_after=rng_after,
++                              identity_after=identity_after,
++                              seeds=[dict(seed=s["seed"], arms={name: {k: v for k, v in arm.items() if k != "checkpoints"}
++                                                             for name, arm in s["arms"].items()}) for s in seeds])
++                stop()
++                # Completion is the last write; a stopped/failed attempt never publishes it.
++                write("completion.json", result)
++                return result
++            except terminal.Stopped:
++                raise
++            except Exception as exc:
++                write("status.json", dict(**run, status="failed", reason=f"{type(exc).__name__}: {exc}"))
++                raise
++    except terminal.Stopped as exc:
++        # STOP forbids further writes, including status; completion is authoritative.
++        return dict(**run, status="stopped", reason=str(exc), elapsed_seconds=time.perf_counter() - started)
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args(argv)
++    command = [sys.executable, str(Path(__file__).resolve()), *(sys.argv[1:] if argv is None else argv)]
++    result = run_diagnostic(args.output, command=command)
++    print(json.dumps(result, allow_nan=False))
++    return 0 if result["status"] == "completed" else 2
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/work/sdmpc_rl_value_audit_20260930/test_terminal_quota.py b/work/sdmpc_rl_value_audit_20260930/test_terminal_quota.py
+new file mode 100644
+index 0000000..584d5a9
+--- /dev/null
++++ b/work/sdmpc_rl_value_audit_20260930/test_terminal_quota.py
+@@ -0,0 +1,646 @@
++"""Synthetic CPU tests only: production loading, simulation and export prohibited."""
++
++from contextlib import contextmanager
++from copy import deepcopy
++import json
++from pathlib import Path
++import random
++import sys
++
++import numpy as np
++import pytest
++import terminal_quota as diagnostic
++
++torch = diagnostic.torch
++terminal = diagnostic.terminal
++critic = diagnostic.critic
++
++
++def read(path):
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++@pytest.fixture(autouse=True)
++def synthetic_only(monkeypatch):
++    def forbidden(*args, **kwargs):
++        raise AssertionError("Production load, snapshot access, simulator or export forbidden")
++
++    for module, name in ((diagnostic, "load_base"), (terminal, "load_base"),
++                         (terminal.common, "load_base"), (terminal.common, "pins"),
++                         (terminal, "capture_identity"), (torch, "load"), (torch, "save"),
++                         (critic, "load_frozen_model")):
++        monkeypatch.setattr(module, name, forbidden)
++    # These imports are already present via common; no physical runtime is loaded.
++    import budget_runtime
++    monkeypatch.setattr(budget_runtime, "boot", forbidden)
++    terminal.single_thread()
++    with terminal.preserve_rng():
++        yield
++
++
++@pytest.fixture
++def learner():
++    value = terminal.TD3(3, seed=17, hidden=8)
++    rng = np.random.default_rng(23)
++    for number, scenario in enumerate(diagnostic.SCENARIOS):
++        observations = rng.uniform(0.1, 1, (150, 3))
++        for index in range(150):
++            done = index in (74, 149)
++            value.add(observations[index], rng.uniform(-0.5, 0.5, 2),
++                      -0.25 * (number + 1) - index / 200,
++                      np.zeros(3) if done else observations[index + 1], done, scenario)
++    # Populate both Adam histories and original target lag using synthetic replay.
++    value.update()
++    value.update()
++    return value
++
++
++@pytest.fixture
++def sandbox(tmp_path, monkeypatch, learner):
++    repo = tmp_path / "repository"
++    goal = repo / "goal"
++    goal.mkdir(parents=True)
++    monkeypatch.setattr(diagnostic, "REPO", repo)
++    monkeypatch.setattr(diagnostic, "GOAL_ROOT", goal)
++    files = {}
++    for name in ("source", "input", "projection"):
++        files[name] = tmp_path / (name + ".txt")
++        files[name].write_text("synthetic " + name, encoding="utf-8")
++    model = dict(learner=learner.state_dict(), contract={"synthetic": True}, metadata=["untouched"])
++    calls = []
++
++    def load():
++        calls.append("load")
++        return model, learner
++
++    def capture(stop):
++        stop()
++        calls.append("identity")
++        return {name: diagnostic.file_hash(path) for name, path in files.items()}
++
++    monkeypatch.setattr(diagnostic, "load_base", load)
++    monkeypatch.setattr(diagnostic, "capture_identity", capture)
++    return dict(repo=repo, goal=goal, output=tmp_path / "output", files=files, model=model, calls=calls)
++
++
++def run(output):
++    return diagnostic.run_diagnostic(output, updates=3, log_updates=(0, 1, 2, 3))
++
++
++def fit(learner, *, logs=(0, 1, 2, 3), seed=6529, record=lambda _: None):
++    return diagnostic.fit_seed(learner, learner.state_dict(), seed, lambda: None, record,
++                               updates=3, log_updates=logs)
++
++
++def test_balanced_pairing_incidental_terminals_and_replacement_stream():
++    uniform_rng, replacement_rng = np.random.default_rng(6529), np.random.default_rng(106529)
++    reference = np.random.default_rng(6529)
++    repeated = (np.random.default_rng(6529), np.random.default_rng(106529))
++    seen = set()
++    incidental = False
++    for _ in range(100):
++        indices = diagnostic.paired_indices(uniform_rng, replacement_rng)
++        again = diagnostic.paired_indices(*repeated)
++        expected = np.concatenate([reference.integers(150, size=8) + 150 * i for i in range(5)])
++        np.testing.assert_array_equal(indices["uniform"].numpy(), expected)
++        for name in diagnostic.ARMS:
++            assert torch.equal(indices[name], again[name])
++            assert torch.bincount(indices[name] // 150).tolist() == [8] * 5
++        uniform, quota = (indices[name].reshape(5, 8) % 150 for name in diagnostic.ARMS)
++        assert torch.equal(uniform[:, 1:], quota[:, 1:])
++        assert set(quota[:, 0].tolist()) <= {74, 149}
++        seen.update(quota[:, 0].tolist())
++        terminals = (quota == 74) | (quota == 149)
++        assert torch.all(terminals.sum(dim=1) >= 1)
++        incidental |= bool(torch.any(terminals.sum(dim=1) > 1))
++    assert incidental and seen == {74, 149}
++    a = diagnostic.paired_indices(np.random.default_rng(99), np.random.default_rng(1))
++    b = diagnostic.paired_indices(np.random.default_rng(99), np.random.default_rng(2))
++    assert torch.equal(a["uniform"], b["uniform"])
++    assert not torch.equal(a["terminal_quota"], b["terminal_quota"])
++
++
++def test_full_independent_copies_preserve_adam_targets_and_freeze_online_actor(learner):
++    original = terminal.learner_fingerprint(learner)
++    arms = diagnostic.clone_arms(learner)
++    pointers = [{p.data_ptr() for m in (value.actor, value.actor_target, value.critics, value.critic_targets)
++                 for p in m.parameters()} for value in (learner, *arms.values())]
++    assert all(pointers[i].isdisjoint(pointers[j]) for i in range(3) for j in range(i))
++    for value in arms.values():
++        for name in ("critics", "critic_targets", "critic_optimizer", "actor_optimizer"):
++            assert diagnostic.fingerprint(getattr(value, name).state_dict()) == diagnostic.fingerprint(
++                getattr(learner, name).state_dict())
++        for module in (value.actor, value.actor_target):
++            assert not module.training
++            assert all(not p.requires_grad and p.grad is None for p in module.parameters())
++            assert diagnostic.fingerprint(module.state_dict()) == diagnostic.fingerprint(learner.actor.state_dict())
++        params = {id(p) for p in value.critic_optimizer.param_groups[0]["params"]}
++        assert params == {id(p) for p in value.critics.parameters()}
++    assert terminal.learner_fingerprint(learner) == original
++
++
++def test_gamma_one_and_true_terminal_mask(learner):
++    value = diagnostic.clone_arms(learner)["uniform"]
++    with torch.no_grad():
++        for q, bias in zip(value.critic_targets, (2., 3.)):
++            for p in q.parameters():
++                p.zero_()
++            q[-1].bias.fill_(bias)
++    batch = dict(next_observations=torch.zeros(4, 3), rewards=torch.tensor([-1., -4., -5., 2.]),
++                 terminated=torch.tensor([True, False, True, False]))
++    actual = critic.target_values(value, batch, torch.zeros(4, 2))
++    torch.testing.assert_close(actual, torch.tensor([-1., -2., -5., 4.]), rtol=0, atol=0)
++    assert critic.TD3.gamma == 1.
++
++
++def test_only_critics_update_at_exact_target_cadence(learner, monkeypatch):
++    value = diagnostic.clone_arms(learner)["uniform"]
++    before = diagnostic.frozen_fingerprints(value)
++    monkeypatch.setattr(value.actor_optimizer, "step", lambda *a, **k: pytest.fail("Actor optimizer used"))
++    data = critic.replay_tensors(learner.state_dict())
++    batch = {k: v[:40] for k, v in data.items()}
++    old = [p.clone() for p in value.critic_targets.parameters()]
++    original_online = diagnostic.fingerprint(value.critics.state_dict())
++    diagnostic.checked_step(value, batch, torch.zeros(40, 2), 1, lambda: None)
++    assert all(torch.equal(a, b) for a, b in zip(old, value.critic_targets.parameters()))
++    assert diagnostic.fingerprint(value.critics.state_dict()) != original_online
++    diagnostic.checked_step(value, batch, torch.zeros(40, 2), 2, lambda: None)
++    for prev, online, target in zip(old, value.critics.parameters(), value.critic_targets.parameters()):
++        torch.testing.assert_close(target, prev.mul(0.995).add(online, alpha=0.005), rtol=0, atol=0)
++    assert diagnostic.frozen_fingerprints(value) == before
++    assert all(entry["step"] == 4 for entry in value.critic_optimizer.state.values())
++
++
++def test_exact_terminal_metrics_and_original_diagnostic_slices(learner):
++    terminals = terminal.extract_terminals(learner.state_dict())
++    value = diagnostic.clone_arms(learner)["uniform"]
++    with torch.no_grad():
++        for q, bias in zip(value.critics, (2., -1.)):
++            for p in q.parameters():
++                p.zero_()
++            q[-1].bias.fill_(bias)
++    metrics = diagnostic.terminal_metrics(value, terminals, 3)
++    assert len(metrics["rows"]) == 10
++    assert {row["round"] for row in metrics["rows"]} == {0, 1}
++    for name, prediction in (("q1", 2.), ("q2", -1.), ("min_q", -1.)):
++        for row in metrics["rows"]:
++            assert row["predictions"][name] == prediction
++            assert row["errors"][name] == prediction - row["target"]
++            assert row["abs_errors"][name] == abs(prediction - row["target"])
++        assert metrics["aggregate"][name]["mae"] == np.mean([r["abs_errors"][name] for r in metrics["rows"]])
++        for scenario, entry in metrics["per_scenario"].items():
++            expected = np.mean([r["abs_errors"][name] for r in metrics["rows"] if r["scenario"] == scenario])
++            assert entry[name]["mae"] == expected
++    result = fit(learner)
++    original = result["arms"]["uniform"]["checkpoints"][0]["diagnostics"]
++    assert original["total"]["transitions"] == 750
++    for row in original["per_scenario"].values():
++        assert row["transitions"] == 150 and row["true_terminals"] == 2
++        assert len(row["time_slices"]) == 3 and len(row["episodes"]) == 2
++        assert "total_td_loss" in row and "behavior_return_gap_rmse" in row["critics"]["minimum_q"]
++
++
++def test_training_noise_identical_eval_separate_counts_and_no_joint_update(learner, monkeypatch):
++    steps, evaluations = [], []
++    original_step, original_metrics = critic.critic_step, critic.diagnostics
++
++    def observe_step(value, batch, noise, tau, update):
++        steps.append((noise, noise.clone(), batch["terminated"].clone()))
++        return original_step(value, batch, noise, tau, update)
++
++    def observe_metrics(value, data, noise):
++        evaluations.append((noise, noise.clone()))
++        return original_metrics(value, data, noise)
++
++    monkeypatch.setattr(critic, "critic_step", observe_step)
++    monkeypatch.setattr(critic, "diagnostics", observe_metrics)
++    monkeypatch.setattr(terminal.TD3, "update", lambda *a: pytest.fail("Joint TD3 update forbidden"))
++    original, rng = terminal.learner_fingerprint(learner), terminal.global_rng_fingerprint()
++    result = fit(learner)
++    assert original == terminal.learner_fingerprint(learner)
++    assert rng == terminal.global_rng_fingerprint()
++    for i in range(0, len(steps), 2):
++        assert steps[i][0] is steps[i + 1][0]
++        assert torch.equal(steps[i][1], steps[i + 1][1])
++    assert all(pair[0] is evaluations[0][0] and torch.equal(pair[1], evaluations[0][1]) for pair in evaluations)
++    for index, name in enumerate(diagnostic.ARMS):
++        arm = result["arms"][name]
++        assert arm["online_critic_updates"] == 3 and arm["target_critic_updates"] == 1
++        assert arm["sample_counts"] == dict.fromkeys(diagnostic.SCENARIOS, 24)
++        expected = torch.stack([row[2].reshape(5, 8).sum(dim=1) for row in steps[index::2]]).sum(dim=0)
++        assert arm["terminal_counts"] == dict(zip(diagnostic.SCENARIOS, expected.tolist()))
++        assert arm["frozen_initial"] == arm["frozen_final"]
++    assert result["arms"]["uniform"]["noise_stream_sha256"] == result["arms"]["terminal_quota"]["noise_stream_sha256"]
++    second = fit(learner, logs=(0, 3))
++    for name in diagnostic.ARMS:
++        first_arm, second_arm = result["arms"][name], second["arms"][name]
++        for key in ("final_critic_sha256", "final_critic_target_sha256", "final_critic_optimizer_sha256",
++                    "index_stream_sha256", "noise_stream_sha256"):
++            assert first_arm[key] == second_arm[key]
++        assert first_arm["checkpoints"][-1] == second_arm["checkpoints"][-1]
++
++
++@pytest.mark.parametrize("bad", ["continuity", "terminal", "replay_nan", "gamma"])
++def test_replay_and_spec_validation(learner, bad):
++    state = learner.state_dict()
++    group = state["replay"][diagnostic.SCENARIOS[0]]
++    if bad == "continuity":
++        group["next_observations"][0, 0] += 1
++    elif bad == "terminal":
++        group["terminated"][74] = False
++    elif bad == "replay_nan":
++        group["actions"][0, 0] = float("nan")
++    else:
++        state["spec"]["gamma"] = .9
++    with pytest.raises(ValueError):
++        diagnostic.fit_seed(learner, state, 6529, lambda: None, lambda _: None, updates=1, log_updates=(0, 1))
++
++
++def test_runner_json_only_fixed_seeds_metadata_and_immutability(sandbox, learner):
++    original = terminal.learner_fingerprint(learner)
++    model = diagnostic.fingerprint(sandbox["model"])
++    rng = terminal.global_rng_fingerprint()
++    result = run(sandbox["output"])
++    assert result["status"] == "completed"
++    assert sandbox["calls"] == ["identity", "load", "identity", "identity"]
++    assert terminal.learner_fingerprint(learner) == original
++    assert diagnostic.fingerprint(sandbox["model"]) == model
++    assert terminal.global_rng_fingerprint() == rng
++    assert result["original_model_before"] == result["original_model_after"] == model
++    assert result["original_learner_before"] == result["original_learner_after"] == original
++    assert result["global_rng_before"] == result["global_rng_after"] == rng
++    assert result["pid"] > 0 and result["elapsed_seconds"] > 0
++    output = sandbox["output"]
++    assert {p.name for p in output.iterdir()} == {"runner.lock", "settings.json", "metrics.json", "status.json", "completion.json"}
++    assert read(output / "completion.json") == result
++    settings = read(output / "settings.json")
++    assert not settings["learned_weights_export"] and settings["actor_optimizer_updates"] == 0
++    assert settings["identity_before"] == result["identity_after"]
++    assert settings["gamma"] == 1 and settings["critic_target_tau"] == .005
++    seeds = read(output / "metrics.json")["seeds"]
++    assert [seed["seed"] for seed in seeds] == [6529, 6530]
++    assert seeds[0]["initial_state_sha256"] == seeds[1]["initial_state_sha256"]
++    assert seeds[0]["evaluation_noise_sha256"] == seeds[1]["evaluation_noise_sha256"]
++    for seed in seeds:
++        for name in diagnostic.ARMS:
++            assert [c["update"] for c in seed["arms"][name]["checkpoints"]] == [0, 1, 2, 3]
++
++
++@pytest.mark.parametrize("where", ["repo", "goal", "output"])
++def test_stop_before_lock_load_or_write(sandbox, where):
++    sandbox[where].mkdir(parents=True, exist_ok=True)
++    marker = sandbox[where] / "STOP"
++    marker.write_text("preserve", encoding="utf-8")
++    result = run(sandbox["output"])
++    assert result["status"] == "stopped" and sandbox["calls"] == []
++    assert marker.read_text() == "preserve"
++    assert not (sandbox["output"] / "runner.lock").exists()
++
++
++@pytest.mark.parametrize("race", ["stop", "occupied"])
++def test_lock_races_rechecked_before_load_or_write(sandbox, monkeypatch, race):
++    lock = diagnostic.exclusive_run
++
++    @contextmanager
++    def raced(output):
++        with lock(output):
++            (output / ("STOP" if race == "stop" else "old.json")).write_text("keep", encoding="utf-8")
++            yield
++
++    monkeypatch.setattr(diagnostic, "exclusive_run", raced)
++    if race == "stop":
++        assert run(sandbox["output"])["status"] == "stopped"
++    else:
++        with pytest.raises(FileExistsError):
++            run(sandbox["output"])
++    assert sandbox["calls"] == []
++    assert not (sandbox["output"] / "settings.json").exists()
++
++
++@pytest.mark.parametrize("where", ["repo", "goal", "output"])
++def test_stop_between_arms_prevents_later_steps_and_all_writes(sandbox, monkeypatch, where):
++    step = critic.critic_step
++    calls = []
++    written_before_stop = {}
++
++    def stopping(*args):
++        result = step(*args)
++        calls.append(1)
++        written_before_stop.update({p.name: p.read_bytes() for p in sandbox["output"].glob("*.json")})
++        (sandbox[where] / "STOP").touch()
++        return result
++
++    monkeypatch.setattr(critic, "critic_step", stopping)
++    assert run(sandbox["output"])["status"] == "stopped"
++    assert len(calls) == 1
++    assert {p.name: p.read_bytes() for p in sandbox["output"].glob("*.json")} == written_before_stop
++    assert not (sandbox["output"] / "completion.json").exists()
++
++
++@pytest.mark.parametrize("when", ["load", "final_status", "final_identity"])
++def test_stop_during_load_and_before_completion(sandbox, monkeypatch, when):
++    if when == "load":
++        load = diagnostic.load_base
++
++        def changed():
++            value = load()
++            (sandbox["goal"] / "STOP").touch()
++            return value
++
++        monkeypatch.setattr(diagnostic, "load_base", changed)
++    elif when == "final_status":
++        writer = diagnostic.json_save
++
++        def changed(path, value):
++            writer(path, value)
++            if path.name == "status.json" and value.get("status") == "verifying":
++                (sandbox["goal"] / "STOP").touch()
++
++        monkeypatch.setattr(diagnostic, "json_save", changed)
++    else:
++        capture = diagnostic.capture_identity
++        calls = []
++
++        def changed(stop):
++            value = capture(stop)
++            calls.append(1)
++            if len(calls) == 3:
++                (sandbox["goal"] / "STOP").touch()
++            return value
++
++        monkeypatch.setattr(diagnostic, "capture_identity", changed)
++    assert run(sandbox["output"])["status"] == "stopped"
++    assert not (sandbox["output"] / "completion.json").exists()
++    if when == "load":
++        assert not (sandbox["output"] / "settings.json").exists()
++
++
++@pytest.mark.parametrize("entry", ["old.json", "completion.json", "runner.lock", "file"])
++def test_nonempty_output_never_overwritten(sandbox, entry):
++    output = sandbox["output"]
++    if entry == "file":
++        output.write_text("keep", encoding="utf-8")
++        path = output
++    else:
++        output.mkdir()
++        path = output / entry
++        path.write_text("keep", encoding="utf-8")
++    with pytest.raises(FileExistsError):
++        run(output)
++    assert sandbox["calls"] == [] and path.read_text() == "keep"
++
++
++def test_empty_output_allowed_and_existing_lock_is_exclusive(sandbox, tmp_path):
++    sandbox["output"].mkdir()
++    assert run(sandbox["output"])["status"] == "completed"
++    with diagnostic.exclusive_run(tmp_path):
++        with pytest.raises(OSError):
++            with diagnostic.exclusive_run(tmp_path):
++                pytest.fail("Second lock admitted")
++
++
++@pytest.mark.parametrize("which", ["source", "input", "projection"])
++@pytest.mark.parametrize("when", ["load", "step"])
++def test_source_input_completion_changes_rejected(sandbox, monkeypatch, which, when):
++    module, name = (diagnostic, "load_base") if when == "load" else (critic, "critic_step")
++    original = getattr(module, name)
++
++    def changed(*args):
++        result = original(*args)
++        sandbox["files"][which].write_text("changed", encoding="utf-8")
++        return result
++
++    monkeypatch.setattr(module, name, changed)
++    with pytest.raises(ValueError, match="identity changed"):
++        run(sandbox["output"])
++    assert read(sandbox["output"] / "status.json")["status"] == "failed"
++    assert not (sandbox["output"] / "completion.json").exists()
++
++
++@pytest.mark.parametrize("which", ["model", "learner"])
++def test_final_verification_rechecks_original_state(sandbox, learner, monkeypatch, which):
++    capture = diagnostic.capture_identity
++    calls = []
++
++    def changed(stop):
++        result = capture(stop)
++        calls.append(1)
++        if len(calls) == 3:
++            if which == "model":
++                sandbox["model"]["metadata"].append("late change")
++            else:
++                with torch.no_grad():
++                    next(learner.critics.parameters()).add_(1)
++        return result
++
++    monkeypatch.setattr(diagnostic, "capture_identity", changed)
++    with pytest.raises(ValueError, match="Original learner/model changed"):
++        run(sandbox["output"])
++    assert not (sandbox["output"] / "completion.json").exists()
++
++
++def test_final_identity_rng_work_is_also_preserved(sandbox, monkeypatch):
++    capture = diagnostic.capture_identity
++    before = terminal.global_rng_fingerprint()
++
++    def consuming(stop):
++        result = capture(stop)
++        random.random()
++        np.random.random()
++        torch.rand(1)
++        return result
++
++    monkeypatch.setattr(diagnostic, "capture_identity", consuming)
++    result = run(sandbox["output"])
++    assert result["status"] == "completed"
++    assert terminal.global_rng_fingerprint() == before == result["global_rng_after"]
++
++
++@pytest.mark.parametrize("bad", ["parameter", "gradient", "post_parameter", "adam", "target", "loss"])
++def test_nonfinite_checks_prevent_completion_and_restore_rng(sandbox, monkeypatch, bad):
++    clone = diagnostic.clone_arms
++    rng = terminal.global_rng_fingerprint()
++    before_steps = []
++
++    def poison(original):
++        arms = clone(original)
++        value = arms["uniform"]
++        parameter = next(value.critics.parameters())
++        if bad == "parameter":
++            with torch.no_grad():
++                parameter.fill_(float("nan"))
++        elif bad == "gradient":
++            parameter.register_hook(lambda grad: torch.full_like(grad, float("nan")))
++            value.critic_optimizer.register_step_pre_hook(lambda *args: before_steps.append(1))
++            value.critic_optimizer.register_step_post_hook(lambda *args: pytest.fail("Bad gradient reached Adam"))
++        elif bad == "loss":
++            for q in value.critics:
++                with torch.no_grad():
++                    q[-1].bias.fill_(1e30)
++        else:
++            def after_step(*args):
++                with torch.no_grad():
++                    if bad == "post_parameter":
++                        parameter.fill_(float("inf"))
++                    elif bad == "target":
++                        next(value.critic_targets.parameters()).fill_(float("inf"))
++                    else:
++                        value.critic_optimizer.state[parameter]["exp_avg"].fill_(float("nan"))
++                random.random()
++                np.random.random()
++                torch.rand(1)
++            value.critic_optimizer.register_step_post_hook(after_step)
++        return arms
++
++    monkeypatch.setattr(diagnostic, "clone_arms", poison)
++    with pytest.raises(ValueError, match="[Nn]onfinite|Out of range float"):
++        run(sandbox["output"])
++    assert terminal.global_rng_fingerprint() == rng
++    assert not (sandbox["output"] / "completion.json").exists()
++    assert not list(sandbox["output"].glob("*.pt"))
++    assert read(sandbox["output"] / "status.json")["status"] == "failed"
++    if bad == "gradient":
++        assert before_steps == [1]
++
++
++@pytest.mark.parametrize("which", ["actor", "actor_target", "actor_optimizer", "original_model", "original_learner"])
++def test_mutation_guards(sandbox, learner, monkeypatch, which):
++    step = critic.critic_step
++
++    def changed(value, *args):
++        result = step(value, *args)
++        with torch.no_grad():
++            if which == "actor_optimizer":
++                next(iter(value.actor_optimizer.state.values()))["exp_avg"].add_(1)
++            elif which == "original_model":
++                sandbox["model"]["metadata"].append("changed")
++            elif which == "original_learner":
++                next(learner.actor.parameters()).add_(1)
++            else:
++                next(getattr(value, which).parameters()).add_(1)
++        return result
++
++    monkeypatch.setattr(critic, "critic_step", changed)
++    with pytest.raises(ValueError, match="changed"):
++        run(sandbox["output"])
++    assert not (sandbox["output"] / "completion.json").exists()
++
++
++@pytest.fixture
++def provenance(tmp_path, monkeypatch):
++    repo = tmp_path / "repository"
++    base = repo / "base"
++    here = repo / "work/audit"
++    common = repo / "work/recovery/common.py"
++    monkeypatch.setattr(diagnostic, "REPO", repo)
++    monkeypatch.setattr(diagnostic, "BASE", base)
++    monkeypatch.setattr(diagnostic, "HERE", here)
++    monkeypatch.setattr(terminal.common, "__file__", str(common))
++    completion = tmp_path / "projection.json"
++    monkeypatch.setattr(diagnostic, "PROJECTION", completion)
++    for path in diagnostic.input_paths():
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_bytes(b"synthetic bytes only")
++    source_paths = [here / "terminal_quota_brief.md", here / "projection_audit.py", common]
++    source_paths += [repo / "work/sdmpc_rl_multi_20260929" / name for name in
++                     ("td3.py", "run_budget.py", "budget_runtime.py", "freeze_runtime.py")]
++    for path in source_paths:
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_text("synthetic source", encoding="utf-8")
++    digest = diagnostic.file_hash(base / "train_round1/model_final.pt")
++    monkeypatch.setattr(diagnostic, "BASE_HASH", digest)
++    identity = dict(source_sha256={}, base_source_pins={"synthetic": "pins"}, runtime={"versions": {"test": "1"}})
++    monkeypatch.setattr(terminal, "capture_identity", lambda stop: deepcopy(identity))
++    payload = dict(status="completed", settings=dict(base_sha256=digest,
++                   input_sha256={str(p.relative_to(repo)): diagnostic.file_hash(p) for p in diagnostic.input_paths()},
++                   source_sha256={str(p.relative_to(repo)): diagnostic.file_hash(p) for p in (here / "projection_audit.py", common)},
++                   contract=dict(source_pins=identity["base_source_pins"], runtime_versions=identity["runtime"]["versions"])))
++    completion.write_text(json.dumps(payload), encoding="utf-8")
++    return dict(completion=completion, payload=payload, sources=source_paths, base=base)
++
++
++def test_real_manifest_verifier_with_73_synthetic_files(provenance):
++    before = diagnostic.capture_identity(lambda: None)
++    assert len(before["projection_input_sha256"]) == 73
++    assert before == diagnostic.capture_identity(lambda: None)
++    assert before["projection_completion"]["sha256"] == diagnostic.file_hash(provenance["completion"])
++    assert str(Path(critic.__file__)) in before["source_sha256"]
++    assert str(Path(terminal.__file__)) in before["source_sha256"]
++    assert str(Path(diagnostic.__file__)) in before["source_sha256"]
++
++
++@pytest.mark.parametrize("bad", ["status", "base", "missing", "extra", "substituted_path", "input",
++                                "projection_source", "source_manifest", "contract", "completion_race"])
++def test_projection_authentication_fails_closed(provenance, monkeypatch, bad):
++    payload = provenance["payload"]
++    settings = payload["settings"]
++    if bad == "status":
++        payload["status"] = "failed"
++    elif bad == "base":
++        settings["base_sha256"] = "wrong"
++    elif bad == "missing":
++        settings["input_sha256"].pop(next(iter(settings["input_sha256"])))
++    elif bad in ("extra", "substituted_path"):
++        if bad == "substituted_path":
++            settings["input_sha256"].pop(next(iter(settings["input_sha256"])))
++        settings["input_sha256"]["unexpected"] = "wrong"
++    elif bad == "input":
++        diagnostic.input_paths()[5].write_bytes(b"changed")
++    elif bad == "projection_source":
++        provenance["sources"][1].write_text("changed", encoding="utf-8")
++    elif bad == "source_manifest":
++        settings["source_sha256"] = {}
++    elif bad == "contract":
++        settings["contract"]["runtime_versions"] = {}
++    else:
++        original = diagnostic.file_hash
++
++        def changed(path):
++            if path == provenance["completion"]:
++                path.write_text("{}", encoding="utf-8")
++            return original(path)
++
++        monkeypatch.setattr(diagnostic, "file_hash", changed)
++    provenance["completion"].write_text(json.dumps(payload), encoding="utf-8")
++    with pytest.raises(ValueError):
++        diagnostic.capture_identity(lambda: None)
++
++
++def test_json_nan_rejected_before_atomic_writer(tmp_path):
++    path = tmp_path / "output.json"
++    diagnostic.json_save(path, dict(value=1))
++    previous = path.read_bytes()
++    with pytest.raises(ValueError):
++        diagnostic.json_save(path, dict(value=float("nan")))
++    assert path.read_bytes() == previous
++    assert not path.with_suffix(".json.tmp").exists()
++
++
++@pytest.mark.parametrize("uniform,quota,passes", [([10., 12.], [4., 5.], True),
++                                               ([10., 12.], [5., 6.], False),
++                                               ([2., 20.], [3., 4.], False),
++                                               ([5., 6.], [4., 5.], False)])
++def test_predeclared_criterion(uniform, quota, passes):
++    seeds = [dict(arms={name: dict(checkpoints=[dict(terminals=dict(aggregate=dict(min_q=dict(mae=values[i]))))])
++                       for name, values in zip(diagnostic.ARMS, (uniform, quota))}) for i in range(2)]
++    result = diagnostic.interpretation(seeds)
++    assert result["supports_sampling_hypothesis"] is passes
++    assert result["initial_threshold"] == 5.701837813854217
++
++
++def test_fixed_cli_only_output(tmp_path, monkeypatch, capsys):
++    assert diagnostic.SEEDS == (6529, 6530)
++    assert diagnostic.UPDATES == 3750 and diagnostic.LOG_UPDATES == (0, 375, 750, 1500, 3750)
++    calls = []
++    monkeypatch.setattr(diagnostic, "run_diagnostic", lambda output, **kwargs:
++                        calls.append((output, kwargs)) or dict(status="completed"))
++    output = tmp_path / "output"
++    assert diagnostic.main(["--output", str(output)]) == 0
++    assert calls == [(output, dict(command=[sys.executable, str(Path(diagnostic.__file__).resolve()),
++                                          "--output", str(output)]))]
++    for option in ("--updates", "--seed", "--seeds", "--log-updates", "--resume", "--tau", "--model", "--out"):
++        with pytest.raises(SystemExit) as exc:
++            diagnostic.main(["--output", str(output), option, "1"])
++        assert exc.value.code == 2
++    assert len(calls) == 1
++    capsys.readouterr()
+diff --git a/docs/rl_budget_value_audit_results_20260930.md b/docs/rl_budget_value_audit_results_20260930.md
+new file mode 100644
+index 0000000..0f02fc8
+--- /dev/null
++++ b/docs/rl_budget_value_audit_results_20260930.md
+@@ -0,0 +1,243 @@
++# Balanced shared RL: value audit results
++
++Status: active goal NOT achieved. These are training-data diagnostics, not new
++traffic evaluations or a replacement deployable policy. See
++`rl_budget_balanced_goal_20260930.md` for the five-scenario success contract.
++
++## Evidence identity
++
++- Base: `results/sdmpc_rl_multi_20260929/pilot_v1/train_round1/model_final.pt`,
++  SHA-256 `3dd1c06786e8d9ee62da355bdb17ac025290bef8b6d20c863b421a86488d5650`.
++- Replay: 750 sequential transitions, two complete 75-step exploratory episodes
++  per scenario, ten true terminals. No evaluation observations were consumed.
++- Diagnostic code: `work/sdmpc_rl_value_audit_20260930`.
++- Output: `results/sdmpc_rl_balanced_goal_20260930/value_audit_v1`.
++- Prior source, model, replay and results preserved. No policy weights exported.
++- Terminal fit: 46 synthetic tests passed in 4.66 s; independent specification
++  and quality review passed before execution.
++- Projection audit: initial review identified four defects. Fixes added input
++  manifests, collection provenance binding, lock-held STOP/output checks and
++  float32 alias deduplication. 48 tests passed in 22.78 s, then independent
++  scoped re-review passed. Production run completed afterward.
++
++## Terminal-only fit
++
++Command (repo root, local CPU runtime):
++
++```powershell
++.venv-torch/Scripts/python.exe -B -u work/sdmpc_rl_value_audit_20260930/terminal_fit.py --output results/sdmpc_rl_balanced_goal_20260930/value_audit_v1/terminal_fit
++```
++
++PID 44240, exit 0. Started 2026-09-30 02:21:09.594 KST, ended
++02:21:37.369 KST, approximately 27.775 s. One numerical thread. Each fit used
++one terminal from each scenario per update, 1000 updates, equal 20% sampling.
++The other collection round was a diagnostic holdout, then the folds reversed.
++Targets were the actual immediate rewards `-interval_TTT/100`, with no bootstrap.
++Both critics trained; the original actor, optimizer and original learner stayed
++unchanged. Two arms used copied original critics or fresh critics; both used
++fresh Adam. These diagnostic copies were not exported.
++
++| Train round | Critics | Train min-Q MAE | Holdout min-Q MAE | Train Q1 max error | Train Q2 max error |
++| --- | --- | ---: | ---: | ---: | ---: |
++| 0 | Original | 0.007843 | 1.089069 | 0.018877 | 0.007366 |
++| 0 | Fresh | 0.000402 | 1.565513 | 0.000657 | 0.000940 |
++| 1 | Original | 0.025830 | 1.043060 | 0.055979 | 0.067630 |
++| 1 | Fresh | 0.157259 | 3.250172 | 0.362521 | 0.403691 |
++
++Original min-Q MAE across all ten terminals was 5.701837813854217 reward units.
++Only the fresh round-0 fit met the descriptive maximum-error <=0.01 criterion
++for BOTH critics. Do not report that every fit passed that criterion.
++
++Train errors fell substantially without bootstrapping. This establishes that
++the present architecture can fit at least one five-terminal fold accurately;
++it does not establish that capacity/optimization is adequate everywhere. The
++round-1 residual and diagnostic holdout errors remain material. The original
++critics had already seen both rounds during TD3 training, so their holdout is
++only held out of these EXTRA supervised updates. Five holdout points cannot
++establish generalization. Changing targets, sample distribution and Adam state
++together prevents assigning the original failure solely to bootstrapping.
++
++A read-only geometry probe found ten distinct terminal inputs (minimum pairwise
++L2 distance 1.0082534083450432). Each five-row augmented input matrix had rank
++five; smallest singular values were 1.2820072720207085 and 0.5735807086447285.
++Exact duplicate inputs with conflicting terminal targets do not explain these
++particular fitting residuals. This does not prove Markov sufficiency.
++
++Completion confirms input/source/runtime, original learner/model and global RNG
++immutability. Completion SHA-256:
++`b7baba1b26cff5d7a460c4ecc6ff0d561c1d1ede80cf7ea213113582395142d2`.
++Executed source SHA-256:
++`07251732bd66b27c5315f580ab4de1f79bdd4f1943a1ec5c33bdd5e821443ba2`.
++
++## Replay and projection consistency
++
++```powershell
++.venv-torch/Scripts/python.exe -B -u work/sdmpc_rl_value_audit_20260930/projection_audit.py --output results/sdmpc_rl_balanced_goal_20260930/value_audit_v1/projection
++```
++
++PID 39672, exit 0, elapsed 10.1953 s. All 750 saved transitions matched their
++authenticated collection traces exactly at the stored dtype. Checks covered:
++
++- Terminal flags only at each episode's final control interval, with zero
++  terminal next observation and exact nonterminal observation chaining.
++- Control indices, simulation clock, remaining horizon, previous requested
++  and executed budgets, action anchors and projected requests.
++- Reward equal to negative actual interval TTT divided by 100.
++- Collection order and provenance matching the frozen final model, physical
++  configuration/options/source/runtime contract and 73 input files unchanged.
++
++The same saved training state can admit several nominal positive NUF actions
++that clip to exactly the same request. Found 59 such states and 177 groups
++(three NP settings per state). All 177 groups had twin-Q spread above 1e-6.
++
++| Quantity | Q1 | Q2 |
++| --- | ---: | ---: |
++| Mean within-alias spread | 0.002508418 | 0.006914283 |
++| Maximum within-alias spread | 0.011645973 | 0.021507502 |
++
++Each group contains distinct float32 action inputs whose physical budget
++transform is identical. This violates action equivalence in the learned value
++representation. The measured spread is much smaller than the observed terminal
++calibration error, so this evidence does NOT establish the dominant cause of
++the policy's poor TTT. No counterfactual follower rollout was executed; equality
++is justified by the physical controller consuming the projected request, not
++the otherwise unused nominal action. Different projected requests can still
++produce identical follower decisions; that larger quotient was not measured.
++
++Completion SHA-256:
++`b6fabf1ccaa095fed6b5bcb33dea88cf7f39de4a419ed41b2459a940db6857d3`.
++Executed source SHA-256:
++`ab3787b94c8bbc4a1e76a9d04b942159a01c6753b292b6d6f5d9c21a256b86db`.
++
++## Next single-factor experiment
++
++The saved exploratory collection also has a severe reached-state imbalance.
++Summary/trace readback (training profiles, NOT canonical evaluation scores):
++
++| Scenario | Round-0 TTT | Round-1 TTT | Round-1 NUF request zero /75 | Round-1 terminal inventory |
++| --- | ---: | ---: | ---: | ---: |
++| 155 | 7016.750 | 30904.752 | 69 | 15724.198 |
++| 170 | 16104.856 | 32593.523 | 68 | 16442.593 |
++| 170 incident | 15512.497 | 32863.935 | 69 | 16491.151 |
++| 170 skew | 12206.697 | 32744.191 | 69 | 16458.341 |
++| 190 | 27230.374 | 36676.693 | 69 | 18153.082 |
++
++Every round uses authenticated but perturbed training demand profiles. These
++TTTs must not be divided by canonical center scores to claim matched policy
++degradation. They do show that uniform SCENARIO counts alone do not provide
++balanced coverage of useful and failed traffic states. A zero requested NUF
++is not asserted to equal zero actual metering without a separate control audit.
++Round-1 mean nominal NUF actions range -0.815 to -0.921. Collecting more under
++that same saturated actor would extend a predominantly failed region rather
++than supply missing near-center state/action comparisons.
++
++There is also a collection-design issue worth isolating next. Actions are
++budget INCREMENTS from the previous executed budget, not absolute budget
++levels. Without clipping/recovery, zero-mean independent action noise gives
++`B_t = B_0 + sum(scale * action_i)`, a budget random walk rather than local
++exploration around the carry center. Upper clipping further makes positive
++and negative NUF disturbances asymmetric near 6000. The original first-round
++collector used 32 uniform [-1,1] steps followed by Gaussian action noise with
++standard deviation .3. Its first 32 unbounded NUF increments alone have a
++nominal standard deviation `1000 * sqrt(32/3)`, approximately 3266 budget units.
++Actual clipping/recovery changes that distribution; this calculation is not
++a prediction of TTT. It explains why centered nominal noise is not evidence
++of near-center state coverage.
++
++A future small training-only wave should compare local budget-level or
++mean-reverting exploration with the existing incremental random walk, under
++matched perturbed demand. Preserve the external previous-executed-budget
++action interface and physical constraints. Log requested AND executed offsets,
++guard rebasing, cumulative drift, terminal inventory and all intervals. Do not
++reuse canonical evaluation states as training data. Do not treat an observed
++return under a chosen continuation as an unconditional optimal-action label.
++
++Hypothesis: sparse terminal exposure contributes to boundary-value drift under
++the continuing TD objective. Terminal rows are only 10/750 (1.333%) of replay.
++Compare original uniform replay with a quota arm that replaces one of eight
++draws per scenario by a terminal draw, retaining the other seven unchanged.
++All five scenarios still supply exactly 20% of every batch. Keep checkpoint,
++optimizer state, reward, gamma, actor, target-update cadence and smoothing noise
++matched. Two fixed seeds, 3750 updates per arm, one CPU thread, no policy export.
++
++Predeclared support criterion: quota final min-Q terminal MAE below uniform in
++both seeds, pooled MAE at least 50% lower than uniform, and below the initial
++5.701837813854217 in both seeds. This is NOT policy admission. Behavior returns
++provide descriptive trajectory discrepancies, not fixed-policy ground truth.
++Do not deploy the old saturated actor even if this diagnostic passes.
++
++Implementation requirements: `work/sdmpc_rl_value_audit_20260930/terminal_quota_brief.md`.
++Tests and independent review must precede production execution. No expensive
++new traffic batch has been selected at this stage; choose the next bounded
++learning/collection change from the diagnostic result, keeping the already
++authorized overall five-scenario goal active. New collection must address
++near-center sequential state coverage, rather than reuse the saturated actor.
++
++## Terminal-quota ablation: completed
++
++The predeclared experiment above subsequently passed 64 synthetic tests in
++16.38 s and independent specification/quality review. Executed once:
++
++```powershell
++.venv-torch/Scripts/python.exe -B -u work/sdmpc_rl_value_audit_20260930/terminal_quota.py --output results/sdmpc_rl_balanced_goal_20260930/value_audit_v1/terminal_quota_v1
++```
++
++Console redirected to the sibling `terminal_quota_v1.console.log`. PID 31648,
++start 2026-09-30 02:53:12.752 KST, end 02:58:13.891 KST, exit 0, elapsed
++301.1386 s. One CPU numerical worker, four sequential arm/seed fits, no new
++plant transitions, actor updates or weights export. Each arm/seed completed
++3750 critic and 1875 target updates, drawing 30000 samples per scenario.
++
++| Seed | Uniform terminal min-Q MAE | Quota terminal min-Q MAE | Quota maximum terminal error |
++| --- | ---: | ---: | ---: |
++| 6529 | 41.579805 | 4.500399 | 10.770208 |
++| 6530 | 41.308354 | 2.893314 | 7.668707 |
++| Pooled mean | 41.444080 | 3.696857 | Not pooled |
++
++All three predeclared criteria passed. The pooled error is 91.08% lower than
++uniform after the same update budget, but only 35.16% lower than the INITIAL
++5.701838. Neither percentage is a traffic/TTT improvement. Original model,
++learner, global RNG, input/source/runtime hashes, and frozen arm actor states
++remained unchanged. Actual terminal draws were 370-427 per scenario under
++uniform, versus 4077-4131 under quota, with the same 30000 total draws each.
++
++This supports insufficient boundary exposure as a contributing cause under
++this replay and fixed actor. It does not make the critic calibrated enough to
++deploy. For example, quota seed6529 still predicts -18.594698 for the round-1
++155 terminal whose exact reward is -7.824490. Its maximum terminal error is
++worse than the original maximum 8.640768, despite better mean error. Curves are
++nonmonotonic; no checkpoint was chosen by inspecting them.
++
++Mean TD residual loss across equal-sized scenario/time groups at final update:
++
++| Seed/arm | Early 0-24 | Middle 25-49 | Late 50-74 |
++| --- | ---: | ---: | ---: |
++| 6529 uniform | 1.2593 | 1.2651 | 180.2742 |
++| 6529 quota | 6.4859 | 9.0614 | 30.9332 |
++| 6530 uniform | 1.5446 | 1.5359 | 175.3442 |
++| 6530 quota | 5.2893 | 5.7028 | 37.0923 |
++
++Boundary emphasis trades higher early/middle residual for lower late residual.
++These are each arm's OWN learned-target residuals, not errors against a common
++true value function. The observed-behavior return gap remains large (mean
++127.5-130.2 across all rows, in reward units), but behavior continuation differs
++from the fixed target actor, so this cannot be interpreted as a Q-error label.
++
++Source SHA-256:
++`837c237e91872bd7fed53929dcbbf536aa60dbe5f8ce54ccb4404bfe54c35c3e`.
++Completion SHA-256:
++`05207dd42b86f284321396449272728b921367c6fce66d83c9041afbd7fa738b`.
++Settings SHA-256:
++`f90fa669d54cc0c49ab9cb88b19cd40f06048f413f33ece996a4ca82972ffbf7`.
++Metrics SHA-256:
++`6c6d61ca508e64feb5cc9b147fda0efd75a6b9d5396c476c76d8d691622fd8e5`.
++
++Use `completion.json` as authoritative. The diagnostic intentionally leaves
++`status.json` at `verifying` after success so completion is its final write.
++The process has exited; do not mistake that status for an active worker or rerun
++this completed experiment. Preserve all curves and both seeds, not only averages.
++
++Next: implement/test the bounded training-data collection in
++`rl_budget_local_collection_plan_20260930.md`. Keep terminal quota as a supported
++candidate component, not a complete remedy. No new frozen policy qualifies for
++five-scenario acceptance yet; the app goal and three-hour heartbeat remain active.
+diff --git a/docs/rl_budget_local_collection_plan_20260930.md b/docs/rl_budget_local_collection_plan_20260930.md
+new file mode 100644
+index 0000000..d36fbeb
+--- /dev/null
++++ b/docs/rl_budget_local_collection_plan_20260930.md
+@@ -0,0 +1,97 @@
++# Next bounded stage: near-center training coverage
++
++Status: implementation pending; NO collector launched by this plan. This is the
++next authorized stage of `rl_budget_balanced_goal_20260930.md`, not a new goal.
++Read `rl_budget_value_audit_results_20260930.md` first. Do not repeat its finished
++diagnostics or export their diagnostic critic copies.
++
++## Falsifiable hypothesis
++
++Current balanced replay is balanced by scenario, but its second round has zero
++NUF requests in 68-69 of 75 intervals per scenario. Incremental action noise
++can cause a budget random walk. A small budget-level mean-reverting exploration
++wave around a training carry-center can add local state/action coverage with
++less cumulative drift, without changing the physical follower or reward.
++
++The terminal-quota ablation supports increasing boundary exposure, but still
++has large errors and does not justify deploying the saturated actor. Address
++the missing state distribution next, rather than perform another arbitrary
++critic-update sweep or long collection under that actor.
++
++## Fixed collection scope
++
++- New versioned implementation directory `work/sdmpc_rl_local_20260930` and
++  result root `results/sdmpc_rl_balanced_goal_20260930/local_budget_v1`.
++- Freeze the existing physical snapshot and previous-executed-budget interface,
++  action scales [50,1000], reward -interval_TTT/100, gamma=1, five warmup and
++  75 actual sequential intervals to 14400 seconds, physical feasibility guard,
++  initial/recovery PFO, and all demand/accounting contracts.
++- Two TRAINING trajectories per scenario: zero-action carry behavior and a
++  local exploratory behavior, paired on the same perturbed training profile.
++  Use training demand seeds 6801 through 6805 in the established scenario order;
++  verify they do not identify an already completed collection under this new
++  contract. Never use canonical evaluation profiles or observations for fitting.
++- Use distinct behavior/run identities even though paired demand seeds match.
++  The old trainer's (scenario,seed) uniqueness assumption cannot be reused
++  blindly: preserve explicit scenario, demand seed, behavior, run ID, profile,
++  source/runtime and experience hashes. Do not weaken old validators in place.
++- No online learning during these trajectories. They are collection runs, not
++  evaluations of an improved RL policy. Ten complete runs at most, 750 new
++  transitions total, 150 per scenario. At most five one-thread collectors at a
++  time (below the total eight-worker budget); run the carry wave then the local
++  wave, with durable per-interval checkpoints and no duplicate work.
++
++## Local exploration rule
++
++This rule is a data-collection policy, not a performance fallback or evaluator:
++
++1. Initialize a local base budget from the environment's actual first action
++   anchor, not from saved canonical evaluation data. Local offset starts zero.
++2. Draw two independent standard-normal values from a local RNG with seeds
++   6901 through 6905 by scenario. Target offset is
++   `clip(0.8 * previous_realized_offset + [10,100] * noise,
++   [-50,-500], [50,500])`, in physical NP/NUF budget units.
++3. Add offset to the base and apply the unchanged NUF capacity projection.
++   Convert that desired budget to the existing incremental action using the
++   current ACTUAL previous-executed-budget anchor and [50,1000] scales, then
++   clip the action to [-1,1]. The environment remains the sole physical executor.
++4. After execution, record actual offset `executed_budget - base`. On an
++   explicitly logged physical fallback/reference recovery, rebase to that
++   actual executed budget and reset offset zero. Resolve exact existing trace
++   flag names in implementation; do not use a TTT comparison to trigger rebase.
++5. Keep requested/realized offsets, projection, action-rate limiting, actual
++   execution and rebase cause in the trace. A clipped positive NUF request at
++   capacity must not accumulate fictitious positive exploration state.
++
++Tests must prove the rule from actual anchors, zero-noise mean reversion, both
++capacity boundaries, action-rate limits, guard rebasing, deterministic resume,
++and absence of extra PFO calls, candidate previews or evaluation-state access.
++Independent review must precede production collection. Existing completed
++code/configurations remain immutable; reuse read-only helpers where possible.
++
++## Readout before actor training
++
++Authenticate complete paired profiles/trajectories, reward, terminal flags,
++inventory, source/runtime and STOP/process identity as in the previous audits.
++Compare each exploratory run to its SAME-PROFILE training carry run, not the
++canonical center numbers. Report TTT, interval losses, inventories, requested
++and actual budget drift, zero NUF requests, physical fallbacks, response/control
++diversity, and full measured runtime. Do not label a continuation's observed
++return as unconditional action truth or call the training comparison acceptance.
++
++Predeclared collection-design screen (not a success target): in every scenario,
++exploration should have no more than five additional zero-NUF-request intervals
++and terminal inventory no greater than 1.25 times its paired training center
++(with denominator floor one). Report the actual numbers even if the screen
++fails. If it fails, retain the data and diagnose the rule before collecting more;
++do not train the actor blindly on another collapsed batch. If it passes, this
++only supports near-center coverage. It says nothing about improved optimal Q.
++
++After this screen, implement the smallest justified shared learner revision:
++preserve exactly 20% scenario sampling; incorporate terminal exposure with
++full error reporting; enforce budget-projection consistency in critic inputs;
++address initialization/actor extrapolation using the new sequential data.
++Specify and test that learner before training or exporting it. Evaluate one
++frozen admitted candidate over all five CANONICAL full runs, then return to the
++main goal's diagnosis/reproduction loop. Do not silently convert this into five
++specialized policies or an average-only target. Goal remains active throughout.
