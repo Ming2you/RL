@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="3" time="0.362" timestamp="2026-09-30T08:24:28.784773+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_fix1_abort_precedes_actual_worker_death[nonzero_exit]" file="work\sdmpc_rl_nuf_retention_20260930\test_workflow.py" line="221" time="0.083"><properties><property name="abort_observations" value="[{&quot;first_worker&quot;: &quot;dead&quot;, &quot;released&quot;: [0], &quot;tick&quot;: 3}]" /><property name="launchers_drained" value="[false, true]" /></properties><failure message="AssertionError: assert [{'first_work...], 'tick': 3}] == [{'first_work...], 'tick': 0}]&#10;  &#10;  At index 0 diff: {'tick': 3, 'first_worker': 'dead', 'released': [0]} != {'tick': 0, 'first_worker': 'live', 'released': []}&#10;  Use -v to get more diff">work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:306: in test_fix1_abort_precedes_actual_worker_death
+    assert aborts == [dict(tick=0 if trigger == "nonzero_exit" else 1,
+E   AssertionError: assert [{'first_work...], 'tick': 3}] == [{'first_work...], 'tick': 0}]
+E     
+E     At index 0 diff: {'tick': 3, 'first_worker': 'dead', 'released': [0]} != {'tick': 0, 'first_worker': 'live', 'released': []}
+E     Use -v to get more diff</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_fix1_abort_precedes_actual_worker_death[sibling_stop]" file="work\sdmpc_rl_nuf_retention_20260930\test_workflow.py" line="221" time="0.086"><properties><property name="abort_observations" value="[{&quot;first_worker&quot;: &quot;dead&quot;, &quot;released&quot;: [0], &quot;tick&quot;: 4}]" /><property name="launchers_drained" value="[false, true]" /></properties><failure message="AssertionError: assert [{'first_work...], 'tick': 4}] == [{'first_work...], 'tick': 1}]&#10;  &#10;  At index 0 diff: {'tick': 4, 'first_worker': 'dead', 'released': [0]} != {'tick': 1, 'first_worker': 'live', 'released': []}&#10;  Use -v to get more diff">work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:306: in test_fix1_abort_precedes_actual_worker_death
+    assert aborts == [dict(tick=0 if trigger == "nonzero_exit" else 1,
+E   AssertionError: assert [{'first_work...], 'tick': 4}] == [{'first_work...], 'tick': 1}]
+E     
+E     At index 0 diff: {'tick': 4, 'first_worker': 'dead', 'released': [0]} != {'tick': 1, 'first_worker': 'live', 'released': []}
+E     Use -v to get more diff</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_fix1_abort_precedes_actual_worker_death[sibling_failure]" file="work\sdmpc_rl_nuf_retention_20260930\test_workflow.py" line="221" time="0.067"><failure message="AssertionError: bounded synthetic drain must terminate&#10;assert 7 &lt;= 5">work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:280: in tick
+    assert ticks[0] &lt;= 5, "bounded synthetic drain must terminate"
+E   AssertionError: bounded synthetic drain must terminate
+E   assert 6 &lt;= 5
+
+During handling of the above exception, another exception occurred:
+work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:302: in test_fix1_abort_precedes_actual_worker_death
+    run_wave.run_stage(tmp_path, jobs[:2], IDENTITY, abort, jobs)
+work\sdmpc_rl_nuf_retention_20260930\run_wave.py:134: in run_stage
+    wait_worker_exit(output, token)
+work\sdmpc_rl_nuf_retention_20260930\run_wave.py:71: in wait_worker_exit
+    time.sleep(.1)
+work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:280: in tick
+    assert ticks[0] &lt;= 5, "bounded synthetic drain must terminate"
+E   AssertionError: bounded synthetic drain must terminate
+E   assert 7 &lt;= 5</failure></testcase></testsuite></testsuites>

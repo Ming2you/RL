@@ -1,0 +1,87 @@
+{
+  "format": "sdmpc-multi-final-review-v1",
+  "review_kind": "final_admission",
+  "status": "final",
+  "decision": "approved",
+  "reviewer": "Codex independent integration reviewer",
+  "source_pins": {
+    "snapshot_manifest_sha256": "07836ff139e2e2f9bf8db549d30b5dfba0e4f8c7478165315feef84ab5ed0005",
+    "frozen_file_count": 151,
+    "implementation": {
+      "budget_controller.py": "0402511ae8e965e315b4b9808e23bbdc9c2fd274666a983b2a3303e6b916f9c2",
+      "budget_env.py": "6ccb4ef400106e29282797ec5d69b7a8dbeee5a1310bd7d6f97b7c7e0c7ee2c4",
+      "budget_runtime.py": "6ae552bad2c092af9d2ab55b0c81e34558754861217fe427788820689800e9a6",
+      "build_preflight.py": "064d14ce37696f2565402d9d5956222a28c0bd65ee974a58ced334ebc0c66d24",
+      "compare_runs.py": "a659700dba89f08948e5817b4866e7256e36a1ae9e87cb9d1e64d6e8b746c738",
+      "freeze_runtime.py": "8a13455b1d87a117eec7f97786f7996786bf49c0d8aaef6e2a3ef8c1cca608ab",
+      "run_budget.py": "7524b335458753c15d7894e872f6bcc80056b7cc4c3756cf7728abdeb48e985e",
+      "run_pilot.py": "c2e184f02b93da06475d1ac905f4a888b68bff80e6e01e7f85019678135ae09f",
+      "run_tests.py": "5baf8cc7f833540a9fdd9009cb3ebf0e8f3018283b02fbebad96a39054f249e5",
+      "smoke_budget.py": "e389faa343082330fad571e7ef1a4d2ec212b4fad33b7e877d6a3edeb0dfb714",
+      "td3.py": "e27665133ccb3fac2b1769da1c93df73a60c73572fa4ccede24a1296292e2e8e",
+      "train_round.py": "c994f8d1bd10c065e6ad1e608cb2fec0df4016a47e255bcfe6388041105e6998"
+    }
+  },
+  "runtime_versions": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "torch": "2.14.0+cpu",
+    "PyYAML": "6.0.3"
+  },
+  "test_sha256": {
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_multi_20260929\\test_carry_controller.py": "78a6aa18c80eceb4938775b4bd82a898b1c0d70e3f137639e050836faf99e3cd",
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_multi_20260929\\test_carry_environment.py": "1625918062c962dba2fb188bfe2d152a1b8543b6d83710e404af7ae08026fe9d",
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_multi_20260929\\test_multi_contracts.py": "211f93fb19cc62b693b4ccfe4002b2e67a412278f5a57e763625961d7c080ed3",
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_multi_20260929\\test_multi_pilot.py": "b52e3471ea1d8a3dba0cd3c400e5e4c755453fec53579968dd03b2ac46507fdf",
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_multi_20260929\\test_multi_runner.py": "ad248a9dee999a2432cc5c0612f89e14348c28136cc3607df2a770fb564185c5",
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_multi_20260929\\test_td3.py": "18fbd3bc93534e1ed1dcf9218a3c6d114b0d760c0dee794f217fb392b689a3d0"
+  },
+  "evidence_sha256": {
+    "test_xml": "80872e1ac9b6a6090693fc25ef392680b2ad879f436a1024703dbdc67c2a0402",
+    "test_record": "0392ebbd56042f4bb27c8d703b52ebe1173f3e0f0ec365be1fd52a183d17440b",
+    "smoke:sweet_155_w": "b68748b64ed4f2726c981dca4977e99d0aacb129dd19c1a3640265faa47eda41",
+    "smoke:sweet_170_w": "5e25a6e99f3fc9cf9eba6e321e3ccdd42d8dc48dbdca54baed94d2124753a49e",
+    "smoke:sweet_170_incident_w": "3c3d9a1e65103f3ccf57af15b004d0af1b118d25f6fdf8987a6d982aba008c0e",
+    "smoke:sweet_170_skew15_w": "4b44ae3dd2c4d0abb72dd4c96e0ec8c07d761d77c1208557bbd6cc9de1477814",
+    "smoke:sweet_190_w": "739cc4aaa2eff4fff8118506b305c1e82d00e6f9e1e28022624961cedd5a0692",
+    "review_report": "00d06577e62e3d28c2289c94bc5bd0331c49ab4177a8bd952b3da096ee6ce520"
+  },
+  "smoke_runtime_versions": {
+    "sweet_155_w": {
+      "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+      "numpy": "2.3.5",
+      "scipy": "1.16.3",
+      "torch": "2.14.0+cpu",
+      "PyYAML": "6.0.3"
+    },
+    "sweet_170_w": {
+      "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+      "numpy": "2.3.5",
+      "scipy": "1.16.3",
+      "torch": "2.14.0+cpu",
+      "PyYAML": "6.0.3"
+    },
+    "sweet_170_incident_w": {
+      "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+      "numpy": "2.3.5",
+      "scipy": "1.16.3",
+      "torch": "2.14.0+cpu",
+      "PyYAML": "6.0.3"
+    },
+    "sweet_170_skew15_w": {
+      "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+      "numpy": "2.3.5",
+      "scipy": "1.16.3",
+      "torch": "2.14.0+cpu",
+      "PyYAML": "6.0.3"
+    },
+    "sweet_190_w": {
+      "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+      "numpy": "2.3.5",
+      "scipy": "1.16.3",
+      "torch": "2.14.0+cpu",
+      "PyYAML": "6.0.3"
+    }
+  }
+}

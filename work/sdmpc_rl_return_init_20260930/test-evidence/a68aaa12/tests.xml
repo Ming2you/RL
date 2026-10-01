@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.411" timestamp="2026-09-30T09:58:43.054050+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_return_init_20260930.test_return_init" name="test_final_publication_stop_resume_changed_process" time="0.334"><failure message="FileExistsError: Existing final candidate differs">work\sdmpc_rl_return_init_20260930\test_return_init.py:427: in test_final_publication_stop_resume_changed_process
+    outcome = runner.execute(tmp_path, small, config, True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_return_init_20260930\run.py:82: in execute
+    raise FileExistsError("Existing final candidate differs")
+E   FileExistsError: Existing final candidate differs</failure></testcase></testsuite></testsuites>

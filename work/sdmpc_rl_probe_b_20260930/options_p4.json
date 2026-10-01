@@ -1,0 +1,6 @@
+[
+  {"name": "np_feedback", "uq_on": 150.0, "uq_off": 100.0, "delta": 50.0, "margin": 30.0, "at": 1},
+  {"name": "np_feedback", "uq_on": 300.0, "uq_off": 150.0, "delta": 50.0, "margin": 30.0, "at": 1},
+  {"name": "np_feedback", "uq_on": 300.0, "uq_off": 150.0, "delta": 50.0, "margin": 30.0, "at": 14},
+  {"name": "np_bind", "np_delta": 50.0, "window": 10, "after": "return", "at": 16}
+]

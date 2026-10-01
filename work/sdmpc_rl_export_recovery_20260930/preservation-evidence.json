@@ -1,0 +1,1079 @@
+{
+  "scope": "Read-only preservation of v1/v2 code and cohort result files. No actual export or numerical run.",
+  "before_file_count": 214,
+  "after_file_count": 214,
+  "mismatches": [],
+  "missing": [],
+  "files": [
+    {
+      "path": "work/sdmpc_rl_local_20260930/collect.py",
+      "before_sha256": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1",
+      "after_sha256": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930/exploration.py",
+      "before_sha256": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb",
+      "after_sha256": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930/frozen_inventory.py",
+      "before_sha256": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+      "after_sha256": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930/local_runtime.py",
+      "before_sha256": "73e204ab389aca447b7016c2e880882b7ab0a425adc5315a7f5a31131b06b40c",
+      "after_sha256": "73e204ab389aca447b7016c2e880882b7ab0a425adc5315a7f5a31131b06b40c"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930/run_wave.py",
+      "before_sha256": "fdd36507d7d5a126e4668c87b3de4eb86f786ab63349d3b48d41dc689b174c5f",
+      "after_sha256": "fdd36507d7d5a126e4668c87b3de4eb86f786ab63349d3b48d41dc689b174c5f"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930/test_collection.py",
+      "before_sha256": "6a6ab6bcb339e8c35bae7a65fde2b2de12660cf0d1e1cba88116ec4c1d340ec4",
+      "after_sha256": "6a6ab6bcb339e8c35bae7a65fde2b2de12660cf0d1e1cba88116ec4c1d340ec4"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930/test_exploration.py",
+      "before_sha256": "8d2e8f0cd4370adab22a85a4519f92494efcb35bcb993455cd1d5002817c90a7",
+      "after_sha256": "8d2e8f0cd4370adab22a85a4519f92494efcb35bcb993455cd1d5002817c90a7"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930/validate.py",
+      "before_sha256": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662",
+      "after_sha256": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/collect.py",
+      "before_sha256": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1",
+      "after_sha256": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/exploration.py",
+      "before_sha256": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb",
+      "after_sha256": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/frozen_inventory.py",
+      "before_sha256": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+      "after_sha256": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/identity_probe.py",
+      "before_sha256": "db9e615d41e8de65c2dd1c9113dbe485fc776813b9231109769c67cfab718d2a",
+      "after_sha256": "db9e615d41e8de65c2dd1c9113dbe485fc776813b9231109769c67cfab718d2a"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/launch_identity.py",
+      "before_sha256": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+      "after_sha256": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/local_runtime.py",
+      "before_sha256": "6312136f5fb5a8acfcf24483b57cd23165f9ea191c7ca364ba928270d50c87dd",
+      "after_sha256": "6312136f5fb5a8acfcf24483b57cd23165f9ea191c7ca364ba928270d50c87dd"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/migrate_prefix.py",
+      "before_sha256": "3934e15d8664603a1eb302b8a2e23581602aacba4e86fae37e08908562a66eb7",
+      "after_sha256": "3934e15d8664603a1eb302b8a2e23581602aacba4e86fae37e08908562a66eb7"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/run_wave.py",
+      "before_sha256": "7304669f4a5c65cb42237f8e79e0e6fa7bab766d5827e99d2169e33465dd6952",
+      "after_sha256": "7304669f4a5c65cb42237f8e79e0e6fa7bab766d5827e99d2169e33465dd6952"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/test_collection.py",
+      "before_sha256": "68660be5b579904d7a17e7076132c222638cec011e16d93afda1045b20d3531c",
+      "after_sha256": "68660be5b579904d7a17e7076132c222638cec011e16d93afda1045b20d3531c"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/test_exploration.py",
+      "before_sha256": "8d2e8f0cd4370adab22a85a4519f92494efcb35bcb993455cd1d5002817c90a7",
+      "after_sha256": "8d2e8f0cd4370adab22a85a4519f92494efcb35bcb993455cd1d5002817c90a7"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/test_migration.py",
+      "before_sha256": "ec048f85c9fdc3b6b68b40d963d2e08fe0d3d1509423226999831540a07fa2c4",
+      "after_sha256": "ec048f85c9fdc3b6b68b40d963d2e08fe0d3d1509423226999831540a07fa2c4"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/test_windows_recovery.py",
+      "before_sha256": "c8119b227287364c41b010122894440a86d72ee75e5ad380e2e1c046197a47f6",
+      "after_sha256": "c8119b227287364c41b010122894440a86d72ee75e5ad380e2e1c046197a47f6"
+    },
+    {
+      "path": "work/sdmpc_rl_local_20260930_v2/validate.py",
+      "before_sha256": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662",
+      "after_sha256": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/plan.json",
+      "before_sha256": "c266f74a32026af89b6079db4cf30bfdffa95f9b7f5cd6563cb22428b8f5c72d",
+      "after_sha256": "c266f74a32026af89b6079db4cf30bfdffa95f9b7f5cd6563cb22428b8f5c72d"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/process.json",
+      "before_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2",
+      "after_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/status.json",
+      "before_sha256": "d0dd7fcfd1cfc462e875d954ced47aa96bd4ec3f36a71fd80d8162ebc0ef6b34",
+      "after_sha256": "d0dd7fcfd1cfc462e875d954ced47aa96bd4ec3f36a71fd80d8162ebc0ef6b34"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/wave.stderr.log",
+      "before_sha256": "bf46bb1c8cfafcec4bb6302c899052c363ec5d56d512a8d787c02f0124a528a0",
+      "after_sha256": "bf46bb1c8cfafcec4bb6302c899052c363ec5d56d512a8d787c02f0124a528a0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/wave.stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/.ownership/reservations.json",
+      "before_sha256": "a5e4872ff834d0707fbccca28af6c3605634994c4e37af85fd41615c22842a7c",
+      "after_sha256": "a5e4872ff834d0707fbccca28af6c3605634994c4e37af85fd41615c22842a7c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/.ownership/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/attempts/bae7788116f247999100f4ad6a2d3d19/ABORT.json",
+      "before_sha256": "e43ca0836ae0b210b78497cf5a30a86fa19e276759d853d469e502283587f86e",
+      "after_sha256": "e43ca0836ae0b210b78497cf5a30a86fa19e276759d853d469e502283587f86e"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/attempts/bae7788116f247999100f4ad6a2d3d19/failure.json",
+      "before_sha256": "0682b819565631679e751ea17c1a51264443a7d8e755d5dc213460fd92ef89f0",
+      "after_sha256": "0682b819565631679e751ea17c1a51264443a7d8e755d5dc213460fd92ef89f0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/attempts/bae7788116f247999100f4ad6a2d3d19/process.json",
+      "before_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2",
+      "after_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/checkpoint.pt",
+      "before_sha256": "659f936702be59880760677d76a8ccc35957a03aa881a3fe85a9fb4ea1923816",
+      "after_sha256": "659f936702be59880760677d76a8ccc35957a03aa881a3fe85a9fb4ea1923816"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/launcher.json",
+      "before_sha256": "5f0d1e9e9d1d65bde36a7cb3eb7ff8796df9f613bb3018fea71b1f1999295719",
+      "after_sha256": "5f0d1e9e9d1d65bde36a7cb3eb7ff8796df9f613bb3018fea71b1f1999295719"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/process.json",
+      "before_sha256": "12c1397b44612673955cbf02a5cf766bef01a3fb38c5c01ec2f528e74e13d878",
+      "after_sha256": "12c1397b44612673955cbf02a5cf766bef01a3fb38c5c01ec2f528e74e13d878"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/settings.json",
+      "before_sha256": "933269729875452e776be948fc8a66b8af15423f6b63e732c6fcfb6328ee5571",
+      "after_sha256": "933269729875452e776be948fc8a66b8af15423f6b63e732c6fcfb6328ee5571"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/status.json",
+      "before_sha256": "798e4ef74d46ee7c32668f0142d87e175dbd8d20d5aa7c768eec34eef4a7062a",
+      "after_sha256": "798e4ef74d46ee7c32668f0142d87e175dbd8d20d5aa7c768eec34eef4a7062a"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/timing.json",
+      "before_sha256": "a7035a76c5d6b33322b9bdf9109f5154879207c63260121246082e88a7365784",
+      "after_sha256": "a7035a76c5d6b33322b9bdf9109f5154879207c63260121246082e88a7365784"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.end.json",
+      "before_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846",
+      "after_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.start.json",
+      "before_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53",
+      "after_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.end.json",
+      "before_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1",
+      "after_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.start.json",
+      "before_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c",
+      "after_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_incident_w/launcher.json",
+      "before_sha256": "6b50fe2a0f4453a59ebe173d9d791c637fb00d73d78d8d189749a0ad301bbb09",
+      "after_sha256": "6b50fe2a0f4453a59ebe173d9d791c637fb00d73d78d8d189749a0ad301bbb09"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_incident_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_incident_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_incident_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_skew15_w/launcher.json",
+      "before_sha256": "c017213f686ca7584ea77379914b71cedf28ae80b13581a299abfb28172d9a13",
+      "after_sha256": "c017213f686ca7584ea77379914b71cedf28ae80b13581a299abfb28172d9a13"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_skew15_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_skew15_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_skew15_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_w/launcher.json",
+      "before_sha256": "27c4d8267f910722b112494e840ad1b01ff9c6671e067060c6d8d5759f4704c7",
+      "after_sha256": "27c4d8267f910722b112494e840ad1b01ff9c6671e067060c6d8d5759f4704c7"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_170_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_190_w/launcher.json",
+      "before_sha256": "7b8ff4d674da5f964bc32b6dd63c62de06f41cc98347a9d90fd0c736078c7ff6",
+      "after_sha256": "7b8ff4d674da5f964bc32b6dd63c62de06f41cc98347a9d90fd0c736078c7ff6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_190_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_190_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/carry/sweet_190_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/local/sweet_155_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/local/sweet_170_incident_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/local/sweet_170_skew15_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/local/sweet_170_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v1/local/sweet_190_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/plan.json",
+      "before_sha256": "062a9da7b9aa43fe8612133098c47b0933dddbaa728a9b9527997ea8148f4214",
+      "after_sha256": "062a9da7b9aa43fe8612133098c47b0933dddbaa728a9b9527997ea8148f4214"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/process.json",
+      "before_sha256": "07fde6a76d8885d2581c775853d71da46c1ba575517566b316046a79716d56e0",
+      "after_sha256": "07fde6a76d8885d2581c775853d71da46c1ba575517566b316046a79716d56e0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/status.json",
+      "before_sha256": "d0dd7fcfd1cfc462e875d954ced47aa96bd4ec3f36a71fd80d8162ebc0ef6b34",
+      "after_sha256": "d0dd7fcfd1cfc462e875d954ced47aa96bd4ec3f36a71fd80d8162ebc0ef6b34"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/wave.stderr.log",
+      "before_sha256": "a7bedf2a4398227f02e23754e54bef8aa385586018aed7c04961e1c4a8a32478",
+      "after_sha256": "a7bedf2a4398227f02e23754e54bef8aa385586018aed7c04961e1c4a8a32478"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/wave.stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/committed.json",
+      "before_sha256": "f1b895d659c930708782e3b4fd3e99b21f3ca5ff6540e315880de8ab1dbf2a43",
+      "after_sha256": "f1b895d659c930708782e3b4fd3e99b21f3ca5ff6540e315880de8ab1dbf2a43"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/pending.json",
+      "before_sha256": "58e38aea605500936a3526a41029691c85970a0bdbe0ffdc89a103bfc17f1ba0",
+      "after_sha256": "58e38aea605500936a3526a41029691c85970a0bdbe0ffdc89a103bfc17f1ba0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/plan.json",
+      "before_sha256": "062a9da7b9aa43fe8612133098c47b0933dddbaa728a9b9527997ea8148f4214",
+      "after_sha256": "062a9da7b9aa43fe8612133098c47b0933dddbaa728a9b9527997ea8148f4214"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/.ownership/reservations.json",
+      "before_sha256": "afeb48ca4033545d01023408e519ae3c51d5ea0ad20a0948c13828eb1fc50fa2",
+      "after_sha256": "afeb48ca4033545d01023408e519ae3c51d5ea0ad20a0948c13828eb1fc50fa2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/checkpoint.pt",
+      "before_sha256": "9907c3f5b0eea1529155fb96b575fcef62c5a8f14efd17c7cd92456a10751e6d",
+      "after_sha256": "9907c3f5b0eea1529155fb96b575fcef62c5a8f14efd17c7cd92456a10751e6d"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/settings.json",
+      "before_sha256": "ca361eb0c9da26203e6dc8cc417a1c45d6d781c34ab26cfbe100cd499af77095",
+      "after_sha256": "ca361eb0c9da26203e6dc8cc417a1c45d6d781c34ab26cfbe100cd499af77095"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/timing.json",
+      "before_sha256": "a7035a76c5d6b33322b9bdf9109f5154879207c63260121246082e88a7365784",
+      "after_sha256": "a7035a76c5d6b33322b9bdf9109f5154879207c63260121246082e88a7365784"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.end.json",
+      "before_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846",
+      "after_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.start.json",
+      "before_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53",
+      "after_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.end.json",
+      "before_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1",
+      "after_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/outputs/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.start.json",
+      "before_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c",
+      "after_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/v1-frozen-inputs.json",
+      "before_sha256": "cdbbc81d260887ccd2e74221d9ea44befd88e5f00013988aeaf09be927994262",
+      "after_sha256": "cdbbc81d260887ccd2e74221d9ea44befd88e5f00013988aeaf09be927994262"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/plan.json",
+      "before_sha256": "c266f74a32026af89b6079db4cf30bfdffa95f9b7f5cd6563cb22428b8f5c72d",
+      "after_sha256": "c266f74a32026af89b6079db4cf30bfdffa95f9b7f5cd6563cb22428b8f5c72d"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/process.json",
+      "before_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2",
+      "after_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/status.json",
+      "before_sha256": "d0dd7fcfd1cfc462e875d954ced47aa96bd4ec3f36a71fd80d8162ebc0ef6b34",
+      "after_sha256": "d0dd7fcfd1cfc462e875d954ced47aa96bd4ec3f36a71fd80d8162ebc0ef6b34"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/wave.stderr.log",
+      "before_sha256": "bf46bb1c8cfafcec4bb6302c899052c363ec5d56d512a8d787c02f0124a528a0",
+      "after_sha256": "bf46bb1c8cfafcec4bb6302c899052c363ec5d56d512a8d787c02f0124a528a0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/wave.stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/.ownership/reservations.json",
+      "before_sha256": "a5e4872ff834d0707fbccca28af6c3605634994c4e37af85fd41615c22842a7c",
+      "after_sha256": "a5e4872ff834d0707fbccca28af6c3605634994c4e37af85fd41615c22842a7c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/.ownership/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/attempts/bae7788116f247999100f4ad6a2d3d19/ABORT.json",
+      "before_sha256": "e43ca0836ae0b210b78497cf5a30a86fa19e276759d853d469e502283587f86e",
+      "after_sha256": "e43ca0836ae0b210b78497cf5a30a86fa19e276759d853d469e502283587f86e"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/attempts/bae7788116f247999100f4ad6a2d3d19/failure.json",
+      "before_sha256": "0682b819565631679e751ea17c1a51264443a7d8e755d5dc213460fd92ef89f0",
+      "after_sha256": "0682b819565631679e751ea17c1a51264443a7d8e755d5dc213460fd92ef89f0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/attempts/bae7788116f247999100f4ad6a2d3d19/process.json",
+      "before_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2",
+      "after_sha256": "3b51235644b187983fb67e441f4f8054c2446d62ccdf45b7be78f804775266f2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/checkpoint.pt",
+      "before_sha256": "659f936702be59880760677d76a8ccc35957a03aa881a3fe85a9fb4ea1923816",
+      "after_sha256": "659f936702be59880760677d76a8ccc35957a03aa881a3fe85a9fb4ea1923816"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/launcher.json",
+      "before_sha256": "5f0d1e9e9d1d65bde36a7cb3eb7ff8796df9f613bb3018fea71b1f1999295719",
+      "after_sha256": "5f0d1e9e9d1d65bde36a7cb3eb7ff8796df9f613bb3018fea71b1f1999295719"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/process.json",
+      "before_sha256": "12c1397b44612673955cbf02a5cf766bef01a3fb38c5c01ec2f528e74e13d878",
+      "after_sha256": "12c1397b44612673955cbf02a5cf766bef01a3fb38c5c01ec2f528e74e13d878"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/settings.json",
+      "before_sha256": "933269729875452e776be948fc8a66b8af15423f6b63e732c6fcfb6328ee5571",
+      "after_sha256": "933269729875452e776be948fc8a66b8af15423f6b63e732c6fcfb6328ee5571"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/status.json",
+      "before_sha256": "798e4ef74d46ee7c32668f0142d87e175dbd8d20d5aa7c768eec34eef4a7062a",
+      "after_sha256": "798e4ef74d46ee7c32668f0142d87e175dbd8d20d5aa7c768eec34eef4a7062a"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/timing.json",
+      "before_sha256": "a7035a76c5d6b33322b9bdf9109f5154879207c63260121246082e88a7365784",
+      "after_sha256": "a7035a76c5d6b33322b9bdf9109f5154879207c63260121246082e88a7365784"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.end.json",
+      "before_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846",
+      "after_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.start.json",
+      "before_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53",
+      "after_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.end.json",
+      "before_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1",
+      "after_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.start.json",
+      "before_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c",
+      "after_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_incident_w/launcher.json",
+      "before_sha256": "6b50fe2a0f4453a59ebe173d9d791c637fb00d73d78d8d189749a0ad301bbb09",
+      "after_sha256": "6b50fe2a0f4453a59ebe173d9d791c637fb00d73d78d8d189749a0ad301bbb09"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_incident_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_incident_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_incident_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_skew15_w/launcher.json",
+      "before_sha256": "c017213f686ca7584ea77379914b71cedf28ae80b13581a299abfb28172d9a13",
+      "after_sha256": "c017213f686ca7584ea77379914b71cedf28ae80b13581a299abfb28172d9a13"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_skew15_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_skew15_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_skew15_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_w/launcher.json",
+      "before_sha256": "27c4d8267f910722b112494e840ad1b01ff9c6671e067060c6d8d5759f4704c7",
+      "after_sha256": "27c4d8267f910722b112494e840ad1b01ff9c6671e067060c6d8d5759f4704c7"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_170_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_190_w/launcher.json",
+      "before_sha256": "7b8ff4d674da5f964bc32b6dd63c62de06f41cc98347a9d90fd0c736078c7ff6",
+      "after_sha256": "7b8ff4d674da5f964bc32b6dd63c62de06f41cc98347a9d90fd0c736078c7ff6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_190_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_190_w/stderr.log",
+      "before_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2",
+      "after_sha256": "4770eca774d0ffdc08c272c2745fb9eedf75297aef35a5ec0e0df6842368bdc2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/carry/sweet_190_w/stdout.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/local/sweet_155_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/local/sweet_170_incident_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/local/sweet_170_skew15_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/local/sweet_170_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/original/local/sweet_190_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/collect.py",
+      "before_sha256": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1",
+      "after_sha256": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/exploration.py",
+      "before_sha256": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb",
+      "after_sha256": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/frozen_inventory.py",
+      "before_sha256": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+      "after_sha256": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/local_runtime.py",
+      "before_sha256": "73e204ab389aca447b7016c2e880882b7ab0a425adc5315a7f5a31131b06b40c",
+      "after_sha256": "73e204ab389aca447b7016c2e880882b7ab0a425adc5315a7f5a31131b06b40c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/run_wave.py",
+      "before_sha256": "fdd36507d7d5a126e4668c87b3de4eb86f786ab63349d3b48d41dc689b174c5f",
+      "after_sha256": "fdd36507d7d5a126e4668c87b3de4eb86f786ab63349d3b48d41dc689b174c5f"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/test_collection.py",
+      "before_sha256": "6a6ab6bcb339e8c35bae7a65fde2b2de12660cf0d1e1cba88116ec4c1d340ec4",
+      "after_sha256": "6a6ab6bcb339e8c35bae7a65fde2b2de12660cf0d1e1cba88116ec4c1d340ec4"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/test_exploration.py",
+      "before_sha256": "8d2e8f0cd4370adab22a85a4519f92494efcb35bcb993455cd1d5002817c90a7",
+      "after_sha256": "8d2e8f0cd4370adab22a85a4519f92494efcb35bcb993455cd1d5002817c90a7"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.migration/stage/provenance/sources/work/sdmpc_rl_local_20260930/validate.py",
+      "before_sha256": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662",
+      "after_sha256": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.ownership/reservations.json",
+      "before_sha256": "f665ec680442a99eba5e39b2aeaa681ac19c13ddc384636304224c7319fafe5d",
+      "after_sha256": "f665ec680442a99eba5e39b2aeaa681ac19c13ddc384636304224c7319fafe5d"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/.ownership/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/attempts/b96cfc7cd0164c15a0c26e02ebdff860/ABORT.json",
+      "before_sha256": "22b9b8f157eff2f87af1147dd08951f5fb46acac6a7e7e650d849384b4990af3",
+      "after_sha256": "22b9b8f157eff2f87af1147dd08951f5fb46acac6a7e7e650d849384b4990af3"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/attempts/b96cfc7cd0164c15a0c26e02ebdff860/failure.json",
+      "before_sha256": "0682b819565631679e751ea17c1a51264443a7d8e755d5dc213460fd92ef89f0",
+      "after_sha256": "0682b819565631679e751ea17c1a51264443a7d8e755d5dc213460fd92ef89f0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/attempts/b96cfc7cd0164c15a0c26e02ebdff860/process.json",
+      "before_sha256": "07fde6a76d8885d2581c775853d71da46c1ba575517566b316046a79716d56e0",
+      "after_sha256": "07fde6a76d8885d2581c775853d71da46c1ba575517566b316046a79716d56e0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/checkpoint.pt",
+      "before_sha256": "a26d09c9e41b5b55deccccfc1d6b40a0e8dd8d12d474a7f56657bcb3ee92f388",
+      "after_sha256": "a26d09c9e41b5b55deccccfc1d6b40a0e8dd8d12d474a7f56657bcb3ee92f388"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/launcher.json",
+      "before_sha256": "4da359e36eae622c1eacbcb303dee2e39821af94f72a0a053d0c8384878e7d59",
+      "after_sha256": "4da359e36eae622c1eacbcb303dee2e39821af94f72a0a053d0c8384878e7d59"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/process.json",
+      "before_sha256": "a3fd85a00e53cfc751f9213c73ed4911ad64c0a2cbef43171fe6138ee5ef0452",
+      "after_sha256": "a3fd85a00e53cfc751f9213c73ed4911ad64c0a2cbef43171fe6138ee5ef0452"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/settings.json",
+      "before_sha256": "6f9a41a30c7abfbb65e4a1292f9468c01e67226140b1bd06c9a29f152aec26a1",
+      "after_sha256": "6f9a41a30c7abfbb65e4a1292f9468c01e67226140b1bd06c9a29f152aec26a1"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/status.json",
+      "before_sha256": "93fe0cc199b7285ccdb73bb28ef1cb6b4d7f42fc23edcaf1b8988bb7346934fa",
+      "after_sha256": "93fe0cc199b7285ccdb73bb28ef1cb6b4d7f42fc23edcaf1b8988bb7346934fa"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/stderr.log",
+      "before_sha256": "2f125341127ff6347df0a22a46cdf0f67ec842ba3fa20a420873694ceefebe17",
+      "after_sha256": "2f125341127ff6347df0a22a46cdf0f67ec842ba3fa20a420873694ceefebe17"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/stdout.log",
+      "before_sha256": "a01e67a7274277eabe870cb7347e92997587aea44ace19684b52f80839211062",
+      "after_sha256": "a01e67a7274277eabe870cb7347e92997587aea44ace19684b52f80839211062"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/timing.json",
+      "before_sha256": "69eae078b2d140b5ea720419a134670a2f05d5992366da0081a86b9c23543be2",
+      "after_sha256": "69eae078b2d140b5ea720419a134670a2f05d5992366da0081a86b9c23543be2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.end.json",
+      "before_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846",
+      "after_sha256": "6bcd07ca2df31fe24614a759d1e1ba61be88b3c3f19733ac2b9022c1e61b2846"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/sessions/3e5d7caa2d974494adbb285ce0023456.start.json",
+      "before_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53",
+      "after_sha256": "2a1cdbcd73e1f87012892519fadaba20125caf5de65fd232428b4339c547ea53"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.end.json",
+      "before_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1",
+      "after_sha256": "d84cc2f44b0dadc654587e7b12fe6e5874cdcfbba79afcc0c80042fa7ba724b1"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/sessions/dffca16d89f344b0a5d9910f75077977.start.json",
+      "before_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c",
+      "after_sha256": "85db2e9c061fef0fdff59d88bbf6a3fad8d2f5a83e56e510b901efa03555fb1c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/sessions/e4f2fc1ec62f4be1adfb0a5a1b9d4123.end.json",
+      "before_sha256": "236aa8b09462fb6398eb72ec2061ea61a4bbe4e7bd86aac05e50c73e39837c64",
+      "after_sha256": "236aa8b09462fb6398eb72ec2061ea61a4bbe4e7bd86aac05e50c73e39837c64"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/sessions/e4f2fc1ec62f4be1adfb0a5a1b9d4123.start.json",
+      "before_sha256": "c9befa6cf537e832149204d4fa48d7abc748cab9b1562a146e3ee7638dec4ff2",
+      "after_sha256": "c9befa6cf537e832149204d4fa48d7abc748cab9b1562a146e3ee7638dec4ff2"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/checkpoint.pt",
+      "before_sha256": "416acddef9ae43159272b22fd543b9cb348f4a3452e29a20b0ec309a041771fb",
+      "after_sha256": "416acddef9ae43159272b22fd543b9cb348f4a3452e29a20b0ec309a041771fb"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/launcher.json",
+      "before_sha256": "3ef4a7318dcf6931906f47fa02dda5721dc744055c66b0a67994d5dc5cae9723",
+      "after_sha256": "3ef4a7318dcf6931906f47fa02dda5721dc744055c66b0a67994d5dc5cae9723"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/process.json",
+      "before_sha256": "d9a998e4a24e00f1e3817fa6194628dd26aba3cd67990f2cbd4c2e6cd64e9613",
+      "after_sha256": "d9a998e4a24e00f1e3817fa6194628dd26aba3cd67990f2cbd4c2e6cd64e9613"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/settings.json",
+      "before_sha256": "a45514ff2081efb8d05dd3cdff1f88b20e7b031908a34268a2d313a33150b108",
+      "after_sha256": "a45514ff2081efb8d05dd3cdff1f88b20e7b031908a34268a2d313a33150b108"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/status.json",
+      "before_sha256": "efdafac5813be05a484a88da4ba9e178b0d8d434b7415429ea16909bd3792de3",
+      "after_sha256": "efdafac5813be05a484a88da4ba9e178b0d8d434b7415429ea16909bd3792de3"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/stderr.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/stdout.log",
+      "before_sha256": "974db0aacf957935923c9945aabb8f5ec0e1ad103443c73467a78218fa291405",
+      "after_sha256": "974db0aacf957935923c9945aabb8f5ec0e1ad103443c73467a78218fa291405"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/timing.json",
+      "before_sha256": "c780acf77e1f1a5d2e4cd5618b8e83fa0f425ba4def87451043bafc10f6e148e",
+      "after_sha256": "c780acf77e1f1a5d2e4cd5618b8e83fa0f425ba4def87451043bafc10f6e148e"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/sessions/888320a8eef84c0da1edd90698f9fb51.end.json",
+      "before_sha256": "8227a62c601c5a782475b80769cbf1cc354090b08ba6bc71207287fb64d21a5b",
+      "after_sha256": "8227a62c601c5a782475b80769cbf1cc354090b08ba6bc71207287fb64d21a5b"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/sessions/888320a8eef84c0da1edd90698f9fb51.start.json",
+      "before_sha256": "0cb1b8a5d7c9500ad27f5e70c078130f5c630908834ac7c5eb24495604ee58cb",
+      "after_sha256": "0cb1b8a5d7c9500ad27f5e70c078130f5c630908834ac7c5eb24495604ee58cb"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/checkpoint.pt",
+      "before_sha256": "57024c8ed25964cacb7afd19440ad1a2c7795edcb4dd5978738ec721b9850788",
+      "after_sha256": "57024c8ed25964cacb7afd19440ad1a2c7795edcb4dd5978738ec721b9850788"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/launcher.json",
+      "before_sha256": "a25f171076457e73391dd628ecf103e584a152eb4815d7992db6aadfc7ad72ac",
+      "after_sha256": "a25f171076457e73391dd628ecf103e584a152eb4815d7992db6aadfc7ad72ac"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/process.json",
+      "before_sha256": "6c16932a80273c3cb1bc0ca10d356efdc001eec672950dde10370ac4bd4fa748",
+      "after_sha256": "6c16932a80273c3cb1bc0ca10d356efdc001eec672950dde10370ac4bd4fa748"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/settings.json",
+      "before_sha256": "1851b5ddbcd90f006185ff44faacc3f6d937c4ab9299966e3a15d43677527fe0",
+      "after_sha256": "1851b5ddbcd90f006185ff44faacc3f6d937c4ab9299966e3a15d43677527fe0"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/status.json",
+      "before_sha256": "0ffb4980ed23a14cb98092f1f9cd155f43a746a8f29a5effda1479ad34c5eff3",
+      "after_sha256": "0ffb4980ed23a14cb98092f1f9cd155f43a746a8f29a5effda1479ad34c5eff3"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/stderr.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/stdout.log",
+      "before_sha256": "0cd4258c7df96b6ce8e027579bdf480b2fedecaedc05f9f180fad98de9e02efa",
+      "after_sha256": "0cd4258c7df96b6ce8e027579bdf480b2fedecaedc05f9f180fad98de9e02efa"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/timing.json",
+      "before_sha256": "f6559f120617e2642464275c98ded5646706803bebd1c480e5a7ca4672ee59ea",
+      "after_sha256": "f6559f120617e2642464275c98ded5646706803bebd1c480e5a7ca4672ee59ea"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/sessions/275c29afb4224ab48226bd40192c7a61.end.json",
+      "before_sha256": "0b6fb159c71414a45a9dfb89162077199dcf195c43f116329de56b57a14b0b4f",
+      "after_sha256": "0b6fb159c71414a45a9dfb89162077199dcf195c43f116329de56b57a14b0b4f"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/sessions/275c29afb4224ab48226bd40192c7a61.start.json",
+      "before_sha256": "b758cebb950e11cdecceefe9e89f507e3add545d89ca2bec48413eddaa2f1eca",
+      "after_sha256": "b758cebb950e11cdecceefe9e89f507e3add545d89ca2bec48413eddaa2f1eca"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/checkpoint.pt",
+      "before_sha256": "a0cf8ed5dece41d259550c0d06640a17a58fa5c793facbf5057cc7f90fecf2ba",
+      "after_sha256": "a0cf8ed5dece41d259550c0d06640a17a58fa5c793facbf5057cc7f90fecf2ba"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/launcher.json",
+      "before_sha256": "6f1f0ed8b6aa8a8251bda94dda0557341b436378d8473a21ba8cefd16ff6cc5c",
+      "after_sha256": "6f1f0ed8b6aa8a8251bda94dda0557341b436378d8473a21ba8cefd16ff6cc5c"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/process.json",
+      "before_sha256": "7aaaf4e9bd3ea31a8af21cc36fe3d1fe881859f84a88d7b7ecc183df58f34331",
+      "after_sha256": "7aaaf4e9bd3ea31a8af21cc36fe3d1fe881859f84a88d7b7ecc183df58f34331"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/settings.json",
+      "before_sha256": "fdc4debfb977a1f10269265930796ca328c180950b10c42b495a1a2f87175612",
+      "after_sha256": "fdc4debfb977a1f10269265930796ca328c180950b10c42b495a1a2f87175612"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/status.json",
+      "before_sha256": "4e8f4ea86e79b4d747b7166c4785bca8900775d5be52c92a8102b83343b96040",
+      "after_sha256": "4e8f4ea86e79b4d747b7166c4785bca8900775d5be52c92a8102b83343b96040"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/stderr.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/stdout.log",
+      "before_sha256": "4ab7051cba239cdf1db2e3c18aa42d96e3d63386b02bc7eb986df6fa6ffe6890",
+      "after_sha256": "4ab7051cba239cdf1db2e3c18aa42d96e3d63386b02bc7eb986df6fa6ffe6890"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/timing.json",
+      "before_sha256": "5d40516354a2ffa353a34771d55a2332a6e38bc7d5956e9d84bc36ae01bf9c4e",
+      "after_sha256": "5d40516354a2ffa353a34771d55a2332a6e38bc7d5956e9d84bc36ae01bf9c4e"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/sessions/69a256e2bf08483a9727715de908c316.end.json",
+      "before_sha256": "b6d9f58e43cde990137f38616b1b9e74f6eb814a4b4221f23c70de83c359ec50",
+      "after_sha256": "b6d9f58e43cde990137f38616b1b9e74f6eb814a4b4221f23c70de83c359ec50"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/sessions/69a256e2bf08483a9727715de908c316.start.json",
+      "before_sha256": "053565e23253ce05d298373e93bb5425503b3b7dfe8b0a47bb2eafe139ba9764",
+      "after_sha256": "053565e23253ce05d298373e93bb5425503b3b7dfe8b0a47bb2eafe139ba9764"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/checkpoint.pt",
+      "before_sha256": "be88baace3d931d0ad881f0e3b0981912cf5eb104d0610237798216ed1da6900",
+      "after_sha256": "be88baace3d931d0ad881f0e3b0981912cf5eb104d0610237798216ed1da6900"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/launcher.json",
+      "before_sha256": "f0d94166d4e650f00f9ef896355c480fb332c4b92124af5b11f06b9df0df08f5",
+      "after_sha256": "f0d94166d4e650f00f9ef896355c480fb332c4b92124af5b11f06b9df0df08f5"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/observation_schema.json",
+      "before_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "after_sha256": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/process.json",
+      "before_sha256": "4f68f2d0f8d2e925ff6710a74517e45b9ded2ca1505f82bd113bd7ae999d6b88",
+      "after_sha256": "4f68f2d0f8d2e925ff6710a74517e45b9ded2ca1505f82bd113bd7ae999d6b88"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/settings.json",
+      "before_sha256": "af181ff6d3a629e82e92c74ceb9e3bdefb5f5bba597c1cc001c931cb068017ea",
+      "after_sha256": "af181ff6d3a629e82e92c74ceb9e3bdefb5f5bba597c1cc001c931cb068017ea"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/status.json",
+      "before_sha256": "ef1be4fd1c84a0a1b5f114e8aa71233f542fc51924a9c80816552025ced8847a",
+      "after_sha256": "ef1be4fd1c84a0a1b5f114e8aa71233f542fc51924a9c80816552025ced8847a"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/stderr.log",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/stdout.log",
+      "before_sha256": "42518e8d6321ed715f5b2147d5266e7ea8914c8f6b9deb216688a0acb553fd09",
+      "after_sha256": "42518e8d6321ed715f5b2147d5266e7ea8914c8f6b9deb216688a0acb553fd09"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/timing.json",
+      "before_sha256": "a08ae9db2af24662ad49df0719d62d99af05909a97dae04c714d62140f49d484",
+      "after_sha256": "a08ae9db2af24662ad49df0719d62d99af05909a97dae04c714d62140f49d484"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/sessions/9b39ad93aaeb4dd2891a02a4ebc2c568.end.json",
+      "before_sha256": "77c21e953c7c617c3630cd5fdd9c174fcea28f6bc90e6e9b02b7b0da221a8f9b",
+      "after_sha256": "77c21e953c7c617c3630cd5fdd9c174fcea28f6bc90e6e9b02b7b0da221a8f9b"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/sessions/9b39ad93aaeb4dd2891a02a4ebc2c568.start.json",
+      "before_sha256": "d8c04d58b748617953a0d279e0584229877cc50936e123cc72087b8b32c8cc72",
+      "after_sha256": "d8c04d58b748617953a0d279e0584229877cc50936e123cc72087b8b32c8cc72"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/local/sweet_155_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/local/sweet_170_incident_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/local/sweet_170_skew15_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/local/sweet_170_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/local/sweet_190_w/runner.lock",
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    }
+  ]
+}

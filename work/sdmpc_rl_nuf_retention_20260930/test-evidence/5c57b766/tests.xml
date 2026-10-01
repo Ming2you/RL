@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="12" skipped="0" tests="64" time="40.369" timestamp="2026-09-30T08:01:30.596063+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_checkpoint_resume_terminal_diagnostic_export" time="0.345"><failure message="TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'">work\sdmpc_rl_nuf_retention_20260930\test_collection.py:19: in test_checkpoint_resume_terminal_diagnostic_export
+    assert collect.run(request(tmp_path, resume=True)) == "completed"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\collect.py:104: in run
+    policy = validate_checkpoint(ck, settings)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\collect.py:44: in validate_checkpoint
+    total = validate_rows(trace, experience, settings, ck["schema"], settings["capacity"], complete=False)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\validate.py:107: in validate_rows
+    same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\frozen_inventory.py:48: in inventory
+    return compute(state_type(**copy.deepcopy(state)), cfg)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_paired_binding_rejects_source_profile_or_run_change[profile_sha256]" time="0.082" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_paired_binding_rejects_source_profile_or_run_change[source_identity_sha256]" time="0.079" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_paired_binding_rejects_source_profile_or_run_change[physical]" time="0.088" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_paired_binding_rejects_source_profile_or_run_change[run_id]" time="0.083" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_paired_binding_rejects_source_profile_or_run_change[warmup_ttt]" time="0.081" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_paired_binding_rejects_source_profile_or_run_change[training_seed]" time="0.081" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_unknown_nonfinite_rejected[stationarity-nan]" time="0.006" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_unknown_nonfinite_rejected[stationarity--inf]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_unknown_nonfinite_rejected[reward-inf]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_unknown_nonfinite_rejected[physical-inf]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_diagnostic_receipt_reconciles_paths_and_core[path]" time="1.102"><failure message="TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'">work\sdmpc_rl_nuf_retention_20260930\test_collection.py:69: in test_diagnostic_receipt_reconciles_paths_and_core
+    collect.run(args)
+work\sdmpc_rl_nuf_retention_20260930\collect.py:160: in run
+    validate_rows(trace, experience, settings, schema, capacity)
+work\sdmpc_rl_nuf_retention_20260930\validate.py:107: in validate_rows
+    same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\frozen_inventory.py:48: in inventory
+    return compute(state_type(**copy.deepcopy(state)), cfg)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_diagnostic_receipt_reconciles_paths_and_core[experience]" time="1.092"><failure message="TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'">work\sdmpc_rl_nuf_retention_20260930\test_collection.py:69: in test_diagnostic_receipt_reconciles_paths_and_core
+    collect.run(args)
+work\sdmpc_rl_nuf_retention_20260930\collect.py:160: in run
+    validate_rows(trace, experience, settings, schema, capacity)
+work\sdmpc_rl_nuf_retention_20260930\validate.py:107: in validate_rows
+    same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\frozen_inventory.py:48: in inventory
+    return compute(state_type(**copy.deepcopy(state)), cfg)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_diagnostic_receipt_reconciles_paths_and_core[checkpoint]" time="1.038"><failure message="TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'">work\sdmpc_rl_nuf_retention_20260930\test_collection.py:69: in test_diagnostic_receipt_reconciles_paths_and_core
+    collect.run(args)
+work\sdmpc_rl_nuf_retention_20260930\collect.py:160: in run
+    validate_rows(trace, experience, settings, schema, capacity)
+work\sdmpc_rl_nuf_retention_20260930\validate.py:107: in validate_rows
+    same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\frozen_inventory.py:48: in inventory
+    return compute(state_type(**copy.deepcopy(state)), cfg)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_diagnostic_receipt_reconciles_paths_and_core[tag]" time="1.139"><failure message="TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'">work\sdmpc_rl_nuf_retention_20260930\test_collection.py:69: in test_diagnostic_receipt_reconciles_paths_and_core
+    collect.run(args)
+work\sdmpc_rl_nuf_retention_20260930\collect.py:160: in run
+    validate_rows(trace, experience, settings, schema, capacity)
+work\sdmpc_rl_nuf_retention_20260930\validate.py:107: in validate_rows
+    same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\frozen_inventory.py:48: in inventory
+    return compute(state_type(**copy.deepcopy(state)), cfg)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_stop_boundary_and_monotonic_resume" time="0.170" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_stop_after_interval_keeps_checkpoint" time="0.110" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_terminal_resume_no_step_and_serialization_in_session_scope" time="1.195"><failure message="TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'">work\sdmpc_rl_nuf_retention_20260930\test_collection.py:126: in test_terminal_resume_no_step_and_serialization_in_session_scope
+    collect.run(request(tmp_path, resume=True))
+work\sdmpc_rl_nuf_retention_20260930\collect.py:104: in run
+    policy = validate_checkpoint(ck, settings)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\collect.py:44: in validate_checkpoint
+    total = validate_rows(trace, experience, settings, ck["schema"], settings["capacity"], complete=False)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\validate.py:107: in validate_rows
+    same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\frozen_inventory.py:48: in inventory
+    return compute(state_type(**copy.deepcopy(state)), cfg)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_collection" name="test_checkpoint_physical_and_policy_memory_stay_bound" time="0.180"><failure message="TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'">work\sdmpc_rl_nuf_retention_20260930\test_collection.py:156: in test_checkpoint_physical_and_policy_memory_stay_bound
+    collect.validate_checkpoint(broken, broken["settings"])
+work\sdmpc_rl_nuf_retention_20260930\collect.py:44: in validate_checkpoint
+    total = validate_rows(trace, experience, settings, ck["schema"], settings["capacity"], complete=False)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\validate.py:107: in validate_rows
+    same_cost(inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_nuf_retention_20260930\frozen_inventory.py:48: in inventory
+    return compute(state_type(**copy.deepcopy(state)), cfg)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TrafficState.__init__() missing 2 required positional arguments: 'freeway_speed' and 'freeway_flow'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_retained_nuf_np_rule_and_realized_offset[True-False]" time="0.001" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_retained_nuf_np_rule_and_realized_offset[False-True]" time="0.001" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_retained_nuf_np_rule_and_realized_offset[True-True]" time="0.001" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_retained_nuf_np_rule_and_realized_offset[False-False]" time="0.001" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_low_executed_budget_recovery_uses_actual_anchor_and_rate" time="0.001" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_both_cap_boundaries_and_zero_noise_mean_reversion[6000.0-0.0-10.0-6000.0]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_both_cap_boundaries_and_zero_noise_mean_reversion[0.0-0.0--10.0-0.0]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_both_cap_boundaries_and_zero_noise_mean_reversion[6000.0--400.0-0.0-5680.0]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_both_cap_boundaries_and_zero_noise_mean_reversion[0.0-400.0-0.0-320.0]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_pending_rng_roundtrip_and_old_format_rejected" time="0.002" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_policy" name="test_saved_170_prefix_step10_arithmetic_and_all75_noise" time="0.365" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_original_validator_authenticates_completed_references" time="25.805"><properties><property name="root_completion_sha256" value="5b6e645f6f6ca64c4f593c52d19ee3ab5bda7ae3c3d31f423d6fae2d2f3ef4a3" /><property name="root_comparison_sha256" value="c294c1f5b2100daeaccb4c927357a8bc73d44391f34641fd37b4ba5b2555c4cd" /><property name="reference_runs" value="10" /><property name="verified_repaired_receipts" value="8" /></properties></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_compares_physical_control_native_observation_reward_and_all_rng" time="1.168" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_rng_integrity_failures_cannot_get_performance_label[control]" time="0.719" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_rng_integrity_failures_cannot_get_performance_label[observation]" time="0.717" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_rng_integrity_failures_cannot_get_performance_label[reward]" time="0.712" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_rng_integrity_failures_cannot_get_performance_label[ttt]" time="0.796" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_rng_integrity_failures_cannot_get_performance_label[noise74]" time="0.485" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_rng_integrity_failures_cannot_get_performance_label[late_action]" time="0.714" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_prefix_rng_integrity_failures_cannot_get_performance_label[early_action]" time="0.739" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_pilot_thresholds_are_predeclared_and_strict[5-517.470147382039-11945.0-True]" time="0.012"><failure message="assert False is True">work\sdmpc_rl_nuf_retention_20260930\test_probe.py:91: in test_pilot_thresholds_are_predeclared_and_strict
+    assert result["advance_allowed"] is passed
+E   assert False is True</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_pilot_thresholds_are_predeclared_and_strict[6-517.0-11945.0-False]" time="0.002" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_pilot_thresholds_are_predeclared_and_strict[5-517.470147392039-11945.0-False]" time="0.002" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_pilot_thresholds_are_predeclared_and_strict[5-500.0-11945.939292655728-False]" time="0.002" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_pilot_thresholds_are_predeclared_and_strict[5-500.0-11946.0-False]" time="0.002" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_integrity_failure_readout_is_archivable_and_blocks_expansion" time="0.002" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_real_frozen_physical_config_extra_serializes_without_boot" time="0.002"><failure message="ImportError: attempted relative import with no known parent package">work\sdmpc_rl_nuf_retention_20260930\test_probe.py:109: in test_real_frozen_physical_config_extra_serializes_without_boot
+    cfg = sys.modules["local_frozen_state"].ExperimentConfig()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;string&gt;:4: in __init__
+    ???
+&lt;string&gt;:58: in __init__
+    ???
+artifacts\sdmpc_budget_baseline_20260929\source\work\sdmpc_matrix_14400_20260912\historical_tree\src\models\state.py:291: in __post_init__
+    from .grid_topology import (
+E   ImportError: attempted relative import with no known parent package</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_probe" name="test_new_identity_uses_frozen_physical_runtime_and_separate_collection_format" time="0.339" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_exact_five_local_slots_and_independent_resume" time="0.377" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_stage_selection[pilot-False-1]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_stage_selection[pilot-True-1]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_stage_selection[remaining-True-4]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_pilot_failure_blocks_remaining[None]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_pilot_failure_blocks_remaining[pilot1]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_pilot_failure_blocks_remaining[pilot2]" time="0.000" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_full_staging_never_repeats_pilot[True]" time="0.074" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_full_staging_never_repeats_pilot[False]" time="0.058" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_changed_candidate_blocks_remaining_before_dispatch" time="0.024" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_arbitrary_failed_work_is_not_retried[failed]" time="0.003"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\_t\\5c57b766\\test_arbitrary_failed_work_is_0\\local\\sweet_155_w\\checkpoint.tmp'">.venv-torch\Lib\site-packages\torch\serialization.py:815: in __init__
+    self.name.encode("ascii")
+E   UnicodeEncodeError: 'ascii' codec can't encode characters in position 23-24: ordinal not in range(128)
+
+During handling of the above exception, another exception occurred:
+work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:114: in test_arbitrary_failed_work_is_not_retried
+    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", {"synthetic": True})
+work\sdmpc_rl_multi_20260929\run_budget.py:56: in checkpoint_save
+    torch.save(payload, temporary)
+.venv-torch\Lib\site-packages\torch\serialization.py:1002: in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^
+.venv-torch\Lib\site-packages\torch\serialization.py:864: in _open_zipfile_writer
+    return container(name_or_buffer)  # type: ignore[arg-type]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv-torch\Lib\site-packages\torch\serialization.py:820: in __init__
+    self.file_stream = open(self.name, mode="wb")  # noqa: SIM115
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\_t\\5c57b766\\test_arbitrary_failed_work_is_0\\local\\sweet_155_w\\checkpoint.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_arbitrary_failed_work_is_not_retried[unknown]" time="0.002"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\_t\\5c57b766\\test_arbitrary_failed_work_is_1\\local\\sweet_155_w\\checkpoint.tmp'">.venv-torch\Lib\site-packages\torch\serialization.py:815: in __init__
+    self.name.encode("ascii")
+E   UnicodeEncodeError: 'ascii' codec can't encode characters in position 23-24: ordinal not in range(128)
+
+During handling of the above exception, another exception occurred:
+work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:114: in test_arbitrary_failed_work_is_not_retried
+    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", {"synthetic": True})
+work\sdmpc_rl_multi_20260929\run_budget.py:56: in checkpoint_save
+    torch.save(payload, temporary)
+.venv-torch\Lib\site-packages\torch\serialization.py:1002: in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^
+.venv-torch\Lib\site-packages\torch\serialization.py:864: in _open_zipfile_writer
+    return container(name_or_buffer)  # type: ignore[arg-type]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv-torch\Lib\site-packages\torch\serialization.py:820: in __init__
+    self.file_stream = open(self.name, mode="wb")  # noqa: SIM115
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\_t\\5c57b766\\test_arbitrary_failed_work_is_1\\local\\sweet_155_w\\checkpoint.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_arbitrary_failed_work_is_not_retried[export-completed]" time="0.002"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\_t\\5c57b766\\test_arbitrary_failed_work_is_2\\local\\sweet_155_w\\checkpoint.tmp'">.venv-torch\Lib\site-packages\torch\serialization.py:815: in __init__
+    self.name.encode("ascii")
+E   UnicodeEncodeError: 'ascii' codec can't encode characters in position 23-24: ordinal not in range(128)
+
+During handling of the above exception, another exception occurred:
+work\sdmpc_rl_nuf_retention_20260930\test_workflow.py:114: in test_arbitrary_failed_work_is_not_retried
+    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", {"synthetic": True})
+work\sdmpc_rl_multi_20260929\run_budget.py:56: in checkpoint_save
+    torch.save(payload, temporary)
+.venv-torch\Lib\site-packages\torch\serialization.py:1002: in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^
+.venv-torch\Lib\site-packages\torch\serialization.py:864: in _open_zipfile_writer
+    return container(name_or_buffer)  # type: ignore[arg-type]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv-torch\Lib\site-packages\torch\serialization.py:820: in __init__
+    self.file_stream = open(self.name, mode="wb")  # noqa: SIM115
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\_t\\5c57b766\\test_arbitrary_failed_work_is_2\\local\\sweet_155_w\\checkpoint.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_completed_stage_skips_before_spawn" time="0.005" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_unknown_creation_and_orphan_worker_fail_closed" time="0.013" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_redirector_claim_and_actual_creation_identity" time="0.001" /><testcase classname="work.sdmpc_rl_nuf_retention_20260930.test_workflow" name="test_drain_waits_actual_worker_after_redirector_exit" time="0.009" /></testsuite></testsuites>

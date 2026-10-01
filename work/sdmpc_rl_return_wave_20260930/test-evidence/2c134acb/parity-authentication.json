@@ -1,0 +1,40 @@
+{
+  "bit_identical": true,
+  "observations": 1500,
+  "observation_shape": [
+    1500,
+    2367
+  ],
+  "observations_sha256": "5b2c6595427ef1cd7a6a5fd8acd2658802f1e02a4f89153228567143e3b28723",
+  "actions_sha256": "8f08b8146edface8c07ebab80b9522ff123684500e0ec28ac0a2cc7f8c381e09",
+  "model_sha256": "7723bad496cd2e2b5f9a8f52b74ac8f65f021ccff42635d396e9f3b248b23904",
+  "predecessor_completion_sha256": "34f617fc171ce0a63611f5883eac7e8af9814a59889f4a545adb3fabb3778757",
+  "original_runtime": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_init_20260930\\runtime.py",
+  "physical_import": {
+    "physical_runtime": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\artifacts\\sdmpc_budget_baseline_20260929\\source\\work\\sdmpc_slide_alignment_20260922\\runtime.py",
+    "profiles": {
+      "sweet_155_w": "13ee7d327102df2869895c0e7c1a738d56127739cc4668e973ae728904109cd1",
+      "sweet_170_w": "6d79f730e86d1c6a39bedaed2202aec00747e80105a88e37fdb77c0242e7973c",
+      "sweet_170_incident_w": "6024fcc498a0e62d079a6874cbf443c170fc339087e18c004d7a8bceaf98601a",
+      "sweet_170_skew15_w": "3da6dadce56fa7283a943550ab44757372a7219ab57a91dd79473b51b004b8ab",
+      "sweet_190_w": "9b2636ed113efef3f6fc5f42e24424a298cf96bcf61f2e20ef8ff2ec06815629"
+    },
+    "forbidden_modules_present": [],
+    "resets": 0,
+    "physical_steps": 0,
+    "solves": 0
+  },
+  "source_sha256": {
+    "work/sdmpc_rl_return_wave_20260930/actor.py": "c276aa2c1f18fdc01b2f0f00f9241825a07689d49d2a576b75a0a88739c60a96",
+    "work/sdmpc_rl_return_wave_20260930/checks.py": "1209ecc2fb29307f6a7261f32abd7fe38f796fefb170a97fd27a8da609009e57",
+    "work/sdmpc_rl_return_wave_20260930/conftest.py": "5ae497ab941af7b21fd4e648fc229d12889f31912ec2d88e261b1bb23e13cd82",
+    "work/sdmpc_rl_return_wave_20260930/parity.py": "f6d1eaf4a5056c8a13e4de2d4973bb3a4a85090080826346792d6b604f6d59a7",
+    "work/sdmpc_rl_return_wave_20260930/readout.py": "3c1daac9f1f26abb9f65428b01ae55f4a475f7661899776cd341b0016a210bdb",
+    "work/sdmpc_rl_return_wave_20260930/run_tests.py": "e4c7758eeb7061458910da73a04edc82f5886d8788d842d15e064f90a2c65617",
+    "work/sdmpc_rl_return_wave_20260930/test_wave.py": "a1686607fdd9e6ad619eadb3835681165f5e43ea3612dbfeed25adcf52e0f568",
+    "work/sdmpc_rl_return_wave_20260930/wave_support.py": "9e2d1cbd78aabed983151c7444dbcdd3614418835ed001acd3e389c411959fd6",
+    "work/sdmpc_rl_return_wave_20260930/worker.py": "7da3fa5c78977f5f43469feafe4a340e1487c7974880e34d4a4f86a2932ae6f5"
+  },
+  "training_updates": 0,
+  "physical_steps": 0
+}

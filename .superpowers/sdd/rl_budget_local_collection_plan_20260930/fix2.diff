@@ -1,0 +1,544 @@
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/local_runtime.py b/work/sdmpc_rl_local_20260930/local_runtime.py
+index 639e4a3..f483d30 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/local_runtime.py
++++ b/work/sdmpc_rl_local_20260930/local_runtime.py
+@@ -25,12 +25,13 @@ import numpy as np
+ import torch
+ from td3 import SCENARIOS
+ 
+ BEHAVIORS = ("carry", "local")
+ MASKS = (1, 4, 16, 64, 256)
+ FORMAT = "sdmpc-local-training-v1"
++COHORT_PHASES = ("started", "checkpointed", "finished")
+ TIMING_SCOPE = ("Aggregate locked worker sessions: from before session-start publication through boot, "
+     "reset/restore, steps, all checkpoint and data-output serialization, environment close, status and "
+     "ownership exit bookkeeping. Excludes final session/timing-ledger and completion-marker publication, "
+     "lock release, interpreter startup/teardown, coordinator time and offline analysis. "
+     "UNKNOWN means missing session elapsed time; known_elapsed_wall_seconds is then only a lower bound.")
+ 
+@@ -120,12 +121,13 @@ def ownership():
+         records = read(path) if path.exists() else []
+         for record in records:
+             if record["state"] not in ("reserved", "active", "exited", "completed"):
+                 raise ValueError("Unknown cohort reservation state")
+             if (COHORT_ROOT / record["key"] / "completion.json").exists():
+                 record["state"] = "completed"
++                record["cohort_phase"] = "finished"
+             elif record["state"] in ("reserved", "active") and process_dead(record["worker"]):
+                 record["state"] = "exited"
+         yield records
+         durable_save(path, records)
+     finally:
+         lock.__exit__(None, None, None)
+@@ -135,62 +137,97 @@ def ensure_cohort_idle(output):
+     canonical_root(output)
+     with ownership() as records:
+         if any(r["state"] in ("reserved", "active") for r in records):
+             raise OSError("Cohort has a live or UNKNOWN startup/worker reservation")
+ 
+ 
+-def reserve_worker(output, scenario, behavior, cpu_mask, launch=False):
++def reserve_worker(output, scenario, behavior, cpu_mask, launch=False, resume=False):
+     key = canonical_worker(output, scenario, behavior, cpu_mask)
+     with ownership() as records:
+         if (Path(output) / "completion.json").exists() or any(r["key"] == key and r["state"] == "completed" for r in records):
+             raise ValueError("Already completed cohort slot")
+         occupied = [r for r in records if r["state"] in ("reserved", "active")]
+         if any(r["key"] == key for r in occupied):
+             raise OSError("Cohort slot has a live or UNKNOWN reservation")
+         if len(occupied) >= 5:
+             raise OSError("Maximum five numerical workers/reservations")
++        history = [r for r in records if r["key"] == key]
++        if history and not resume:
++            phase = "completed" if any(r["cohort_phase"] == "finished" for r in history) else "started"
++            raise ValueError(f"Already {phase} cohort slot; resume its existing checkpoint")
++        if resume:
++            if not history or not (Path(output) / "checkpoint.pt").exists():
++                raise ValueError("Cohort resume requires retained identity and checkpoint")
++            if read(Path(output) / "settings.json")["run_id"] != history[-1]["run_id"]:
++                raise ValueError("Cohort checkpoint run identity differs")
+         if launch:
+             with exclusive_run(Path(output)):
+                 pass
+         token = uuid.uuid4().hex
+         records.append(dict(key=key, token=token, state="reserved" if launch else "active",
+             owner=process_identity(), worker=None if launch else process_identity(),
+-            training_seed=seeds(scenario)[0], exploration_seed=seeds(scenario)[1], cpu_mask=cpu_mask))
++            training_seed=seeds(scenario)[0], exploration_seed=seeds(scenario)[1], cpu_mask=cpu_mask,
++            resume=resume, run_id=history[-1]["run_id"] if history else uuid.uuid4().hex,
++            cohort_phase=max((r["cohort_phase"] for r in history), key=COHORT_PHASES.index, default="started"),
++            control_steps=max((r["control_steps"] for r in history), default=-1)))
+     return token
+ 
+ 
+ def bind_launch(token, pid, command):
+     with ownership() as records:
+         record = next(r for r in records if r["token"] == token)
+         if record["state"] == "reserved":
+             record["worker"] = process_identity(pid, command)
+         elif record["state"] == "active" and record["worker"]["pid"] != pid:
+             raise ValueError("Reservation claimed by a different process")
+ 
+ 
+-def claim_worker(output, scenario, behavior, cpu_mask, token=None):
++def claim_worker(output, scenario, behavior, cpu_mask, token=None, resume=False):
+     key = canonical_worker(output, scenario, behavior, cpu_mask)
+     if token is None:
+-        return reserve_worker(output, scenario, behavior, cpu_mask)
++        return reserve_worker(output, scenario, behavior, cpu_mask, resume=resume)
+     with ownership() as records:
+         record = next((r for r in records if r["token"] == token), None)
+         if record is None or record["key"] != key or record["state"] != "reserved":
+             raise ValueError("Invalid or already claimed launch reservation")
++        if record["resume"] != resume:
++            raise ValueError("Launch reservation resume mode differs")
+         current = process_identity()
+         worker = record["worker"]
+         if worker is not None and (worker["pid"] != current["pid"] or
+                 worker["created"] is not None and worker["created"] != current["created"]):
+             raise ValueError("Launch reservation process identity differs")
+         record.update(state="active", worker=current)
+     return token
+ 
+ 
+-def release_worker(token):
++def reservation_run_id(token):
++    return next(r["run_id"] for r in read(COHORT_ROOT / ".ownership/reservations.json") if r["token"] == token)
++
++
++def checkpoint_progress(token, run_id, steps):
++    with ownership() as records:
++        record = next(r for r in records if r["token"] == token)
++        if record["run_id"] != run_id or not record["control_steps"] <= steps <= 75:
++            raise ValueError("Cohort checkpoint identity/progress differs")
++        if record["cohort_phase"] == "finished" and steps != 75:
++            raise ValueError("Finished cohort requires its terminal checkpoint")
++        record["control_steps"] = steps
++        if record["cohort_phase"] == "started":
++            record["cohort_phase"] = "checkpointed"
++
++
++def release_worker(token, finished=False):
+     with ownership() as records:
+         record = next(r for r in records if r["token"] == token)
+-        record["state"] = "completed" if (COHORT_ROOT / record["key"] / "completion.json").exists() else "exited"
++        if finished:
++            if record["control_steps"] != 75:
++                raise ValueError("Cannot finish a cohort without its terminal checkpoint")
++            record["cohort_phase"] = "finished"
++        if record["state"] != "completed":
++            record["state"] = "completed" if (COHORT_ROOT / record["key"] / "completion.json").exists() else "exited"
+ 
+ 
+ def session_ids(output):
+     return sorted(p.name[:-11] for p in (Path(output) / "sessions").glob("*.start.json"))
+ 
+ 
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/collect.py b/work/sdmpc_rl_local_20260930/collect.py
+index 36e131e..ce9768e 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/collect.py
++++ b/work/sdmpc_rl_local_20260930/collect.py
+@@ -1,19 +1,19 @@
+ """One checkpointed, training-only carry or local-budget trajectory."""
+ import argparse
+ import os
+ from pathlib import Path
+ import sys
+ import time
+-import uuid
+ from local_runtime import (np, torch, REPO, FORMAT, BEHAVIORS, MASKS, SCENARIOS,
+     DEFAULT_SNAPSHOT, boot, read, save, plain, digest, file_hash, exclusive_run,
+     identity, verify_identity, contract, verify_environment, seeds, check_stop,
+     Stopped, checkpoint_save, observation_schema)
+ from local_runtime import (canonical_worker, claim_worker, release_worker, durable_save,
+-                           session_ids, reserved_sessions, session_timing, process_identity)
++                           session_ids, reserved_sessions, session_timing, process_identity,
++                           reservation_run_id, checkpoint_progress)
+ from budget_env import BudgetEnv
+ from exploration import LocalBudgetPolicy
+ from validate import validate_rows, summarize, replay_policy, validate_boundary, validate_observation
+ 
+ 
+ def check_output(output, resume):
+@@ -55,13 +55,13 @@ def run(args):
+     check_stop(output, args.abort_file)
+     check_output(output, args.resume)
+     with exclusive_run(output):
+         check_stop(output, args.abort_file)
+         check_output(output, args.resume)
+         reservation = claim_worker(output, args.scenario, args.behavior, args.cpu_mask,
+-                                   getattr(args, "reservation", None))
++                                   getattr(args, "reservation", None), resume=args.resume)
+         started = time.perf_counter()
+         session = reservation
+         sessions = sorted(set(session_ids(output)) | set(reserved_sessions(output)))
+         start_file = output / "sessions" / f"{session}.start.json"
+         env = None
+         outcome, result = "failed", None
+@@ -77,25 +77,26 @@ def run(args):
+                 torch.set_num_interop_threads(1)
+             demand_seed, exploration_seed = seeds(args.scenario)
+             env = BudgetEnv(rt, scenario=args.scenario, training_seed=demand_seed, guard_mode="physical")
+             verify_environment(env, rt, expected)
+             capacity = float(rt["cfg"].network.total_ramp_capacity)
+             previous = read(output / "settings.json") if args.resume else None
+-            settings = dict(format=FORMAT, run_id=previous["run_id"] if previous else uuid.uuid4().hex,
++            settings = dict(format=FORMAT, run_id=reservation_run_id(reservation),
+                 scenario=args.scenario, behavior=args.behavior, training_seed=demand_seed,
+                 exploration_seed=exploration_seed, profile_sha256=env.profile_hash,
+                 evaluation=False, model_sha256=None, identity=source, contract=expected,
+                 capacity=capacity, cpu_mask=args.cpu_mask,
+                 physical_config=plain(rt["rc"].to_plain_dict(rt["cfg"])),
+                 warmup_ttt=previous["warmup_ttt"] if previous else None)
+             check_stop(output, args.abort_file)
+             if args.resume:
+                 if previous != settings:
+                     raise ValueError("Resume settings changed")
+                 ck = torch.load(output / "checkpoint.pt", map_location="cpu", weights_only=False)
+                 policy = validate_checkpoint(ck, settings)
++                checkpoint_progress(reservation, settings["run_id"], len(ck["trace"]))
+                 obs = env.restore(ck["environment"])
+                 np.testing.assert_array_equal(obs, ck["observation"])
+                 trace, experience = ck["trace"], ck["transitions"]
+                 sessions = sorted(set(sessions) | set(ck["session_ids"]))
+             else:
+                 obs = env.reset()
+@@ -110,12 +111,13 @@ def run(args):
+ 
+             def checkpoint():
+                 checkpoint_save(torch, output / "checkpoint.pt", dict(format=FORMAT,
+                     settings=settings, schema=schema, environment=env.checkpoint(),
+                     observation=obs.copy(), trace=trace, transitions=experience,
+                     policy=policy.state_dict(), session_ids=sessions))
++                checkpoint_progress(reservation, settings["run_id"], len(trace))
+ 
+             checkpoint()
+             steps_this_session = 0
+             while env.k < 80:
+                 check_stop(output, args.abort_file)
+                 verify_identity(source)
+@@ -177,13 +179,13 @@ def run(args):
+                     env.close()
+             except BaseException as exc:
+                 result, outcome = None, "failed"
+                 save(output / "status.json", dict(status="failed", pid=os.getpid(), error=f"close: {exc}"))
+                 raise
+             finally:
+-                release_worker(reservation)
++                release_worker(reservation, finished=result is not None)
+                 if start_file.exists():
+                     elapsed = time.perf_counter()-started
+                     durable_save(output / "sessions" / f"{session}.end.json", dict(session_id=session,
+                         start_sha256=file_hash(start_file), outcome=outcome, elapsed_wall_seconds=elapsed))
+                     timing = session_timing(output, sessions)
+                     durable_save(output / "timing.json", timing)
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/validate.py b/work/sdmpc_rl_local_20260930/validate.py
+index e8f6ba9..29b04bf 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/validate.py
++++ b/work/sdmpc_rl_local_20260930/validate.py
+@@ -2,13 +2,13 @@
+ from pathlib import Path
+ from local_runtime import (np, torch, read, file_hash, digest, SCENARIOS, BEHAVIORS,
+                            FORMAT, MASKS, seeds, sequence_validator, verify_identity, contract, plain,
+                            session_timing, TIMING_SCOPE)
+ from compare_runs import finite, same_cost, queue_exposure
+ from budget_controller import residual_budget
+-from frozen_inventory import inventory
++from frozen_inventory import inventory, complete_config
+ 
+ CONTROL_FIELDS = ("ramp_metering", "vsl", "green_times", "offsets", "inflow_outflow_allocation")
+ 
+ 
+ def validate_observation(obs, k, schema, anchor, requested, executed):
+     names = schema["names"]
+@@ -38,13 +38,13 @@ def physical_config(settings):
+ 
+ 
+ def validate_boundary(ck, settings):
+     env, trace = ck["environment"], ck["trace"]
+     n = len(trace)
+     cfg = physical_config(settings)
+-    if plain(env["sim"].cfg) != cfg or env["warmup_ttt"] != settings["warmup_ttt"]:
++    if complete_config(env["sim"].cfg) != cfg or env["warmup_ttt"] != settings["warmup_ttt"]:
+         raise ValueError("Checkpoint physical configuration/accounting differs")
+     state = plain(env["sim"].state)
+     finite(inventory(state, cfg), "checkpoint inventory")
+     totals = {key: finite(getattr(env["sim"], key), "checkpoint accounting " + key)
+               for key in ("total_ttt", "freeway_ttt", "urban_ttt")}
+     same_cost(totals["freeway_ttt"]+totals["urban_ttt"], totals["total_ttt"], "checkpoint area accounting")
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/run_wave.py b/work/sdmpc_rl_local_20260930/run_wave.py
+index ac49b0f..c205388 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/run_wave.py
++++ b/work/sdmpc_rl_local_20260930/run_wave.py
+@@ -52,13 +52,14 @@ def run_stage(output, jobs, expected, abort, all_jobs):
+             verify_identity(expected)
+             folder = output / job["key"]
+             if (folder / "completion.json").exists():
+                 validate_job(output, job, expected)
+                 continue
+             command = command_for(output, job, abort)
+-            token = reserve_worker(folder, job["scenario"], job["behavior"], job["cpu_mask"], launch=True)
++            token = reserve_worker(folder, job["scenario"], job["behavior"], job["cpu_mask"],
++                                   launch=True, resume="--resume" in command)
+             command.extend(["--reservation", token])
+             out = (folder / "stdout.log").open("a", encoding="utf-8")
+             err = (folder / "stderr.log").open("a", encoding="utf-8")
+             env = os.environ.copy()
+             env.update(PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
+                        OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/test_collection.py b/work/sdmpc_rl_local_20260930/test_collection.py
+index 99204bc..ab441e4 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/test_collection.py
++++ b/work/sdmpc_rl_local_20260930/test_collection.py
+@@ -2,13 +2,13 @@
+ import copy
+ import json
+ from pathlib import Path
+ from types import SimpleNamespace as NS
+ import sys
+ import pytest
+-from dataclasses import dataclass, field, asdict
++from dataclasses import dataclass, field, asdict, make_dataclass
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import local_runtime as lr
+ import collect
+ import validate
+ import run_wave
+@@ -459,12 +459,13 @@ def test_fix1_shared_five_worker_cap_and_claim_once(tmp_path, synthetic):
+     synthetic.setattr(collect, "boot", lambda *a: pytest.fail("sixth worker booted"))
+     with pytest.raises(OSError, match="five"):
+         collect.run(args(tmp_path / jobs[5]["key"], "local"))
+     with pytest.raises(OSError, match="reservation"):
+         lr.reserve_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], launch=True)
+     lr.release_worker(token)
++    first = jobs[5]
+     token = lr.reserve_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], launch=True)
+     assert lr.claim_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], token) == token
+     with pytest.raises(ValueError, match="claimed"):
+         lr.claim_worker(tmp_path / first["key"], first["scenario"], first["behavior"], first["cpu_mask"], token)
+ 
+ 
+@@ -587,23 +588,22 @@ def test_fix1_failed_session_retains_elapsed_and_completion_last(tmp_path, synth
+ 
+ 
+ def test_fix1_loss_before_session_start_is_unknown(tmp_path, synthetic):
+     folder = tmp_path / "local" / lr.SCENARIOS[0]
+     collect.run(args(folder, limit=1))
+     # A resume acquires ownership, then disappears before publishing its timing start.
+-    token = lr.reserve_worker(folder, lr.SCENARIOS[0], "local", lr.MASKS[0])
++    token = lr.reserve_worker(folder, lr.SCENARIOS[0], "local", lr.MASKS[0], resume=True)
+     lr.release_worker(token)  # Synthetic proof of process exit; no process was launched.
+     collect.run(args(folder, resume=True))
+     summary = validate.load_completed(folder, IDENTITY)[2]
+     assert summary["timing_status"] == "UNKNOWN" and summary["unknown_sessions"] == [token]
+ 
+ 
+ def test_fix1_completed_identity_retained_in_cohort(tmp_path, synthetic):
+     folder = tmp_path / "carry" / lr.SCENARIOS[0]
+     collect.run(args(folder, "carry"))
+-    lr.ensure_cohort_idle(tmp_path)
+     folder.rename(tmp_path / "preserved")
+     with pytest.raises(ValueError, match="completed cohort"):
+         collect.run(args(folder, "carry"))
+     with pytest.raises(ValueError, match="canonical"):
+         collect.run(args(tmp_path / "another" / "carry" / lr.SCENARIOS[0], "carry"))
+ 
+@@ -660,6 +660,138 @@ def test_fix1_zero_boundary_nonfinite_accounting(tmp_path, synthetic, field):
+     with pytest.raises(RuntimeError, match="zero boundary"):
+         collect.run(args(folder, "carry"))
+     ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
+     setattr(ck["environment"]["sim"], field, float("nan"))
+     with pytest.raises(ValueError, match="finite|accounting"):
+         collect.validate_checkpoint(ck, ck["settings"])
++
++
++def test_fix2_complete_nested_config_preserves_runtime_extra():
++    network_type = make_dataclass("SyntheticNetwork", [(key, object) for key in CONFIG["network"]])
++    config_type = make_dataclass("SyntheticConfig", [("network", object)])
++    cfg = config_type(network_type(**copy.deepcopy(CONFIG["network"])))
++    cfg.network.terminal_zero_gradient = True
++    expected = copy.deepcopy(CONFIG)
++    expected["network"]["terminal_zero_gradient"] = True
++    settings = dict(physical_config=expected, warmup_ttt=5., contract={
++        "environment_contract": {"config_sha256": lr.digest(expected)}})
++    env = FakeEnv(None)
++    obs = env.reset()
++    env.sim.cfg = cfg
++    ck = dict(environment=env.checkpoint(), trace=[], observation=obs, schema=SCHEMA)
++    validate.validate_boundary(ck, settings)
++    ck["environment"]["sim"].cfg.network.terminal_zero_gradient = False
++    with pytest.raises(ValueError, match="configuration"):
++        validate.validate_boundary(ck, settings)
++    settings["physical_config"]["network"]["terminal_zero_gradient"] = False
++    with pytest.raises(ValueError, match="configuration"):
++        validate.validate_boundary(ck, settings)
++
++
++@pytest.mark.parametrize("phase", ["started", "checkpointed", "finished", "coordinator_finished"])
++def test_fix2_immediate_relocation_cannot_restart_slot(tmp_path, synthetic, phase):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    request = args(folder, "carry", limit=1 if phase in ("started", "checkpointed") else None)
++    if phase == "coordinator_finished":
++        request.reservation = lr.reserve_worker(folder, request.scenario, "carry", request.cpu_mask, launch=True)
++        # Emulate the child claiming a dispatched intent. No parent post-exit release follows.
++    if phase == "started":
++        original_identity = collect.identity
++        def fail_initialization():
++            raise RuntimeError("synthetic initialization loss")
++        synthetic.setattr(collect, "identity", fail_initialization)
++        with pytest.raises(RuntimeError, match="initialization loss"):
++            collect.run(request)
++        synthetic.setattr(collect, "identity", original_identity)
++    else:
++        collect.run(request)
++    preserved = tmp_path / "preserved"
++    folder.rename(preserved)
++    hashes = {str(p.relative_to(preserved)): lr.file_hash(p) for p in preserved.rglob("*") if p.is_file()}
++    with pytest.raises(ValueError, match="cohort"):
++        collect.run(args(folder, "carry", limit=1))
++    assert hashes == {str(p.relative_to(preserved)): lr.file_hash(p) for p in preserved.rglob("*") if p.is_file()}
++
++
++@pytest.mark.parametrize("interruption", ["session_end", "completion_marker"])
++def test_fix2_interrupted_finalization_resumes_terminal_checkpoint(tmp_path, synthetic, interruption):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    original_save, original_durable = collect.save, collect.durable_save
++    def interrupt(path, value):
++        if (interruption == "session_end" and path.name.endswith(".end.json") or
++                interruption == "completion_marker" and path.name == "completion.json"):
++            raise RuntimeError("synthetic publication interruption")
++        (original_durable if interruption == "session_end" else original_save)(path, value)
++    synthetic.setattr(collect, "durable_save" if interruption == "session_end" else "save", interrupt)
++    with pytest.raises(RuntimeError, match="publication interruption"):
++        collect.run(args(folder, "carry"))
++    record = lr.read(tmp_path / ".ownership/reservations.json")[-1]
++    assert record["cohort_phase"] == "finished" and record["control_steps"] == 75
++    assert record["state"] == "exited" and not (folder / "completion.json").exists()
++    run_id = lr.read(folder / "settings.json")["run_id"]
++    original_sessions = {p.name: p.read_bytes() for p in (folder / "sessions").iterdir()}
++    synthetic.setattr(collect, "save", original_save)
++    synthetic.setattr(collect, "durable_save", original_durable)
++    synthetic.setattr(FakeEnv, "step", lambda *a, **k: pytest.fail("terminal resume must not step"))
++    assert collect.run(args(folder, "carry", resume=True)) == "completed"
++    _, settings, summary = validate.load_completed(folder, IDENTITY)
++    assert settings["run_id"] == run_id
++    assert summary["timing_status"] == ("UNKNOWN" if interruption == "session_end" else "KNOWN")
++    assert all((folder / "sessions" / name).read_bytes() == value for name, value in original_sessions.items())
++    assert all(r["run_id"] == run_id for r in lr.read(tmp_path / ".ownership/reservations.json"))
++
++
++def test_fix2_relocated_checkpoint_can_resume_when_restored(tmp_path, synthetic):
++    folder = tmp_path / "local" / lr.SCENARIOS[0]
++    collect.run(args(folder, limit=2))
++    run_id = lr.read(folder / "settings.json")["run_id"]
++    record = lr.read(tmp_path / ".ownership/reservations.json")[-1]
++    assert record["cohort_phase"] == "checkpointed" and record["control_steps"] == 2
++    preserved = tmp_path / "preserved"
++    folder.rename(preserved)
++    with pytest.raises(ValueError, match="cohort"):
++        collect.run(args(folder, limit=1))
++    folder.rename(tmp_path / "rejected_empty_output")
++    preserved.rename(folder)
++    assert collect.run(args(folder, resume=True, limit=1)) == "checkpointed"
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    assert ck["settings"]["run_id"] == run_id and len(ck["trace"]) == 3
++    assert lr.read(tmp_path / ".ownership/reservations.json")[-1]["control_steps"] == 3
++
++
++@pytest.mark.parametrize("fault", ["rewind", "run_id"])
++def test_fix2_resume_cannot_replace_cohort_history(tmp_path, synthetic, fault):
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    collect.run(args(folder, "carry", limit=1))
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    if fault == "rewind":
++        collect.run(args(folder, "carry", resume=True, limit=1))
++    else:
++        ck["settings"]["run_id"] = "unrelated-run"
++        lr.save(folder / "settings.json", ck["settings"])
++    lr.checkpoint_save(lr.torch, folder / "checkpoint.pt", ck)
++    before = lr.file_hash(folder / "checkpoint.pt")
++    synthetic.setattr(FakeEnv, "step", lambda *a, **k: pytest.fail("invalid cohort resume reached step"))
++    with pytest.raises(ValueError, match="Cohort"):
++        collect.run(args(folder, "carry", resume=True))
++    assert lr.file_hash(folder / "checkpoint.pt") == before
++
++
++def test_fix2_finished_ledger_write_is_measured_and_completion_last(tmp_path, synthetic):
++    clock, writes = [0.], []
++    synthetic.setattr(collect.time, "perf_counter", lambda: clock[0])
++    original_durable, original_save = lr.durable_save, collect.save
++    def costly_finished_ledger(path, value):
++        original_durable(path, value)
++        writes.append(path)
++        if path.name == "reservations.json" and any(r["cohort_phase"] == "finished" for r in value):
++            clock[0] += 7.
++    def record_save(path, value):
++        original_save(path, value)
++        writes.append(path)
++    synthetic.setattr(lr, "durable_save", costly_finished_ledger)
++    synthetic.setattr(collect, "save", record_save)
++    folder = tmp_path / "carry" / lr.SCENARIOS[0]
++    collect.run(args(folder, "carry"))
++    assert validate.load_completed(folder, IDENTITY)[2]["elapsed_wall_seconds"] == 7.
++    assert writes[-1] == folder / "completion.json"
++    assert lr.read(tmp_path / ".ownership/reservations.json")[-1]["cohort_phase"] == "finished"
+diff --git a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/frozen_inventory.py b/work/sdmpc_rl_local_20260930/frozen_inventory.py
+index 1162bd9..2da67ba 100644
+--- a/.superpowers/sdd/rl_budget_local_collection_plan_20260930/before-fix2/frozen_inventory.py
++++ b/work/sdmpc_rl_local_20260930/frozen_inventory.py
+@@ -1,40 +1,47 @@
+ """Reuse frozen accounting definitions without booting a physical runtime."""
+ import ast
+ import copy
+ import importlib.util
++from dataclasses import fields, is_dataclass
+ from functools import lru_cache
+ from pathlib import Path
+ import sys
+ from types import SimpleNamespace
++from typing import Any, Mapping
+ 
+ ROOT = Path(__file__).resolve().parents[2] / "artifacts/sdmpc_budget_baseline_20260929/source/work/sdmpc_matrix_14400_20260912/historical_tree/src"
+ 
+ 
+ @lru_cache(maxsize=1)
+ def accounting():
+     # state.py has only standard-library imports. Keep it out of the physical src namespace.
+     spec = importlib.util.spec_from_file_location("local_frozen_state", ROOT / "models/state.py")
+     state = importlib.util.module_from_spec(spec)
+     sys.modules[spec.name] = state
+     spec.loader.exec_module(state)
+-    namespace = dict(TrafficState=state.TrafficState, ExperimentConfig=state.ExperimentConfig)
+-    # Compile the two unchanged pure functions, excluding solver/simulator imports.
+-    for relative, name in (("simulation/player_cost_accounting.py", "freeway_buffer_vehicle_counts"),
+-                           ("controllers/sensitivity_dmpc.py", "physical_inventory")):
+-        path = ROOT / relative
++    namespace = dict(TrafficState=state.TrafficState, ExperimentConfig=state.ExperimentConfig,
++                     fields=fields, is_dataclass=is_dataclass, Any=Any, Mapping=Mapping)
++    # Compile the unchanged pure definitions, excluding runtime/solver/simulator imports.
++    for path, name in ((ROOT / "simulation/player_cost_accounting.py", "freeway_buffer_vehicle_counts"),
++                       (ROOT / "controllers/sensitivity_dmpc.py", "physical_inventory"),
++                       (ROOT.parents[1] / "historical_config.py", "to_plain_dict")):
+         tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+         nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name]
+         if len(nodes) != 1:
+             raise ValueError("Frozen accounting definition missing or ambiguous: " + name)
+         exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), "exec"), namespace)
+-    return state.TrafficState, namespace["physical_inventory"]
++    return state.TrafficState, namespace["physical_inventory"], namespace["to_plain_dict"]
++
++
++def complete_config(config):
++    return accounting()[2](config)
+ 
+ 
+ def inventory(state, config):
+-    state_type, compute = accounting()
++    state_type, compute, _ = accounting()
+     required = ("freeway_density", "freeway_effective_lanes", "ramp_queue", "mainline_origin_queue",
+                 "urban_queue", "boundary_queue", "urban_movement_queue", "urban_link_storage",
+                 "freeway_buffer_up_density", "freeway_buffer_down_density")
+     if any(name not in state for name in required):
+         raise ValueError("Missing physical inventory state")
+     cfg = SimpleNamespace(network=SimpleNamespace(**config["network"]))

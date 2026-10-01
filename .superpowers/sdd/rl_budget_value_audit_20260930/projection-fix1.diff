@@ -1,0 +1,384 @@
+diff --git a/.superpowers/sdd/rl_budget_value_audit_20260930/projection-before-fix.py b/work/sdmpc_rl_value_audit_20260930/projection_audit.py
+index 621b25a..20c93de 100644
+--- a/.superpowers/sdd/rl_budget_value_audit_20260930/projection-before-fix.py
++++ b/work/sdmpc_rl_value_audit_20260930/projection_audit.py
+@@ -23,6 +23,36 @@ def stopped(output):
+     return any((folder / "STOP").exists() for folder in (output, GOAL_ROOT, REPO))
+ 
+ 
++def input_manifest():
++    paths = [BASE / "completion.json", BASE / "train_round0/model_final.pt",
++             BASE / "train_round1/model_final.pt"]
++    for round_index in (0, 1):
++        for scenario in SCENARIOS:
++            folder = BASE / f"collect_round{round_index}" / scenario
++            paths.extend(folder / name for name in (
++                "completion.json", "settings.json", "experience.pt", "episode_00_trace.json",
++                "episode_00_summary.json", "observation_schema.json", "runtime_versions.json"))
++    return {str(path.relative_to(REPO)): file_hash(path) for path in paths}
++
++
++def verify_input_manifest(manifest):
++    for name, expected in manifest.items():
++        try:
++            actual = file_hash(REPO / name)
++        except OSError as exc:
++            raise ValueError("Input missing or changed: " + name) from exc
++        if actual != expected:
++            raise ValueError("Input changed: " + name)
++
++
++def verify_collection_provenance(model, runs, round_index):
++    profiles = model.get("training_profiles")
++    start = round_index * len(SCENARIOS)
++    if (not isinstance(profiles, list) or len(profiles) != 2 * len(SCENARIOS) or
++            profiles[start:start + len(SCENARIOS)] != [runs[s]["provenance"] for s in SCENARIOS]):
++        raise ValueError("Collection provenance differs from authenticated final model")
++
++
+ def column(names, name):
+     if names.count(name) != 1:
+         raise ValueError("Missing/duplicate observation field: " + name)
+@@ -74,10 +104,12 @@ def alias_actions(anchor, capacity, np_action):
+     threshold = (capacity - float(anchor[1])) / 1000.
+     if threshold > 1.:
+         return []
+-    low = max(-1., threshold)
+-    # Move inside the clipped region so an FP roundoff cannot fake equivalence.
+-    low = min(1., low + 1e-7)
+-    candidates = [np.array([np_action, value]) for value in (low, (low+1.)/2., 1.)]
++    low = np.float32(max(-1., threshold))
++    # Select a representable boundary action using the actual physical transform.
++    if residual_budget(np.array([np_action, low], dtype=np.float32), anchor, capacity)[1][1] < capacity:
++        low = np.nextafter(low, np.float32(1.))
++    candidates = [np.array([np_action, value], dtype=np.float32)
++                  for value in (low, (float(low)+1.)/2., 1.)]
+     groups = []
+     for action in candidates:
+         _, request = residual_budget(action, anchor, capacity)
+@@ -96,7 +128,9 @@ def q_aliases(learner, obs, anchor, capacity):
+     records = []
+     for np_action in (-1., 0., 1.):
+         for group in alias_actions(anchor, capacity, np_action):
+-            actions = torch.tensor(np.stack(group["actions"]), dtype=torch.float32)
++            actions = torch.unique(torch.tensor(np.stack(group["actions"]), dtype=torch.float32), dim=0)
++            if len(actions) < 2:
++                continue
+             # Conversion to float32 must preserve the physical equivalence.
+             requests = [residual_budget(a.numpy(), anchor, capacity)[1] for a in actions]
+             if not all(np.array_equal(r, requests[0]) for r in requests):
+@@ -122,8 +156,16 @@ def main():
+     if output.exists() and any(output.iterdir()):
+         raise FileExistsError(output)
+     with exclusive_run(output):
++        if stopped(output):
++            print("PROJECTION_AUDIT_STOPPED", flush=True)
++            return
++        if any(path.name != "runner.lock" for path in output.iterdir()):
++            raise FileExistsError(output)
+         started = time.time()
+         save(output / "process.json", dict(pid=os.getpid(), started=started, command=sys.argv))
++        source = {str(path.relative_to(REPO)): file_hash(path) for path in (
++            Path(__file__), REPO / "work/sdmpc_rl_recovery_20260929/common.py")}
++        inputs = input_manifest()
+         model, learner = load_base()
+         rt = boot(DEFAULT_SNAPSHOT, 1)
+         contract = model["contract"]
+@@ -131,10 +173,8 @@ def main():
+                 digest(rt["rc"].to_plain_dict(rt["options"])) != contract["environment_contract"]["options_sha256"]):
+             raise ValueError("Physical configuration differs")
+         capacity = rt["cfg"].network.total_ramp_capacity
+-        source = {str(path.relative_to(REPO)): file_hash(path) for path in (
+-            Path(__file__), REPO / "work/sdmpc_rl_recovery_20260929/common.py")}
+         settings = dict(base_sha256=BASE_HASH, source_sha256=source, contract=contract,
+-                        capacity=capacity, scope="training_replay_only_no_new_simulation")
++                        input_sha256=inputs, capacity=capacity, scope="training_replay_only_no_new_simulation")
+         save(output / "settings.json", settings)
+         save(output / "status.json", dict(status="running"))
+         names = contract["observation_schema"]["names"]
+@@ -143,12 +183,13 @@ def main():
+             if stopped(output):
+                 save(output / "status.json", dict(status="stopped"))
+                 return
+-            predecessor = None if round_index == 0 else file_hash(BASE / "train_round0/model_final.pt")
++            predecessor = None if round_index == 0 else inputs[str((BASE / "train_round0/model_final.pt").relative_to(REPO))]
+             loaded_contract, runs = load_collections(
+                 [BASE / f"collect_round{round_index}" / s for s in SCENARIOS], round_index,
+                 contract["source_pins"], contract["runtime_versions"], predecessor)
+             if loaded_contract != contract:
+                 raise ValueError("Collection and final model contracts differ")
++            verify_collection_provenance(model, runs, round_index)
+             for scenario in SCENARIOS:
+                 if stopped(output):
+                     save(output / "status.json", dict(status="stopped"))
+@@ -171,11 +212,6 @@ def main():
+         if stopped(output):
+             save(output / "status.json", dict(status="stopped"))
+             return
+-        verify_pins(DEFAULT_SNAPSHOT, contract["source_pins"])
+-        if file_hash(BASE / "train_round1/model_final.pt") != BASE_HASH or runtime_versions() != contract["runtime_versions"]:
+-            raise ValueError("Input/runtime changed")
+-        if any(file_hash(REPO / key) != value for key, value in source.items()):
+-            raise ValueError("Diagnostic source changed")
+         spreads = np.array([r["twin_q_spread"] for r in alias_rows]).reshape(-1, 2)
+         save(output / "aliases.json", alias_rows)
+         result = dict(status="completed", settings=settings, episodes=episodes, collections=identities,
+@@ -187,6 +223,15 @@ def main():
+             caveat="Same projected request at the same saved training state; no counterfactual solver run. "
+                    "Nominal actions enter the physical controller only through this projection. "
+                    "A Q difference violates action equivalence, but does not measure optimal ranking or traffic gain.")
++        verify_pins(DEFAULT_SNAPSHOT, contract["source_pins"])
++        if file_hash(BASE / "train_round1/model_final.pt") != BASE_HASH or runtime_versions() != contract["runtime_versions"]:
++            raise ValueError("Input/runtime changed")
++        if any(file_hash(REPO / key) != value for key, value in source.items()):
++            raise ValueError("Diagnostic source changed")
++        verify_input_manifest(inputs)
++        if stopped(output):
++            save(output / "status.json", dict(status="stopped"))
++            return
+         save(output / "completion.json", result)
+         save(output / "status.json", dict(status="completed"))
+         print("PROJECTION_AUDIT_PASS", result["aliased_states"], result["q_spread_max"], flush=True)
+diff --git a/.superpowers/sdd/rl_budget_value_audit_20260930/projection-test-before-fix.py b/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py
+index fa6acc2..8736350 100644
+--- a/.superpowers/sdd/rl_budget_value_audit_20260930/projection-test-before-fix.py
++++ b/work/sdmpc_rl_value_audit_20260930/test_projection_audit.py
+@@ -1,4 +1,7 @@
+ import copy
++from contextlib import contextmanager
++from pathlib import Path
++from types import SimpleNamespace
+ import numpy as np
+ import pytest
+ import torch
+@@ -10,6 +13,113 @@ NAMES = ["memory/remaining/0", "state/time_sec", "memory/action_anchor/0",
+          "memory/previous_executed/0", "memory/previous_executed/1"]
+ 
+ 
++@pytest.fixture(autouse=True)
++def isolate_production(tmp_path, monkeypatch):
++    repo = tmp_path / "repo"
++    monkeypatch.setattr(audit, "REPO", repo)
++    monkeypatch.setattr(audit, "BASE", repo / "pilot")
++    monkeypatch.setattr(audit, "GOAL_ROOT", repo / "goal")
++    monkeypatch.setattr(audit, "DEFAULT_SNAPSHOT", repo / "snapshot")
++
++    def forbidden(*args, **kwargs):
++        pytest.fail("Production loader/runtime called by a synthetic test")
++
++    for name in ("load_base", "load_collections", "boot", "verify_pins", "runtime_versions"):
++        monkeypatch.setattr(audit, name, forbidden)
++
++
++@pytest.fixture
++def synthetic_audit(tmp_path, monkeypatch):
++    cfg = SimpleNamespace(network=SimpleNamespace(total_ramp_capacity=6000.))
++    cfg_plain, options = {"capacity": 6000.}, {"horizon": 3}
++    contract = dict(source_pins={"fixture": "source"}, runtime_versions={"fixture": "runtime"},
++        observation_schema={"names": NAMES}, environment_contract=dict(
++            config_sha256=audit.digest(cfg_plain), options_sha256=audit.digest(options)))
++    ctx = SimpleNamespace(output=tmp_path / "output", runs={}, inputs=[], hash_reads=[],
++                          loaded_rounds=[], q_calls=0, hashed_before_load=set())
++    source = audit.REPO / "work/audit/projection_audit.py"
++    for path in (source, audit.REPO / "work/sdmpc_rl_recovery_20260929/common.py"):
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_text("# Synthetic diagnostic source\n", encoding="ascii")
++    monkeypatch.setattr(audit, "__file__", str(source))
++    for name in ("completion.json", "train_round0/model_final.pt", "train_round1/model_final.pt"):
++        path = audit.BASE / name
++        audit.save(path, {"fixture": name})
++        ctx.inputs.append(path)
++    profiles = []
++    for round_index in (0, 1):
++        ctx.runs[round_index] = {}
++        for index, scenario in enumerate(audit.SCENARIOS):
++            folder = audit.BASE / f"collect_round{round_index}" / scenario
++            transitions, rows = episode()
++            for name in ("completion.json", "settings.json", "experience.pt",
++                         "episode_00_trace.json", "episode_00_summary.json",
++                         "observation_schema.json", "runtime_versions.json"):
++                path = folder / name
++                audit.save(path, rows if name == "episode_00_trace.json" else {"fixture": str(path)})
++                ctx.inputs.append(path)
++            provenance = dict(scenario=scenario, seed=6301 + round_index * 100 + index,
++                profile_sha256=audit.file_hash(folder / "settings.json"),
++                run_id=f"round{round_index}-{scenario}",
++                experience_sha256=audit.file_hash(folder / "experience.pt"))
++            ctx.runs[round_index][scenario] = dict(transitions=transitions, provenance=provenance,
++                identity=dict(folder=str(folder), completion_sha256=audit.file_hash(folder / "completion.json"),
++                    settings_sha256=audit.file_hash(folder / "settings.json"),
++                    experience_sha256=provenance["experience_sha256"]))
++            profiles.append(copy.deepcopy(provenance))
++    replay = {}
++    for scenario in audit.SCENARIOS:
++        transitions = ctx.runs[0][scenario]["transitions"] + ctx.runs[1][scenario]["transitions"]
++        replay[scenario] = {
++            key: torch.tensor(np.asarray(values), dtype=torch.bool if key == "terminated" else torch.float32)
++            for key, values in zip(("observations", "actions", "rewards", "next_observations", "terminated"),
++                                   zip(*transitions))}
++    ctx.model = dict(contract=contract, learner={"replay": replay}, training_profiles=profiles)
++    ctx.before = {str(path.relative_to(audit.REPO)): audit.file_hash(path) for path in ctx.inputs}
++    monkeypatch.setattr(audit, "BASE_HASH", audit.file_hash(audit.BASE / "train_round1/model_final.pt"))
++    original_hash = audit.file_hash
++
++    def fixture_hash(path):
++        path = Path(path)
++        assert path.is_relative_to(tmp_path), "Hashing must stay inside the synthetic fixture"
++        ctx.hash_reads.append(path)
++        return original_hash(path)
++
++    def load_base():
++        ctx.hashed_before_load = set(ctx.hash_reads)
++        return ctx.model, None
++
++    def load_collections(folders, round_index, source_pins, runtime, model_hash):
++        assert folders == [audit.BASE / f"collect_round{round_index}" / s for s in audit.SCENARIOS]
++        assert source_pins == contract["source_pins"] and runtime == contract["runtime_versions"]
++        assert model_hash == (None if round_index == 0 else
++                              original_hash(audit.BASE / "train_round0/model_final.pt"))
++        ctx.loaded_rounds.append(round_index)
++        return contract, ctx.runs[round_index]
++
++    def q_aliases(*args):
++        ctx.q_calls += 1
++        return []
++
++    @contextmanager
++    def lock(output):
++        output.mkdir(parents=True, exist_ok=True)
++        (output / "runner.lock").write_bytes(b"0")
++        yield
++
++    monkeypatch.setattr(audit, "file_hash", fixture_hash)
++    monkeypatch.setattr(audit, "load_base", load_base)
++    monkeypatch.setattr(audit, "load_collections", load_collections)
++    monkeypatch.setattr(audit, "boot", lambda *args: dict(cfg=cfg, options=options,
++        rc=SimpleNamespace(to_plain_dict=lambda value: cfg_plain if value is cfg else value)))
++    monkeypatch.setattr(audit, "runtime_versions", lambda: contract["runtime_versions"])
++    monkeypatch.setattr(audit, "verify_pins", lambda *args: None)
++    monkeypatch.setattr(audit, "q_aliases", q_aliases)
++    monkeypatch.setattr(audit, "exclusive_run", lock)
++    monkeypatch.setattr(audit.sys, "argv", [str(source), "--output", str(ctx.output)])
++    return ctx
++
++
+ def episode():
+     observations, rows = [], []
+     for i in range(75):
+@@ -83,3 +193,116 @@ def test_stop_scope(tmp_path,monkeypatch):
+ def test_unique_schema_column():
+     with pytest.raises(ValueError): audit.column(["x","x"],"x")
+     with pytest.raises(ValueError): audit.column(["y"],"x")
++
++
++def test_main_records_manifest_before_loading_and_covers_all_replay(synthetic_audit):
++    ctx = synthetic_audit
++    audit.main()
++    result = audit.read(ctx.output / "completion.json")
++    assert result["settings"]["input_sha256"] == ctx.before
++    assert audit.read(ctx.output / "settings.json")["input_sha256"] == ctx.before
++    assert set(ctx.inputs) <= ctx.hashed_before_load
++    assert all(ctx.hash_reads.count(path) >= 2 for path in ctx.inputs)
++    assert ctx.loaded_rounds == [0, 1] and ctx.q_calls == 750
++    assert {(row["round"], row["scenario"]) for row in result["episodes"]} == {
++        (r, s) for r in (0, 1) for s in audit.SCENARIOS}
++    assert audit.read(ctx.output / "status.json")["status"] == "completed"
++    assert {str(path.relative_to(audit.REPO)): audit.file_hash(path) for path in ctx.inputs} == ctx.before
++
++
++@pytest.mark.parametrize("relative", [
++    "completion.json", "train_round0/model_final.pt", "train_round1/model_final.pt",
++    *[f"collect_round{r}/sweet_155_w/{name}" for r in (0, 1) for name in (
++        "completion.json", "settings.json", "experience.pt", "episode_00_trace.json",
++        "episode_00_summary.json", "observation_schema.json", "runtime_versions.json")]])
++def test_main_rejects_input_drift_before_completion(synthetic_audit, monkeypatch, relative):
++    ctx = synthetic_audit
++    target = audit.BASE / relative
++    original_q = audit.q_aliases
++
++    def mutate_after_loading(*args):
++        result = original_q(*args)
++        if ctx.q_calls == 750:
++            target.write_bytes(target.read_bytes() + b"\n")
++        return result
++
++    monkeypatch.setattr(audit, "q_aliases", mutate_after_loading)
++    with pytest.raises(ValueError, match="Input.*changed"):
++        audit.main()
++    assert not (ctx.output / "completion.json").exists()
++    assert audit.read(ctx.output / "status.json")["status"] != "completed"
++
++
++@pytest.mark.parametrize("round_index", [0, 1])
++@pytest.mark.parametrize("field", ["scenario", "seed", "profile_sha256", "run_id", "experience_sha256"])
++def test_main_rejects_changed_provenance_before_comparison(synthetic_audit, round_index, field):
++    ctx = synthetic_audit
++    run = ctx.runs[round_index][audit.SCENARIOS[0]]
++    run["provenance"][field] = 9999 if field == "seed" else "different"
++    with pytest.raises(ValueError, match="Collection provenance"):
++        audit.main()
++    assert ctx.q_calls == round_index * 375
++    assert not (ctx.output / "completion.json").exists()
++
++
++def test_main_rejects_repackaged_collection_with_identical_transitions(synthetic_audit):
++    ctx = synthetic_audit
++    run = ctx.runs[1][audit.SCENARIOS[0]]
++    folder = Path(run["identity"]["folder"])
++    audit.save(folder / "experience.pt", {"fixture": "repackaged, identical transition values"})
++    run["provenance"].update(run_id="replacement-run", experience_sha256=audit.file_hash(folder / "experience.pt"))
++    run["identity"]["experience_sha256"] = run["provenance"]["experience_sha256"]
++    with pytest.raises(ValueError, match="Collection provenance"):
++        audit.main()
++    assert ctx.q_calls == 375
++    assert not (ctx.output / "completion.json").exists()
++
++
++@pytest.mark.parametrize("entry", ["completion.json", "STOP", "goal-stop", "repo-stop"])
++def test_main_rechecks_guards_under_lock(synthetic_audit, monkeypatch, entry):
++    ctx = synthetic_audit
++
++    def no_start(*args):
++        pytest.fail("Audit started despite an entry created while acquiring its lock")
++
++    @contextmanager
++    def racing_lock(output):
++        output.mkdir()
++        (output / "runner.lock").write_bytes(b"0")
++        target = (audit.GOAL_ROOT / "STOP" if entry == "goal-stop" else
++                  audit.REPO / "STOP" if entry == "repo-stop" else output / entry)
++        target.parent.mkdir(parents=True, exist_ok=True)
++        target.write_bytes(b"preserve this entry")
++        yield
++        assert target.read_bytes() == b"preserve this entry"
++
++    monkeypatch.setattr(audit, "exclusive_run", racing_lock)
++    monkeypatch.setattr(audit, "load_base", no_start)
++    monkeypatch.setattr(audit, "boot", no_start)
++    if entry == "completion.json":
++        with pytest.raises(FileExistsError):
++            audit.main()
++        assert (ctx.output / entry).read_bytes() == b"preserve this entry"
++    else:
++        audit.main()
++    assert not (ctx.output / "process.json").exists()
++    assert not (ctx.output / "settings.json").exists()
++
++
++@pytest.mark.parametrize("anchor_metering, expected_groups", [(5000.00012, 3), (5000.00001, 0)])
++def test_alias_q_uses_distinct_float32_boundary_actions(anchor_metering, expected_groups):
++    critics = [torch.nn.Linear(len(NAMES) + 2, 1) for _ in range(2)]
++    with torch.no_grad():
++        for critic in critics:
++            critic.weight.zero_()
++            critic.bias.zero_()
++            critic.weight[0, -1] = 2.
++    anchor = [0., anchor_metering]
++    records = audit.q_aliases(SimpleNamespace(critics=critics), np.zeros(len(NAMES), np.float32), anchor, 6000.)
++    assert len(records) == expected_groups
++    for row in records:
++        actions = np.asarray(row["nominal_actions"], dtype=np.float32)
++        assert len(np.unique(actions, axis=0)) == len(actions) >= 2
++        for action in actions:
++            np.testing.assert_array_equal(audit.residual_budget(action, anchor, 6000.)[1], row["projected_request"])
++        assert min(row["twin_q_spread"]) > 0.

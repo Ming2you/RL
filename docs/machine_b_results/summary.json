@@ -1,0 +1,9 @@
+{
+ "rows": {
+  "centers": 5,
+  "canonical": 11,
+  "carries": 27,
+  "branches": 188
+ },
+ "note": "machine-B results; negative delta_pct = better than carry"
+}

@@ -1,0 +1,577 @@
+diff --git a/work/sdmpc_rl_recovery_20260929/critic_diagnostic.py b/work/sdmpc_rl_recovery_20260929/critic_diagnostic.py
+new file mode 100644
+index 0000000..c5dd074
+--- /dev/null
++++ b/work/sdmpc_rl_recovery_20260929/critic_diagnostic.py
+@@ -0,0 +1,293 @@
++"""Paired critic-only replay diagnostic; never exports or evaluates a policy."""
++
++import argparse
++from copy import deepcopy
++import hashlib
++from importlib.util import module_from_spec, spec_from_file_location
++from io import BytesIO
++import json
++import os
++from pathlib import Path
++import platform
++import sys
++import time
++
++ROOT = Path(__file__).resolve().parents[2]
++TD3_SOURCE = ROOT / "work/sdmpc_rl_multi_20260929/td3.py"
++MODEL = ROOT / "results/sdmpc_rl_multi_20260929/pilot_v1/train_round1/model_final.pt"
++MODEL_SHA256 = "3dd1c06786e8d9ee62da355bdb17ac025290bef8b6d20c863b421a86488d5650"
++UPDATES = 3750
++LOG_UPDATES = (0, 375, 750, 1500, 3750)
++ARMS = {"A_tau_0.005": 0.005, "B_tau_1": 1.0}
++CAVEAT = (
++    "Behavior reward-to-go uses exploratory stored actions and is explicitly not "
++    "current-policy Q truth. Terminal errors have no continuation ambiguity. "
++    "This fixed-replay diagnostic does not establish causal policy superiority."
++)
++
++sys.dont_write_bytecode = True
++for _key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
++    os.environ[_key] = "1"
++sys.path.insert(0, str(ROOT / ".deps-budget"))
++
++import numpy as np
++import torch
++from torch.nn import functional as F
++
++# Resolve the old implementation by file, independent of other tasks' td3 imports.
++_spec = spec_from_file_location("critic_diagnostic_original_td3", TD3_SOURCE)
++_td3 = module_from_spec(_spec)
++_spec.loader.exec_module(_td3)
++TD3, SCENARIOS = _td3.TD3, _td3.SCENARIOS
++
++
++def file_hash(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def load_frozen_model(path=MODEL):
++    payload = Path(path).read_bytes()
++    digest = hashlib.sha256(payload).hexdigest()
++    if digest != MODEL_SHA256:
++        raise ValueError("Frozen final model SHA-256 mismatch")
++    # Deserialize precisely the bytes verified above, without reopening the input.
++    return torch.load(BytesIO(payload), map_location="cpu", weights_only=False)["learner"], digest
++
++
++def clone_arms(state):
++    arms = {}
++    for name in ARMS:
++        learner = TD3(state["observation_dim"], state["spec"]["seed"], state["spec"]["hidden"])
++        learner.load_state_dict(state)
++        learner.actor_target.load_state_dict(state["actor"])
++        learner.actor.requires_grad_(False).eval()
++        learner.actor_target.requires_grad_(False).eval()
++        arms[name] = learner
++    return arms
++
++
++def behavior_returns(rewards, terminated):
++    """Undiscounted observed reward-to-go, resetting only at true terminals."""
++    result = torch.empty_like(rewards)
++    value = 0.0
++    for index in range(len(rewards) - 1, -1, -1):
++        value = float(rewards[index]) + (0.0 if terminated[index] else value)
++        result[index] = value
++    return result
++
++
++def replay_tensors(state):
++    groups = state["replay"]
++    if set(groups) != set(SCENARIOS):
++        raise ValueError("Replay must contain the five training scenarios")
++    for scenario in SCENARIOS:
++        group = groups[scenario]
++        done = group["terminated"]
++        if (len(group["rewards"]) != 150 or done.dtype != torch.bool
++                or done.nonzero().flatten().tolist() != [74, 149]):
++            raise ValueError("Need 150 transitions and two complete 75-step episodes per scenario")
++        if not torch.equal(group["next_observations"][:-1][~done[:-1]],
++                           group["observations"][1:][~done[:-1]]):
++            raise ValueError("Stored training episode continuity differs")
++    data = {key: torch.cat([groups[s][key] for s in SCENARIOS]).clone()
++            for key in groups[SCENARIOS[0]]}
++    data["behavior_returns"] = torch.cat([
++        behavior_returns(groups[s]["rewards"], groups[s]["terminated"]) for s in SCENARIOS
++    ])
++    return data
++
++
++def draw_batch(data, numpy_rng, torch_rng):
++    indices = torch.from_numpy(np.concatenate([
++        numpy_rng.integers(150, size=8) + 150 * i for i in range(len(SCENARIOS))
++    ]))
++    batch = {key: value[indices] for key, value in data.items()}
++    noise = torch.randn((40, 2), generator=torch_rng, device="cpu", dtype=torch.float32).mul(TD3.policy_noise).clamp(
++        -TD3.noise_clip, TD3.noise_clip)
++    return indices, batch, noise
++
++
++@torch.no_grad()
++def target_values(learner, batch, noise):
++    actions = (learner.actor_target(batch["next_observations"]) + noise).clamp(-1.0, 1.0)
++    inputs = torch.cat((batch["next_observations"], actions), dim=1)
++    minimum_q = torch.minimum(*(critic(inputs).flatten() for critic in learner.critic_targets))
++    return batch["rewards"] + TD3.gamma * torch.where(
++        batch["terminated"], torch.zeros_like(minimum_q), minimum_q)
++
++
++def critic_step(learner, batch, noise, tau, update):
++    targets = target_values(learner, batch, noise)
++    inputs = torch.cat((batch["observations"], batch["actions"]), dim=1)
++    loss = sum(F.mse_loss(critic(inputs).flatten(), targets) for critic in learner.critics)
++    if not torch.isfinite(loss):
++        raise ValueError("Nonfinite critic loss")
++    learner.critic_optimizer.zero_grad(set_to_none=True)
++    loss.backward()
++    learner.critic_optimizer.step()
++    if update % 2 == 0:
++        with torch.no_grad():
++            for online, target in zip(learner.critics.parameters(), learner.critic_targets.parameters()):
++                target.mul_(1.0 - tau).add_(online, alpha=tau)
++    return float(loss.detach())
++
++
++@torch.no_grad()
++def diagnostics(learner, data, noise):
++    inputs = torch.cat((data["observations"], data["actions"]), dim=1)
++    q1, q2 = [critic(inputs).flatten() for critic in learner.critics]
++    targets = target_values(learner, data, noise)
++
++    def summarize(mask):
++        terminal = mask & data["terminated"]
++        heads = {}
++        for name, q in (("q1", q1), ("q2", q2), ("minimum_q", torch.minimum(q1, q2))):
++            gap = q[mask] - data["behavior_returns"][mask]
++            error = (q[terminal] - data["rewards"][terminal]).abs()
++            heads[name] = dict(
++                q_mean=float(q[mask].mean()), behavior_return_gap_mean=float(gap.mean()),
++                behavior_return_gap_rmse=float(gap.square().mean().sqrt()),
++                terminal_abs_error_mean=float(error.mean()) if len(error) else None,
++                terminal_abs_error_max=float(error.max()) if len(error) else None)
++        return dict(transitions=int(mask.sum()), true_terminals=int(terminal.sum()),
++                    total_td_loss=float(sum((q[mask] - targets[mask]).square().mean() for q in (q1, q2))),
++                    behavior_return_mean=float(data["behavior_returns"][mask].mean()), critics=heads)
++
++    index = torch.arange(len(q1))
++    local_index = index % 150
++    time_index = local_index % 75
++    per_scenario = {}
++    for i, scenario in enumerate(SCENARIOS):
++        mask = index // 150 == i
++        row = summarize(mask)
++        row["time_slices"] = {
++            name: summarize(mask & (time_index >= start) & (time_index < stop))
++            for name, start, stop in (("early_0_24", 0, 25), ("middle_25_49", 25, 50), ("late_50_74", 50, 75))
++        }
++        row["episodes"] = {str(ep): summarize(mask & (local_index // 75 == ep)) for ep in (0, 1)}
++        per_scenario[scenario] = row
++    return dict(total=summarize(torch.ones_like(index, dtype=torch.bool)), per_scenario=per_scenario)
++
++
++def runtime_record():
++    return dict(python=platform.python_version(), executable=sys.executable,
++                platform=platform.platform(), numpy=np.__version__, torch=torch.__version__,
++                numpy_path=np.__file__, torch_path=torch.__file__, device="cpu", dtype="float32",
++                torch_threads=torch.get_num_threads(), torch_interop_threads=torch.get_num_interop_threads(),
++                thread_environment={key: os.environ[key] for key in
++                                    ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")})
++
++
++def run_diagnostic(state, output, seed=6529, stop_paths=(), *, updates=UPDATES,
++                   log_updates=LOG_UPDATES, provenance=None):
++    """The CLI fixes the full budget; shorter budgets exist only for synthetic tests."""
++    if type(seed) is not int or not 0 <= seed < 2**63:
++        raise ValueError("seed must be an integer in [0, 2**63)")
++    torch.set_num_threads(1)
++    if torch.get_num_interop_threads() != 1:
++        torch.set_num_interop_threads(1)
++    output = Path(output).resolve()
++    output.mkdir(parents=True, exist_ok=False)
++    state = deepcopy(state)
++    arms = clone_arms(state)
++    data = replay_tensors(state)
++    numpy_rng = np.random.default_rng(seed)
++    torch_rng = torch.Generator(device="cpu").manual_seed(seed)
++    # Fixed evaluation noise uses its own stream and never consumes training RNG.
++    eval_rng = torch.Generator(device="cpu").manual_seed(seed + 1)
++    eval_noise = torch.randn((750, 2), generator=eval_rng, device="cpu", dtype=torch.float32).mul(TD3.policy_noise).clamp(
++        -TD3.noise_clip, TD3.noise_clip)
++    source_hashes = {str(path.resolve()): file_hash(path) for path in (Path(__file__), TD3_SOURCE)}
++    metadata = dict(
++        format="sdmpc-critic-temporal-diagnostic-v1", input=provenance, source_sha256=source_hashes,
++        runtime=runtime_record(), seed=seed, evaluation_noise_seed=seed + 1,
++        parameters=dict(updates=updates, log_updates=list(log_updates), batch_size=40,
++                        samples_per_scenario_per_batch=8, sampling="with replacement",
++                        gamma=TD3.gamma, learning_rate=TD3.learning_rate,
++                        policy_noise=TD3.policy_noise, noise_clip=TD3.noise_clip,
++                        arms=ARMS, critic_target_period=2, actor_updates=0, actor_target_updates=0,
++                        actor_target_initialization="final actor in both arms",
++                        critic_optimizer_initialization="frozen final checkpoint in both arms",
++                        initial_learner_updates=state["updates"], original_td3_spec=state["spec"]),
++        replay_counts=dict.fromkeys(SCENARIOS, 150), true_terminals=dict.fromkeys(SCENARIOS, 2),
++        td_loss_definition="Sum of twin-critic MSEs over all 750 transitions with one fixed shared smoothing-noise draw.",
++        time_slices="Zero-based control index within each 75-step episode, pooled over both collection rounds.",
++        caveat=CAVEAT)
++    stop_paths = tuple(map(Path, stop_paths)) + tuple(
++        folder / "STOP" for folder in (output, output.parent, output.parent.parent))
++    completed, last_logged = 0, -1
++    losses = dict.fromkeys(ARMS, None)
++    loss_sums = dict.fromkeys(ARMS, 0.0)
++    batch_digest = hashlib.sha256()
++    started = time.perf_counter()
++    with (output / "diagnostics.jsonl").open("x", encoding="utf-8") as stream:
++        def write(row):
++            stream.write(json.dumps(row, allow_nan=False) + "\n")
++            stream.flush()
++
++        def snapshot():
++            nonlocal last_logged
++            row = dict(kind="checkpoint", updates=completed, target_updates=completed // 2,
++                       sample_counts=dict.fromkeys(SCENARIOS, completed * 8),
++                       total_samples=completed * 40, paired_batch_sha256=batch_digest.hexdigest(), arms={})
++            for name, learner in arms.items():
++                row["arms"][name] = dict(
++                    **diagnostics(learner, data, eval_noise), last_batch_td_loss=losses[name],
++                    mean_training_td_loss=loss_sums[name] / completed if completed else None)
++            write(row)
++            last_logged = completed
++
++        write(dict(kind="metadata", **metadata))
++        snapshot()
++        status = "completed"
++        while completed < updates:
++            if any(path.exists() for path in stop_paths):
++                status = "stopped"
++                break
++            indices, batch, noise = draw_batch(data, numpy_rng, torch_rng)
++            for name, tau in ARMS.items():
++                losses[name] = critic_step(arms[name], batch, noise, tau, completed + 1)
++                loss_sums[name] += losses[name]
++            completed += 1
++            batch_digest.update(indices.numpy().tobytes())
++            batch_digest.update(noise.numpy().tobytes())
++            if completed in log_updates:
++                snapshot()
++        if completed != last_logged:
++            snapshot()
++        for learner in arms.values():
++            for module in (learner.actor, learner.actor_target):
++                if any(not torch.equal(value, state["actor"][key]) for key, value in module.state_dict().items()):
++                    raise ValueError("Fixed actor changed")
++        if source_hashes != {path: file_hash(path) for path in source_hashes}:
++            raise ValueError("Diagnostic source changed during execution")
++        if provenance and file_hash(provenance["path"]) != provenance["sha256"]:
++            raise ValueError("Frozen model changed during execution")
++        summary = dict(status=status, updates=completed, target_updates=completed // 2,
++                       sample_counts=dict.fromkeys(SCENARIOS, completed * 8), total_samples=completed * 40,
++                       paired_batch_sha256=batch_digest.hexdigest(), actors_unchanged=True,
++                       source_unchanged=True, input_unchanged=True if provenance else None,
++                       elapsed_wall_seconds=time.perf_counter() - started, caveat=CAVEAT)
++        write(dict(kind="summary", **summary))
++    with (output / "summary.json").open("x", encoding="utf-8") as stream:
++        json.dump(summary, stream, indent=2, allow_nan=False)
++    return summary
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--seed", type=int, default=6529)
++    parser.add_argument("--stop-file", type=Path)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise FileExistsError(args.output)
++    state, digest = load_frozen_model()
++    result = run_diagnostic(state, args.output, args.seed,
++                            stop_paths=() if args.stop_file is None else (args.stop_file,),
++                            provenance=dict(path=str(MODEL.resolve()), sha256=digest))
++    print(json.dumps(result, allow_nan=False))
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/work/sdmpc_rl_recovery_20260929/test_critic_diagnostic.py b/work/sdmpc_rl_recovery_20260929/test_critic_diagnostic.py
+new file mode 100644
+index 0000000..5707d62
+--- /dev/null
++++ b/work/sdmpc_rl_recovery_20260929/test_critic_diagnostic.py
+@@ -0,0 +1,272 @@
++"""Focused synthetic tests only: no production model, plant, or numerical run."""
++
++from copy import deepcopy
++import json
++
++import critic_diagnostic as diagnostic
++import numpy as np
++import pytest
++import torch
++
++
++def equal(left, right):
++    if isinstance(left, torch.Tensor):
++        assert torch.equal(left, right)
++    elif isinstance(left, np.ndarray):
++        np.testing.assert_array_equal(left, right)
++    elif isinstance(left, dict):
++        assert left.keys() == right.keys()
++        for key in left:
++            equal(left[key], right[key])
++    elif isinstance(left, (tuple, list)):
++        assert len(left) == len(right)
++        for a, b in zip(left, right):
++            equal(a, b)
++    else:
++        assert left == right
++
++
++@pytest.fixture(scope="module")
++def state():
++    learner = diagnostic.TD3(3, seed=23, hidden=8)
++    rng = np.random.default_rng(17)
++    for scenario in diagnostic.SCENARIOS:
++        for episode in range(2):
++            observations = rng.normal(size=(76, 3))
++            for i in range(75):
++                learner.add(observations[i], rng.uniform(-1, 1, 2), -float(episode + 1),
++                            observations[i + 1], i == 74, scenario)
++    learner.update()
++    learner.update()
++    return learner.state_dict()
++
++
++def sample(state, seed=72):
++    return diagnostic.draw_batch(diagnostic.replay_tensors(state), np.random.default_rng(seed),
++                                 torch.Generator().manual_seed(seed))
++
++
++def records(output):
++    return [json.loads(line) for line in (output / "diagnostics.jsonl").read_text().splitlines()]
++
++
++def test_clones_preserve_critics_optimizer_and_replace_stale_target_actor(state):
++    assert any(not torch.equal(value, state["actor_target"][key]) for key, value in state["actor"].items())
++    arms = diagnostic.clone_arms(state)
++    for learner in arms.values():
++        equal(learner.critics.state_dict(), state["critics"])
++        equal(learner.critic_targets.state_dict(), state["critic_targets"])
++        equal(learner.critic_optimizer.state_dict(), state["critic_optimizer"])
++        equal(learner.actor.state_dict(), state["actor"])
++        equal(learner.actor_target.state_dict(), state["actor"])
++        assert all(not p.requires_grad for p in learner.actor.parameters())
++        assert all(not p.requires_grad for p in learner.actor_target.parameters())
++    a, b = arms.values()
++    assert {p.data_ptr() for p in a.critics.parameters()}.isdisjoint(p.data_ptr() for p in b.critics.parameters())
++    a_moments = a.critic_optimizer.state_dict()["state"]
++    b_moments = b.critic_optimizer.state_dict()["state"]
++    assert all(a_moments[k]["exp_avg"].data_ptr() != b_moments[k]["exp_avg"].data_ptr() for k in a_moments)
++
++
++def test_true_terminal_targets_and_nonterminal_bootstrap(state):
++    learner = next(iter(diagnostic.clone_arms(state).values()))
++    with torch.no_grad():
++        for critic, bias in zip(learner.critic_targets, (7.0, 9.0)):
++            for parameter in critic.parameters():
++                parameter.zero_()
++            critic[-1].bias.fill_(bias)
++    _, batch, noise = sample(state)
++    batch["terminated"][::2] = True
++    batch["terminated"][1::2] = False
++    targets = diagnostic.target_values(learner, batch, noise)
++    assert torch.equal(targets[::2], batch["rewards"][::2])
++    assert torch.equal(targets[1::2], batch["rewards"][1::2] + 7)
++
++
++def test_exact_balance_and_reproducible_shared_draws(state):
++    data = diagnostic.replay_tensors(state)
++    rng_a, rng_b = np.random.default_rng(42), np.random.default_rng(42)
++    noise_a, noise_b = torch.Generator().manual_seed(42), torch.Generator().manual_seed(42)
++    for _ in range(7):
++        indices, batch, noise = diagnostic.draw_batch(data, rng_a, noise_a)
++        equal((indices, batch, noise), diagnostic.draw_batch(data, rng_b, noise_b))
++        assert torch.bincount(indices // 150, minlength=5).tolist() == [8] * 5
++        assert len(indices) == 40 and noise.shape == (40, 2)
++        assert float(noise.abs().max()) <= diagnostic.TD3.noise_clip
++
++
++def test_smoothing_is_applied_to_target_actor_and_actions_are_clipped(state):
++    learner = next(iter(diagnostic.clone_arms(state).values()))
++    _, batch, _ = sample(state)
++    with torch.no_grad():
++        learner.actor_target[-2].bias.copy_(torch.tensor([2.0, -2.0]))
++    noise = torch.tensor([[0.5, -0.5]]).repeat(40, 1)
++    captured = []
++    hook = learner.critic_targets[0].register_forward_pre_hook(
++        lambda module, args: captured.append(args[0].clone()))
++    try:
++        diagnostic.target_values(learner, batch, noise)
++    finally:
++        hook.remove()
++    expected_actions = (learner.actor_target(batch["next_observations"]) + noise).clamp(-1, 1)
++    equal(captured[0], torch.cat((batch["next_observations"], expected_actions), dim=1))
++    assert torch.all(expected_actions[:, 0] == 1) and torch.all(expected_actions[:, 1] == -1)
++
++
++def test_noise_and_diagnostic_remain_cpu_float32_with_changed_torch_default(state, tmp_path):
++    previous = torch.get_default_dtype()
++    try:
++        torch.set_default_dtype(torch.float64)
++        _, _, noise = sample(state)
++        assert noise.dtype == torch.float32 and noise.device.type == "cpu"
++        result = diagnostic.run_diagnostic(state, tmp_path / "float32", updates=1)
++        assert result["updates"] == 1
++    finally:
++        torch.set_default_dtype(previous)
++
++
++def test_actor_optimizer_replay_and_input_unchanged_after_critic_steps(state):
++    before = deepcopy(state)
++    _, batch, noise = sample(state)
++    batch_before, noise_before = deepcopy(batch), noise.clone()
++    arms = diagnostic.clone_arms(state)
++    for name, learner in arms.items():
++        for update in range(1, 5):
++            diagnostic.critic_step(learner, batch, noise, diagnostic.ARMS[name], update)
++        equal(learner.actor.state_dict(), before["actor"])
++        equal(learner.actor_target.state_dict(), before["actor"])
++        equal(learner.actor_optimizer.state_dict(), before["actor_optimizer"])
++        equal(learner.state_dict()["replay"], before["replay"])
++        assert any(not torch.equal(value, before["critics"][key]) for key, value in learner.critics.state_dict().items())
++    equal(state, before)
++    equal(batch, batch_before)
++    equal(noise, noise_before)
++
++
++@pytest.mark.parametrize("tau", [0.005, 1.0])
++def test_critic_target_schedule_and_exact_rate(state, tau):
++    learner = next(iter(diagnostic.clone_arms(state).values()))
++    _, batch, noise = sample(state)
++    for update in range(1, 5):
++        before = [p.clone() for p in learner.critic_targets.parameters()]
++        diagnostic.critic_step(learner, batch, noise, tau, update)
++        for old, online, target in zip(before, learner.critics.parameters(), learner.critic_targets.parameters()):
++            expected = old.mul(1.0 - tau).add(online, alpha=tau) if update % 2 == 0 else old
++            assert torch.equal(target, expected)
++
++
++def test_behavior_returns_reset_at_both_true_terminals(state):
++    data = diagnostic.replay_tensors(state)
++    expected = torch.cat((torch.arange(75, 0, -1) * -1.0, torch.arange(75, 0, -1) * -2.0))
++    assert torch.equal(data["behavior_returns"], expected.repeat(5))
++
++
++@pytest.mark.parametrize("invalid", ["missing_terminal", "misplaced_terminal", "short_replay", "discontinuous"])
++def test_rejects_incomplete_or_misordered_training_episodes(state, invalid):
++    broken = deepcopy(state)
++    group = broken["replay"][diagnostic.SCENARIOS[0]]
++    if invalid == "missing_terminal":
++        group["terminated"][149] = False
++    elif invalid == "misplaced_terminal":
++        group["terminated"][74] = False
++        group["terminated"][73] = True
++    elif invalid == "short_replay":
++        group["rewards"] = group["rewards"][:-1]
++    else:
++        group["next_observations"][0] += 1
++    with pytest.raises(ValueError):
++        diagnostic.replay_tensors(broken)
++
++
++def test_runner_passes_identical_samples_and_noise_and_logs_metrics(state, tmp_path, monkeypatch):
++    original = diagnostic.critic_step
++    calls = []
++
++    def observe(learner, batch, noise, tau, update):
++        calls.append((update, tau, deepcopy(batch), noise.clone(), id(batch), id(noise)))
++        return original(learner, batch, noise, tau, update)
++
++    monkeypatch.setattr(diagnostic, "critic_step", observe)
++    output = tmp_path / "paired"
++    result = diagnostic.run_diagnostic(state, output, updates=4, log_updates=(0, 2, 4))
++    assert result["status"] == "completed" and result["target_updates"] == 2
++    assert result["sample_counts"] == dict.fromkeys(diagnostic.SCENARIOS, 32)
++    for a, b in zip(calls[::2], calls[1::2]):
++        assert a[0] == b[0] and (a[1], b[1]) == (0.005, 1.0)
++        equal(a[2:], b[2:])
++    rows = records(output)
++    assert rows[0]["runtime"]["torch_threads"] == rows[0]["runtime"]["torch_interop_threads"] == 1
++    assert "not current-policy Q truth" in rows[0]["caveat"]
++    checkpoints = [r for r in rows if r["kind"] == "checkpoint"]
++    assert [r["updates"] for r in checkpoints] == [0, 2, 4]
++    equal(*checkpoints[0]["arms"].values())
++    for row in checkpoints:
++        for arm in row["arms"].values():
++            assert arm["total"]["total_td_loss"] >= 0
++            for scenario in arm["per_scenario"].values():
++                assert scenario["transitions"] == 150 and scenario["true_terminals"] == 2
++                assert [s["transitions"] for s in scenario["time_slices"].values()] == [50] * 3
++                assert scenario["time_slices"]["early_0_24"]["critics"]["q1"]["terminal_abs_error_mean"] is None
++                assert scenario["time_slices"]["late_50_74"]["true_terminals"] == 2
++                assert all(ep["true_terminals"] == 1 for ep in scenario["episodes"].values())
++    assert {p.name for p in output.iterdir()} == {"diagnostics.jsonl", "summary.json"}
++
++
++def test_stop_between_paired_batches_saves_partial_and_refuses_overwrite(state, tmp_path, monkeypatch):
++    original = diagnostic.critic_step
++    stop = tmp_path / "STOP"
++
++    def stop_after_pair(learner, batch, noise, tau, update):
++        loss = original(learner, batch, noise, tau, update)
++        if update == 3 and tau == 1.0:
++            stop.touch()
++        return loss
++
++    monkeypatch.setattr(diagnostic, "critic_step", stop_after_pair)
++    output = tmp_path / "partial"
++    result = diagnostic.run_diagnostic(state, output, updates=6, log_updates=(0, 6))
++    assert result["status"] == "stopped" and result["updates"] == 3
++    assert result["sample_counts"] == dict.fromkeys(diagnostic.SCENARIOS, 24)
++    assert [r["updates"] for r in records(output) if r["kind"] == "checkpoint"] == [0, 3]
++    before = {p.name: p.read_bytes() for p in output.iterdir()}
++    with pytest.raises(FileExistsError):
++        diagnostic.run_diagnostic(state, output, updates=1)
++    assert before == {p.name: p.read_bytes() for p in output.iterdir()}
++
++
++def test_preexisting_stop_exits_without_updates(state, tmp_path):
++    stop = tmp_path / "manual.stop"
++    stop.touch()
++    result = diagnostic.run_diagnostic(state, tmp_path / "stopped", stop_paths=(stop,), updates=2)
++    assert result["status"] == "stopped" and result["updates"] == 0
++
++
++def test_reproducibility_and_evaluation_does_not_consume_training_rng(state, tmp_path):
++    outputs = [tmp_path / "first", tmp_path / "second"]
++    results = [diagnostic.run_diagnostic(state, output, seed=81, updates=4, log_updates=logs)
++               for output, logs in zip(outputs, ((0, 4), (0, 1, 2, 3, 4)))]
++    assert results[0]["paired_batch_sha256"] == results[1]["paired_batch_sha256"]
++    final = [[r for r in records(output) if r["kind"] == "checkpoint"][-1] for output in outputs]
++    equal(*final)
++
++
++def test_input_hash_pin_and_no_file_mutation(state, tmp_path, monkeypatch):
++    path = tmp_path / "synthetic.pt"
++    torch.save({"learner": state}, path)
++    before = path.read_bytes()
++    digest = diagnostic.file_hash(path)
++    with pytest.raises(ValueError, match="SHA-256"):
++        diagnostic.load_frozen_model(path)
++    monkeypatch.setattr(diagnostic, "MODEL_SHA256", digest)
++    loaded, actual = diagnostic.load_frozen_model(path)
++    equal(loaded, state)
++    result = diagnostic.run_diagnostic(loaded, tmp_path / "input_check", updates=2,
++                                       provenance=dict(path=str(path), sha256=actual))
++    assert result["input_unchanged"] is True and path.read_bytes() == before
++
++
++def test_production_budget_and_checkpoint_constants():
++    assert diagnostic.UPDATES == 3750
++    assert diagnostic.LOG_UPDATES == (0, 375, 750, 1500, 3750)
++    assert diagnostic.TD3.gamma == 1.0
++    assert diagnostic.ARMS == {"A_tau_0.005": 0.005, "B_tau_1": 1.0}

@@ -1,0 +1,399 @@
+{
+  "all_changed_paths": [
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/.superpowers/sdd/rl_budget_return_initialized_policy_20260930/task-1-report.md",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/checkpoints/736ad4591e4a493d971894a487b9150d.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/checkpoints/orphan.tmp",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/finite.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_0/checkpoints/4148a7d57c96432eac87621adfa22b85.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_0/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_1/checkpoints/3e223991d27f4b589487ace97ee66972.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_1/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_2/checkpoints/70224d62b470466897a3f82de6184254.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_2/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_3/checkpoints/d996067de976405f813e66d00b52e959.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_3/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_4/checkpoints/8283ee7901b14df0a7b4d38cb92e94d5.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_4/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_5/checkpoints/a1e4f379ac224fa287c100400c04826e.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_5/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_6/checkpoints/32c49164077c47a8b4fe86f043d8b143.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_6/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_partial_run_and_source_mu0/new/runner.lock",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_partial_run_and_source_mu0/partial.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_partial_run_and_source_mu0/runner.lock",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/331688eb5c114b9cbd9c1998d2f57928.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/6454458dae8b479c83fec44b75896a19.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/8e679396165d4517bc2fee0e2e46e754.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/bb9fdb5b63834986a257c6ac3e37ebba.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/completion.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/metrics.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/runner.lock",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/sessions/3969865c4c3e4db2b65960b1a1840ef8.end.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/sessions/3969865c4c3e4db2b65960b1a1840ef8.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/settings.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/status.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/0653aaf8550945bbaf5b95d47320cc19.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/4a9846a008824ba9849cd5740be3ec0e.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/632dd4ac748e4df4bc809322eb0dfc2d.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/65f20b1c3dbc45bc83eab0610760db50.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/88e10aee0c19412c8854f38607c34ebc.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/d61c1d91fc984b44a7e39931c61c3bbf.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/completion.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/latest.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/metrics.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/model_final.pt",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/runner.lock",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/30a6e90e39e64f40954a77d733a1037f.end.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/30a6e90e39e64f40954a77d733a1037f.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/aa17a58597254de99df172928a90ac8a.end.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/aa17a58597254de99df172928a90ac8a.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/settings.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/status.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_stop_before_output_and_re0/STOP",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_stop_before_output_and_re0/review.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/authenticate.py",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/changed-paths.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/data.py",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/learner.py",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/run.py",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/run_tests.py",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/runtime.py",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/319ebe03/authentication.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/319ebe03/evidence.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/319ebe03/tests.xml",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/cc0d80fe/authentication.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/cc0d80fe/evidence.json",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/cc0d80fe/tests.xml",
+    "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test_return_init.py"
+  ],
+  "files_sha256": [
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/authenticate.py",
+      "sha256": "747ca1b8e1e2f8787e3fe368f0a190f2c9874cba9c04e85df073269b336063a5",
+      "bytes": 2006
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/data.py",
+      "sha256": "10a8e894cd6c54a77fe26ed96bd314026e9390a6674b7ad64960fb82c9102cdb",
+      "bytes": 9374
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/learner.py",
+      "sha256": "b667bcf8accbcc5ed105a4c2069017e1d29f73274826d5052590fb804a912ebe",
+      "bytes": 16635
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/run_tests.py",
+      "sha256": "7b395f1352bf0a6070c73ce8bcd5605c385f5b400b8565583940524d280949c2",
+      "bytes": 3587
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/run.py",
+      "sha256": "944b9e7d027eda1e39c5672c935f4044e80fb2ad3201487507609c0dd7cd0bd9",
+      "bytes": 6868
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/runtime.py",
+      "sha256": "8663b77b76abeb3777c827470491bfb14ab332f2523ee044e7348ecdd9af4975",
+      "bytes": 6564
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test_return_init.py",
+      "sha256": "6da5b11b1d4cf7b1f9dbd983e923e9082f7817f3c637131d03806daef1aa4a42",
+      "bytes": 18753
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/319ebe03/authentication.json",
+      "sha256": "dcd544490e4d3a8c4117e3f617a7aa2cad5483bfc3de0709ee83e18c87092487",
+      "bytes": 46766
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/319ebe03/evidence.json",
+      "sha256": "66a74946012489bb230259c54b2bdc138d9aa7ebd17d0a897f6db28404d90e9a",
+      "bytes": 65366
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/319ebe03/tests.xml",
+      "sha256": "8d6a9d59a2f3f203938f295074e8774c3c40f57eba2fd086e1345c18b8aa773c",
+      "bytes": 5520
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/cc0d80fe/authentication.json",
+      "sha256": "dcd544490e4d3a8c4117e3f617a7aa2cad5483bfc3de0709ee83e18c87092487",
+      "bytes": 46766
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/cc0d80fe/evidence.json",
+      "sha256": "c8b46844c19c6dab2b3aa1ded0a188ff4d5bfef48454a5f0b40060065090d6f8",
+      "bytes": 65367
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/test-evidence/cc0d80fe/tests.xml",
+      "sha256": "8cff51a6e230e4491ce8b15a56c61e7686bdd9b6b8690d4c93834183eac33ed6",
+      "bytes": 12457
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/finite.json",
+      "sha256": "7919cb50bd4b53208a88fa99a58d8ae4c068611d8a23b9cb1bffcbc2f6245b43",
+      "bytes": 19
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/latest.json",
+      "sha256": "189939e379cc33b1f6119dc532dfe0a23d20df49153561f44a988df1455a8372",
+      "bytes": 255
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/checkpoints/736ad4591e4a493d971894a487b9150d.pt",
+      "sha256": "11d510e067d2cdcd7559bd86d27a2f4c20babd43670346b97af99b522c1f0075",
+      "bytes": 7
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_atomic_strict_json_hash_a0/checkpoints/orphan.tmp",
+      "sha256": "9834a14ab9bcaa0f6a8da71073617eac8f004e596a3fa11d807b84631b825d9d",
+      "bytes": 7
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_0/latest.json",
+      "sha256": "97dd1cdeb43a743efba94212c8561f5aa64dbb691bfd6d59a3daf2fe606988fa",
+      "bytes": 255
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_0/checkpoints/4148a7d57c96432eac87621adfa22b85.pt",
+      "sha256": "e0db33b8ecaf415a6cc0cbc888b444be082d05921d2fe646c94ad433794abf45",
+      "bytes": 176251
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_1/latest.json",
+      "sha256": "5ed9f78e9cf79b26e0ce8af4ddbffadbc947491c0c8509bad4ca0136999c13df",
+      "bytes": 258
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_1/checkpoints/3e223991d27f4b589487ace97ee66972.pt",
+      "sha256": "b057abb8fae0b0953349fb6a53fea7562e0d77ccb0ebaad68087a28c05f7848a",
+      "bytes": 176635
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_2/latest.json",
+      "sha256": "d24ee80f295809afb86bff4565d82257bdaf29ac2a32caa6d93267e046d71079",
+      "bytes": 258
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_2/checkpoints/70224d62b470466897a3f82de6184254.pt",
+      "sha256": "c3d004a393ed5e08ffe6b61e024d7d275319dc2617bb719ca1e630790495a897",
+      "bytes": 262991
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_3/latest.json",
+      "sha256": "86e68b6e5fc9293341ce6fa1f8b06f25e4564e3775a4d15a21e2c447f76bba64",
+      "bytes": 263
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_3/checkpoints/d996067de976405f813e66d00b52e959.pt",
+      "sha256": "b4d32e76ec42eb5446e93cd0f3636a5b0bbd0401cda23896156c3b249b8818df",
+      "bytes": 263055
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_4/latest.json",
+      "sha256": "811d313c0a456544b7b1909490c5d3c4cc7df9c99a000ddf85acafab2583375f",
+      "bytes": 257
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_4/checkpoints/8283ee7901b14df0a7b4d38cb92e94d5.pt",
+      "sha256": "8d09dee87ce2cae0e9ec896cc1b56f801291576cd23a81b0a546f2f439d50308",
+      "bytes": 332111
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_5/latest.json",
+      "sha256": "034ef56351c729a84439d809292d6bc2db0a5eae3d323ee488bd5765f5fe5095",
+      "bytes": 257
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_5/checkpoints/a1e4f379ac224fa287c100400c04826e.pt",
+      "sha256": "d04d6ca8d1ba9b25141a67e9cff95180ac814ec0d4369511e25b1b9bb895eeda",
+      "bytes": 374819
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_6/latest.json",
+      "sha256": "38b71f131bc7a23a24f2448771f84e61a1c49cfb7cbda977aaea1fb1e660c60a",
+      "bytes": 256
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_deterministic_resume_all_6/checkpoints/32c49164077c47a8b4fe86f043d8b143.pt",
+      "sha256": "468dd5c71b430fc23669ccae7cc64fee23d1473796edaaaf3f39a8dd4c580f37",
+      "bytes": 384099
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_partial_run_and_source_mu0/partial.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_partial_run_and_source_mu0/runner.lock",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_partial_run_and_source_mu0/new/runner.lock",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/completion.json",
+      "sha256": "9869337f4c563b23f364502727e23c89c6bc43dc20d744e0b5485334e76749b8",
+      "bytes": 3071
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/latest.json",
+      "sha256": "ce32ce82af4c236cb2b75cfe3ecd36a9b6983a08e8654e8363f0010acb45efe4",
+      "bytes": 263
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/metrics.json",
+      "sha256": "8e0b3cdf1e2a34a181f3e4a051d801886fa315f7a80e44567108c4602aaed4b1",
+      "bytes": 219867
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/runner.lock",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/settings.json",
+      "sha256": "189306825263f860955ff3ec03f29d0ca4f54f67a5adde540007e13501a66c8c",
+      "bytes": 2295
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/status.json",
+      "sha256": "65a76e8e9df600e6d045024b696316e04db3fe49cdecf145ea7138ca9f6472cb",
+      "bytes": 157
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/331688eb5c114b9cbd9c1998d2f57928.pt",
+      "sha256": "efe1ef9aad627e77d436196fa16fd060fb145ba98cb08adf36a579163f4488ad",
+      "bytes": 178555
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/6454458dae8b479c83fec44b75896a19.pt",
+      "sha256": "8a994463b7b7188c1e66a9f75101aebe77890261d6930682013060a5b3ca49b9",
+      "bytes": 333903
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/8e679396165d4517bc2fee0e2e46e754.pt",
+      "sha256": "40b0bd9336b8e8e568249ff19e0a9c18cd23bd87b6ab80c72b27963f9738106b",
+      "bytes": 135985
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/checkpoints/bb9fdb5b63834986a257c6ac3e37ebba.pt",
+      "sha256": "88752631752c6d564c3d5d99f45476b58c23f659531a572f6b275100195b0e47",
+      "bytes": 264911
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/sessions/3969865c4c3e4db2b65960b1a1840ef8.end.json",
+      "sha256": "f8cf235b70f299d56a82ca898c91f595289f247b29b8f9cac2958d261ab1ebba",
+      "bytes": 492
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_gate_failed_no_can0/sessions/3969865c4c3e4db2b65960b1a1840ef8.json",
+      "sha256": "140df3f2852b63e1431d2c70e5a31891df58444933669be6e431f690c06ea458",
+      "bytes": 341
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/completion.json",
+      "sha256": "2aa089386c3ff0c13060fa0fb69950f9e837784da8a3ee217247c1e48a01e476",
+      "bytes": 3150
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/latest.json",
+      "sha256": "08f28a9708b25c4ba914528d32c3ce299e354acdd0b9bab3eeb4fff9940ac4ae",
+      "bytes": 256
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/metrics.json",
+      "sha256": "eba95012b995ad78d3a3f0de92595a2de5a839e8356e2afb9577d809eea1bc43",
+      "bytes": 248655
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/model_final.pt",
+      "sha256": "cc0e4902e2b31aa3e19c80c3b421155cc0d9577a708efa7295a84ef64f0731f5",
+      "bytes": 386019
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/runner.lock",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/settings.json",
+      "sha256": "189306825263f860955ff3ec03f29d0ca4f54f67a5adde540007e13501a66c8c",
+      "bytes": 2295
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/status.json",
+      "sha256": "81410a2d81e024f0b5e3c2b4ad7e3f36b080dac136d8a0e323f8577cfd665e76",
+      "bytes": 139
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/0653aaf8550945bbaf5b95d47320cc19.pt",
+      "sha256": "e47d8ae5e884f980dc424c074163966689f49d33b7b24e6e1723fc87a5a328a7",
+      "bytes": 334095
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/4a9846a008824ba9849cd5740be3ec0e.pt",
+      "sha256": "1d55818a7fe4a38d2c3b32b1c1e65eac16552ef76083e2c3a96c2b725e7bf24a",
+      "bytes": 178619
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/632dd4ac748e4df4bc809322eb0dfc2d.pt",
+      "sha256": "cc0e4902e2b31aa3e19c80c3b421155cc0d9577a708efa7295a84ef64f0731f5",
+      "bytes": 386019
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/65f20b1c3dbc45bc83eab0610760db50.pt",
+      "sha256": "c30742410820f4a27eae19ee2b756ffda952f5c5dd583fb72ff4ae75c5729469",
+      "bytes": 178171
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/88e10aee0c19412c8854f38607c34ebc.pt",
+      "sha256": "aa8305f9e9c72a0c4b3348c892b09a98e32ad2ddf8a90eefcd0e6db17109b8de",
+      "bytes": 135985
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/checkpoints/d61c1d91fc984b44a7e39931c61c3bbf.pt",
+      "sha256": "68b74ffccef887e17dad4da7ab34a5608ef28aca95c2ce57f820e9805baf91e2",
+      "bytes": 265039
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/30a6e90e39e64f40954a77d733a1037f.end.json",
+      "sha256": "22b147b60f04772855719654a6b72ca0508c9a2c21dd0ac1299713355d619c50",
+      "bytes": 478
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/30a6e90e39e64f40954a77d733a1037f.json",
+      "sha256": "3b7ae6565c670e5d142775c5264c11db16e39bbc1025e5bb4c8b4f6f9415fee4",
+      "bytes": 341
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/aa17a58597254de99df172928a90ac8a.end.json",
+      "sha256": "e1c7f470e78292333a6d0581be0252f7cc9452e769700e781b0afd4c882d78e3",
+      "bytes": 480
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_runner_stop_resume_no_ove0/sessions/aa17a58597254de99df172928a90ac8a.json",
+      "sha256": "7c442d231d3caa3981867a346c70bf909546faeace77a10a350a04e5ca281760",
+      "bytes": 341
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_stop_before_output_and_re0/review.json",
+      "sha256": "c6b4fd1aebea41e7fafd42c1e44135601aebb772519a5d2474ba5f39a3c7bf2a",
+      "bytes": 1303
+    },
+    {
+      "path": "C:/Users/alsrj/Desktop/\ud559\uc220/2026_EAST/Codex/RL/work/sdmpc_rl_return_init_20260930/_t/319ebe03/test_stop_before_output_and_re0/STOP",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ],
+  "note": "Inventory includes all source, evidence and retained synthetic fixture files from this implementation. This inventory and the handoff report are listed but not self-hashed. No prior source/artifact was edited."
+}

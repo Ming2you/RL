@@ -1,0 +1,25 @@
+{
+  "exit_code": 1,
+  "source_sha256": {
+    "collect.py": "7e5b7958413676de01e4d109f3caedf1d00c857d8fbe465b12221e923cf5acf7",
+    "conftest.py": "8705c9755b51ba66e843416fb737b3a4dedb31946ef14ef86f26a72f69556a76",
+    "diagnostics.py": "1e2965244fbcbccc35d9e981727fdceba70a66cbbb8d97b55e8832b0de2fc3f3",
+    "exploration.py": "5338c784c997e3427ef2c1b39ee7e572f0d6fc96940f200acf445a87f5741291",
+    "frozen_inventory.py": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+    "launch_identity.py": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+    "local_runtime.py": "1cf91506f5f3d4ec209854b46d5318a06ba27f1983259f859d1d658622bbf4e1",
+    "probe.py": "7a92944e45854b2d66298ef136c139a8daf3809e6c1271f3c61d8bedf4e4b0c2",
+    "reference_check.py": "cc20e78f98d540aeda6fa49f285b07117b0b49ee55b95d87c9669618e09d3b94",
+    "references.py": "7639c4a006dc1eadd384e523d7fafc535754cb40c10d9759437503512879e66a",
+    "run_tests.py": "d157d4c35f988b69b685b1f5d57160fdb10c53e2c54c17994e66ef9feb1456e3",
+    "run_wave.py": "825d7a6282288f5dec74ab4cc472dd4b2e426cc62e2c08233f4e6335ebb4464a",
+    "test_collection.py": "798a66ae3eb55c73a4736aa23484b24c48d94617c754688cac4f82f7f2d9ab46",
+    "test_policy.py": "e4e922ae19471f45426cb2addb3560078729718fa64f73d0b2c39d96281cf88d",
+    "test_probe.py": "bea848c3bd451913e8c84a119c05fc5bf8b048e795b7dad86b7bb1a109066532",
+    "test_workflow.py": "8df389c47fb42c81a2ae933d187e88e18ec26dc2617a683246aa439c5e79818f",
+    "validate.py": "fc6ce979d7e7567aad649ebd679f76f5ecec0db0a57947a74ea5e3e97dbc7548"
+  },
+  "xml_sha256": "057882d4a05b9a9d83bddf521170a3904cb06c626639fd24b6795446d159ecad",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "isolated_fixtures": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_nuf_retention_20260930\\_t\\5c57b766"
+}

@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="21" skipped="0" tests="40" time="1.312" timestamp="2026-09-30T12:49:23.697460+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_actor_inference_boundary_and_no_rng" time="0.004" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_model_mismatch[format]" time="0.024" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_model_mismatch[phase]" time="0.025" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_model_mismatch[counts]" time="0.024" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_model_mismatch[ancestor_counts]" time="0.024" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_model_mismatch[continuation]" time="0.024" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_model_mismatch[actor]" time="0.027" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_model_mismatch[settings]" time="0.024" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_canonical_admitted_by_new_rejected_by_old" time="0.040"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_canonical_admitted_by_new0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\bb5d25d54a3642edb13e3cd71a361875.start.json.8cf81701f87046d19a487e59f89d253e.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:51: in test_canonical_admitted_by_new_rejected_by_old
+    assert worker.run(f.request(limit=1)) == "checkpointed"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_canonical_admitted_by_new0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\bb5d25d54a3642edb13e3cd71a361875.start.json.8cf81701f87046d19a487e59f89d253e.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_settings_reject_wrong_contract[evaluation-False]" time="0.022"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\0edfa9f6c5404347bb30f0447533c232.start.json.7d3dd9396dc14dc99d2ae5cf9624e3c7.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:68: in test_settings_reject_wrong_contract
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\0edfa9f6c5404347bb30f0447533c232.start.json.7d3dd9396dc14dc99d2ae5cf9624e3c7.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_settings_reject_wrong_contract[eval_only-False]" time="0.020"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con1\\repo\\goal\\canonical\\sweet_155_w\\sessions\\3fbce7fcbac449d69f0245e010136731.start.json.078df328a13045e59c40820fd342ad0e.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:68: in test_settings_reject_wrong_contract
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con1\\repo\\goal\\canonical\\sweet_155_w\\sessions\\3fbce7fcbac449d69f0245e010136731.start.json.078df328a13045e59c40820fd342ad0e.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_settings_reject_wrong_contract[training_seed-7301]" time="0.021"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con2\\repo\\goal\\canonical\\sweet_155_w\\sessions\\bafdee4c5601429c84ac990c97b1a524.start.json.83dc4623064245fca05ba27e29c467f8.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:68: in test_settings_reject_wrong_contract
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con2\\repo\\goal\\canonical\\sweet_155_w\\sessions\\bafdee4c5601429c84ac990c97b1a524.start.json.83dc4623064245fca05ba27e29c467f8.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_settings_reject_wrong_contract[policy_q-value3]" time="0.020"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con3\\repo\\goal\\canonical\\sweet_155_w\\sessions\\4498829042194df18000bca41dc998df.start.json.caa48aead26a41db9cf1185b40eb646c.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:68: in test_settings_reject_wrong_contract
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con3\\repo\\goal\\canonical\\sweet_155_w\\sessions\\4498829042194df18000bca41dc998df.start.json.caa48aead26a41db9cf1185b40eb646c.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_settings_reject_wrong_contract[updates_per_interval-1]" time="0.020"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con4\\repo\\goal\\canonical\\sweet_155_w\\sessions\\5c3a9ead3ae74fdfa6cfef5f2a2d5c3e.start.json.e3cdddd654d14aa88be8747539eb20ef.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:68: in test_settings_reject_wrong_contract
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con4\\repo\\goal\\canonical\\sweet_155_w\\sessions\\5c3a9ead3ae74fdfa6cfef5f2a2d5c3e.start.json.e3cdddd654d14aa88be8747539eb20ef.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_settings_reject_wrong_contract[profile_sha256-other]" time="0.020"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con5\\repo\\goal\\canonical\\sweet_155_w\\sessions\\60ebac5f362345b2bcd2ff3462185938.start.json.d203205310154864a70c6f4c3925257a.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:68: in test_settings_reject_wrong_contract
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con5\\repo\\goal\\canonical\\sweet_155_w\\sessions\\60ebac5f362345b2bcd2ff3462185938.start.json.d203205310154864a70c6f4c3925257a.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_settings_reject_wrong_contract[model_sha256-other]" time="0.022"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con6\\repo\\goal\\canonical\\sweet_155_w\\sessions\\f3ac4091b7164ba9b7163cb9ab54d331.start.json.00a0e2ae71da4084b4df0b24815383fb.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:68: in test_settings_reject_wrong_contract
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_settings_reject_wrong_con6\\repo\\goal\\canonical\\sweet_155_w\\sessions\\f3ac4091b7164ba9b7163cb9ab54d331.start.json.00a0e2ae71da4084b4df0b24815383fb.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_trace_rejects_metadata_accounting_and_q[evaluation-False]" time="0.021"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\67839c6012824a1ca6a9f96e637332e4.start.json.ccf918124f334e85b8165ea275e23911.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:79: in test_trace_rejects_metadata_accounting_and_q
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\67839c6012824a1ca6a9f96e637332e4.start.json.ccf918124f334e85b8165ea275e23911.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_trace_rejects_metadata_accounting_and_q[eval_only-False]" time="0.028"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac1\\repo\\goal\\canonical\\sweet_155_w\\sessions\\7dca8e5f64004263b341803f4e1346f2.start.json.483aff54dc784337bff586c668067461.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:79: in test_trace_rejects_metadata_accounting_and_q
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac1\\repo\\goal\\canonical\\sweet_155_w\\sessions\\7dca8e5f64004263b341803f4e1346f2.start.json.483aff54dc784337bff586c668067461.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_trace_rejects_metadata_accounting_and_q[policy_q-value2]" time="0.026"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac2\\repo\\goal\\canonical\\sweet_155_w\\sessions\\aacc49a0854c4c7eaf777a32532f3bac.start.json.87bdb84cbf754f07a8bd56576a9ab443.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:79: in test_trace_rejects_metadata_accounting_and_q
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac2\\repo\\goal\\canonical\\sweet_155_w\\sessions\\aacc49a0854c4c7eaf777a32532f3bac.start.json.87bdb84cbf754f07a8bd56576a9ab443.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_trace_rejects_metadata_accounting_and_q[learning-value3]" time="0.025"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac3\\repo\\goal\\canonical\\sweet_155_w\\sessions\\efb72ddeae634c378d52a511e71b0c6f.start.json.791b1f463d1e4b4e93e2d9c02790b2a0.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:79: in test_trace_rejects_metadata_accounting_and_q
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac3\\repo\\goal\\canonical\\sweet_155_w\\sessions\\efb72ddeae634c378d52a511e71b0c6f.start.json.791b1f463d1e4b4e93e2d9c02790b2a0.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_trace_rejects_metadata_accounting_and_q[lower_candidate_count-2]" time="0.024"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac4\\repo\\goal\\canonical\\sweet_155_w\\sessions\\3b9982e0549c4e1a9800986962952e37.start.json.219bfd6ed1ee4c6ba724099b9dacf6e1.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:79: in test_trace_rejects_metadata_accounting_and_q
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac4\\repo\\goal\\canonical\\sweet_155_w\\sessions\\3b9982e0549c4e1a9800986962952e37.start.json.219bfd6ed1ee4c6ba724099b9dacf6e1.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_trace_rejects_metadata_accounting_and_q[guard_mode-h3]" time="0.021"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac5\\repo\\goal\\canonical\\sweet_155_w\\sessions\\9e8dafdc26a5409692762811d7b40657.start.json.e2dbcd27729847129e46a95592c44448.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:79: in test_trace_rejects_metadata_accounting_and_q
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac5\\repo\\goal\\canonical\\sweet_155_w\\sessions\\9e8dafdc26a5409692762811d7b40657.start.json.e2dbcd27729847129e46a95592c44448.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_trace_rejects_metadata_accounting_and_q[total_ttt-999.0]" time="0.022"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac6\\repo\\goal\\canonical\\sweet_155_w\\sessions\\098dd529490440a0aec40ddbfdefbbc6.start.json.e7ebe4ccea9a46dca3934fd540c331ac.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:79: in test_trace_rejects_metadata_accounting_and_q
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_trace_rejects_metadata_ac6\\repo\\goal\\canonical\\sweet_155_w\\sessions\\098dd529490440a0aec40ddbfdefbbc6.start.json.e7ebe4ccea9a46dca3934fd540c331ac.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_parent_gate_precedes_physical_start" time="0.025" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_stop_scopes[REPO]" time="0.016" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_stop_scopes[GOAL]" time="0.016" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_stop_scopes[ROOT]" time="0.016" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_stop_scopes[scenario]" time="0.016" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_kernel_lock" time="0.003" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_resume_and_completed_duplicate" time="0.021"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_resume_and_completed_dupl0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\8125e3ac4df04363b3823f42e9769524.start.json.6793cd0c95a040ce991cd80e87f5db07.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:118: in test_resume_and_completed_duplicate
+    worker.run(f.request(limit=2))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_resume_and_completed_dupl0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\8125e3ac4df04363b3823f42e9769524.start.json.6793cd0c95a040ce991cd80e87f5db07.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_orphan_operation_refused" time="0.024"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_orphan_operation_refused0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\0d37080d9f8c40089aa8e5949d21d2b9.start.json.264e468154c44c089f16c0b12fc506ff.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:136: in test_orphan_operation_refused
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_orphan_operation_refused0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\0d37080d9f8c40089aa8e5949d21d2b9.start.json.264e468154c44c089f16c0b12fc506ff.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_finalization_stop_resume_no_more_environment" time="0.023"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_finalization_stop_resume_0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\440167a0c8da41e690ce657f5bd1c450.start.json.41c90a7b83b046f089268addf552a929.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:153: in test_finalization_stop_resume_no_more_environment
+    worker.run(f.request())
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_finalization_stop_resume_0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\440167a0c8da41e690ce657f5bd1c450.start.json.41c90a7b83b046f089268addf552a929.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_stop_at_step75_before_exports_does_not_repeat_physics" time="0.023"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_stop_at_step75_before_exp0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\7fa90c575e9a4db2806fb2130e5e299f.start.json.c9d6f3cd8af14044991809d15db3c419.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:172: in test_stop_at_step75_before_exports_does_not_repeat_physics
+    assert worker.run(f.request()) == "stopped"
+           ^^^^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_stop_at_step75_before_exp0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\7fa90c575e9a4db2806fb2130e5e299f.start.json.c9d6f3cd8af14044991809d15db3c419.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_retained_export_mismatch_is_not_overwritten" time="0.035"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_retained_export_mismatch_0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\46f71f88c54e4c55b87133f789894785.start.json.015741c2115f4a29a4b837ccbc8482e7.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:182: in test_retained_export_mismatch_is_not_overwritten
+    worker.run(f.request(limit=1))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_retained_export_mismatch_0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\46f71f88c54e4c55b87133f789894785.start.json.015741c2115f4a29a4b837ccbc8482e7.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_partial_full_and_all_five" time="0.027"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_partial_full_and_all_five0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\18e6657bdeec4ad3b7c5a86b00d7b153.start.json.835070e587014eb79de5470b433ffd47.tmp'">work\sdmpc_rl_return_eval_20260930\test_eval.py:197: in test_partial_full_and_all_five
+    worker.run(f.request(scenario))
+work\sdmpc_rl_return_eval_20260930\worker.py:81: in run
+    s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+work\sdmpc_rl_return_wave_20260930\wave_support.py:117: in save_once
+    save(path, value)
+work\sdmpc_rl_return_wave_20260930\wave_support.py:105: in save
+    with pending.open("xb") as stream:
+         ^^^^^^^^^^^^^^^^^^
+C:\Users\alsrj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\evidence\\9bf6a45c\\synthetic\\test_partial_full_and_all_five0\\repo\\goal\\canonical\\sweet_155_w\\sessions\\18e6657bdeec4ad3b7c5a86b00d7b153.start.json.835070e587014eb79de5470b433ffd47.tmp'</failure></testcase><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_strict_threshold[0.0-False]" time="0.001" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_strict_threshold[-1e-07-False]" time="0.000" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_strict_threshold[1e-07-True]" time="0.000" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_physical_import_collision" time="0.001" /><testcase classname="work.sdmpc_rl_return_eval_20260930.test_eval" name="test_preflight_source_and_profile_mismatch" time="0.002" /></testsuite></testsuites>

@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="15" skipped="0" tests="62" time="6.156" timestamp="2026-09-30T05:45:39.268214+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_known_failure_and_exact_tags" time="0.001" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_finite_identity" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_negative_infinity_and_nan_forbidden_even_in_diagnostics[nan]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_negative_infinity_and_nan_forbidden_even_in_diagnostics[-inf]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row0]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row1]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row2]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row3]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row4]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row5]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row6]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row7]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row8]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_diagnostics" name="test_no_structural_or_physical_allowlist_widening[row9]" time="0.000" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_export_original_validators_retained_identity_and_complete_retry" time="0.271"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_export_original_validator0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000286FCDA53D0&gt;
+
+    def test_export_original_validators_retained_identity_and_complete_retry(cohort, monkeypatch):
+        before = contents(cohort.folder)
+        original_summary = validator.summarize(cohort.ck["trace"], cohort.settings, "KNOWN")
+        calls = []
+        original_loader = validator.load_completed
+    
+        def load(*a, **k):
+            calls.append(a[0])
+            return original_loader(*a, **k)
+    
+        monkeypatch.setattr(validator, "load_completed", load)
+&gt;       receipt = recovery.export(cohort.folder)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FCEB7140&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_export_original_validator0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_export_original_validator0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[length]" time="0.106" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[terminal]" time="0.124" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[state]" time="0.132" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[reward]" time="0.111" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[action]" time="0.117" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[physical_nan]" time="0.131" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[extra_inf]" time="0.125" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_reject_invalid_checkpoint[policy]" time="0.196" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[checkpoint.pt]" time="0.085" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[settings.json]" time="0.091" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[observation_schema.json]" time="0.116" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[timing.json]" time="0.090" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[stderr.log]" time="0.076" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_missing_artifacts_fail_before_publication[process.json]" time="0.063" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[settings.json]" time="0.104" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[timing.json]" time="0.173"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+artifact = 'timing.json'
+
+    @pytest.mark.parametrize("artifact", ["settings.json", "timing.json", "observation_schema.json", "sessions/" + TOKEN + ".end.json"])
+    def test_changed_artifacts_rejected(cohort, artifact):
+        value = lr.read(cohort.folder / artifact)
+        value["unadmitted"] = True
+        lr.save(cohort.folder / artifact, value)
+        with pytest.raises((ValueError, AssertionError)):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD2A8050&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[observation_schema.json]" time="0.167"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+artifact = 'observation_schema.json'
+
+    @pytest.mark.parametrize("artifact", ["settings.json", "timing.json", "observation_schema.json", "sessions/" + TOKEN + ".end.json"])
+    def test_changed_artifacts_rejected(cohort, artifact):
+        value = lr.read(cohort.folder / artifact)
+        value["unadmitted"] = True
+        lr.save(cohort.folder / artifact, value)
+        with pytest.raises((ValueError, AssertionError)):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FCE2B560&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_changed_artifacts_rejected[sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json]" time="0.163"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+artifact = 'sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.end.json'
+
+    @pytest.mark.parametrize("artifact", ["settings.json", "timing.json", "observation_schema.json", "sessions/" + TOKEN + ".end.json"])
+    def test_changed_artifacts_rejected(cohort, artifact):
+        value = lr.read(cohort.folder / artifact)
+        value["unadmitted"] = True
+        lr.save(cohort.folder / artifact, value)
+        with pytest.raises((ValueError, AssertionError)):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD21B920&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_changed_artifacts_rejecte3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_source_drift_rejected" time="0.083" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[live-100]" time="0.055" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[live-200]" time="0.056" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[live-300]" time="0.057" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[unknown-100]" time="0.057" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[unknown-200]" time="0.058" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_live_or_unknown_blocks_before_boot[unknown-300]" time="0.056" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_pid_reuse_proves_original_exit" time="0.148"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_pid_reuse_proves_original0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+
+    def test_pid_reuse_proves_original_exit(cohort):
+        cohort.statuses[300] = ("live", 3001)
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:120: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD2949B0&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_pid_reuse_proves_original0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_pid_reuse_proves_original0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[error]" time="0.085" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[traceback]" time="0.074" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[creation]" time="0.121" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[cohort_steps]" time="0.089" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[run_id]" time="0.084" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[STOP]" time="0.050" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[sibling_STOP]" time="0.049" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_fail_closed_identity_failure_stop[relocated]" time="0.052" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_conflicting_output_never_overwritten[trace.json]" time="0.078" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_conflicting_output_never_overwritten[summary.json]" time="0.075" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_conflicting_output_never_overwritten[experience.pt]" time="0.078" /><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[stage]" time="0.153"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000286FCEB6D20&gt;
+point = 'stage'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FCEB74A0&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[output]" time="0.175"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000286FD24EF30&gt;
+point = 'output'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD242DE0&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[receipt]" time="0.213"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000286FD21A6C0&gt;
+point = 'receipt'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD2A50D0&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_interruption_preserves_stage_and_blocks_retry[completion]" time="0.168"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000286FD29EEA0&gt;
+point = 'completion'
+
+    @pytest.mark.parametrize("point", ["stage", "output", "receipt", "completion"])
+    def test_interruption_preserves_stage_and_blocks_retry(cohort, monkeypatch, point):
+        publish = recovery.publish_bytes
+    
+        def interrupt(path, data):
+            selected = {"stage": cohort.folder / recovery.STAGE / "trace.json",
+                        "output": cohort.folder / "summary.json", "receipt": cohort.folder / recovery.RECEIPT,
+                        "completion": cohort.folder / "completion.json"}[point]
+            if path == selected:
+                raise RuntimeError("synthetic interruption")
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", interrupt)
+        with pytest.raises(RuntimeError, match="interruption"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD29C710&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_interruption_preserves_st3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[trace.json]" time="0.171"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'trace.json'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FCE2E3F0&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[checkpoint.pt]" time="0.161"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'checkpoint.pt'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD29D160&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta1\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[export-receipt.json]" time="0.160"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'export-receipt.json'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FCE22240&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta2\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_complete_retry_detects_tampering[sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.start.json]" time="0.162"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+name = 'sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.start.json'
+
+    @pytest.mark.parametrize("name", ["trace.json", "checkpoint.pt", "export-receipt.json", "sessions/" + TOKEN + ".start.json"])
+    def test_complete_retry_detects_tampering(cohort, name):
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FDF92780&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_complete_retry_detects_ta3\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_completion_is_last_and_stop_at_publication_blocks_marker" time="0.222"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_completion_is_last_and_st0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000286FD32E570&gt;
+
+    def test_completion_is_last_and_stop_at_publication_blocks_marker(cohort, monkeypatch):
+        events, publish = [], recovery.publish_bytes
+    
+        def record(path, data):
+            events.append(path)
+            if path == cohort.folder / "completion.json":
+                retained = lr.read(cohort.root / ".ownership/reservations.json")[-1]
+                assert retained["cohort_phase"] == "finished"
+                assert (cohort.folder / recovery.RECEIPT).exists()
+            publish(path, data)
+    
+        monkeypatch.setattr(recovery, "publish_bytes", record)
+&gt;       recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:198: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FCE2D5B0&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_completion_is_last_and_st0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_completion_is_last_and_st0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase><testcase classname="work.sdmpc_rl_export_recovery_20260930.test_export" name="test_input_change_during_validation_preserved_and_rejected" time="0.166"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_input_change_during_valid0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'">cohort = namespace(root=WindowsPath('C:/Users/alsrj/Desktop/학술/2026_EAST/Codex/RL/work/sdmpc_rl_export_recovery_20260930/test-e...55_w', 'behavior': 'carry', 'scenario': 'sweet_155_w', 'training_seed': 6801, 'exploration_seed': 6901, 'cpu_mask': 1})
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000286FD2A5FD0&gt;
+
+    def test_input_change_during_validation_preserved_and_rejected(cohort, monkeypatch):
+        original = validator.load_completed
+    
+        def changed(*a, **k):
+            result = original(*a, **k)
+            (cohort.folder / "stdout.log").write_text("changed")
+            return result
+    
+        monkeypatch.setattr(validator, "load_completed", changed)
+        with pytest.raises(ValueError, match="changed during"):
+&gt;           recovery.export(cohort.folder)
+
+work\sdmpc_rl_export_recovery_20260930\test_export.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+work\sdmpc_rl_export_recovery_20260930\export_recovery.py:254: in export
+    validator.validate_rows(ck["trace"], ck["transitions"], settings, ck["schema"], settings["capacity"])
+work\sdmpc_rl_local_20260930_v2\validate.py:129: in validate_rows
+    sequence_validator()(experience, trace, schema["names"], capacity)
+    ^^^^^^^^^^^^^^^^^^^^
+work\sdmpc_rl_local_20260930_v2\local_runtime.py:352: in sequence_validator
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:995: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x00000286FD295970&gt;
+path = 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327...e864baeeae6a584a8\\fixtures\\test_input_change_during_valid0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\test-evidence\\b0796327527d480e864baeeae6a584a8\\fixtures\\test_input_change_during_valid0\\work\\sdmpc_rl_value_audit_20260930\\projection_audit.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1190: FileNotFoundError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.199" timestamp="2026-09-30T12:04:47.552639+09:00" hostname="DESKTOP-7DLDDC5"><testcase classname="work.sdmpc_rl_return_mc_20260930.test_mc" name="test_atomic_json_keeps_prior_orphan" time="0.083" /></testsuite></testsuites>

@@ -1,0 +1,83 @@
+[
+  {
+    "scenario": "sweet_155_w",
+    "launcher_pid": 23928,
+    "created_filetime": 134352083089421698,
+    "started": "2026-09-30T11:18:28.9421698+09:00",
+    "command": [
+      "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+      "-B",
+      "-u",
+      "work/sdmpc_rl_return_wave_20260930/worker.py",
+      "--scenario",
+      "sweet_155_w",
+      "--resume"
+    ],
+    "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_155_w.stdout.log",
+    "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_155_w.stderr.log"
+  },
+  {
+    "scenario": "sweet_170_w",
+    "launcher_pid": 43624,
+    "created_filetime": 134352083089833360,
+    "started": "2026-09-30T11:18:28.9833360+09:00",
+    "command": [
+      "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+      "-B",
+      "-u",
+      "work/sdmpc_rl_return_wave_20260930/worker.py",
+      "--scenario",
+      "sweet_170_w"
+    ],
+    "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_w.stdout.log",
+    "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_w.stderr.log"
+  },
+  {
+    "scenario": "sweet_170_incident_w",
+    "launcher_pid": 34924,
+    "created_filetime": 134352083090033236,
+    "started": "2026-09-30T11:18:29.0033236+09:00",
+    "command": [
+      "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+      "-B",
+      "-u",
+      "work/sdmpc_rl_return_wave_20260930/worker.py",
+      "--scenario",
+      "sweet_170_incident_w"
+    ],
+    "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_incident_w.stdout.log",
+    "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_incident_w.stderr.log"
+  },
+  {
+    "scenario": "sweet_170_skew15_w",
+    "launcher_pid": 35908,
+    "created_filetime": 134352083090371402,
+    "started": "2026-09-30T11:18:29.0371402+09:00",
+    "command": [
+      "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+      "-B",
+      "-u",
+      "work/sdmpc_rl_return_wave_20260930/worker.py",
+      "--scenario",
+      "sweet_170_skew15_w"
+    ],
+    "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_skew15_w.stdout.log",
+    "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_skew15_w.stderr.log"
+  },
+  {
+    "scenario": "sweet_190_w",
+    "launcher_pid": 43512,
+    "created_filetime": 134352083090743351,
+    "started": "2026-09-30T11:18:29.0743351+09:00",
+    "command": [
+      "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+      "-B",
+      "-u",
+      "work/sdmpc_rl_return_wave_20260930/worker.py",
+      "--scenario",
+      "sweet_190_w"
+    ],
+    "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_190_w.stdout.log",
+    "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_190_w.stderr.log"
+  }
+]

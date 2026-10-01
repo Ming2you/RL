@@ -1,0 +1,1192 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\authenticate.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\authenticate.py"
+new file mode 100644
+index 0000000..f225cf1
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\authenticate.py"
+@@ -0,0 +1,51 @@
++"""Fresh read-only wave validation with physical entry points and unsafe loads blocked."""
++from pathlib import Path
++import json
++import sys
++
++sys.dont_write_bytecode = True
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from mc_common import REPO, WAVE_SOURCE, WAVE, PARENT, SCENARIOS, read, READOUT
++from mc_data import manifest
++
++
++def main():
++    before = manifest()
++    sys.path.insert(0, str(WAVE_SOURCE))
++    import readout
++    import wave_support as w
++    import worker
++    import budget_runtime
++    import budget_env
++
++    def forbidden(*args, **kwargs):
++        raise AssertionError("Read-only authentication forbids physical calls and optimization")
++
++    w.boot = budget_runtime.boot = worker.run = forbidden
++    for name in ("__init__", "reset", "step", "restore"):
++        if hasattr(budget_env.BudgetEnv, name):
++            setattr(budget_env.BudgetEnv, name, forbidden)
++    w.torch.optim.Adam.step = forbidden
++    original_load = w.torch.load
++    permitted = {(PARENT / "model_final.pt").resolve()} | {
++        (WAVE / scenario / "experience.pt").resolve() for scenario in SCENARIOS}
++
++    def safe_load(path, *args, **kwargs):
++        resolved = Path(path).resolve()
++        if resolved not in permitted:
++            raise AssertionError("Raw physical checkpoint unpickle forbidden")
++        w.check_hash(resolved, before["files"][resolved.relative_to(REPO).as_posix()])
++        return original_load(path, *args, **kwargs)
++
++    w.torch.load = safe_load
++    checked = readout.validate_wave()
++    if checked != read(READOUT) or not checked["all_health_gates_pass"] or not checked["integrity_pass"]:
++        raise ValueError("Recomputed source health/readout differs from retained Task 2 evidence")
++    if manifest() != before:
++        raise ValueError("Authenticated inputs changed")
++    print(json.dumps(dict(status="authenticated", manifest=before, readout=checked,
++        raw_environment_loads=0, environment_calls=0, optimizer_updates=0), allow_nan=False))
++
++
++if __name__ == "__main__":
++    main()
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_common.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_common.py"
+new file mode 100644
+index 0000000..5c86527
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_common.py"
+@@ -0,0 +1,101 @@
++"""Offline helpers and the fixed Task 3 contract; no simulator imports."""
++import ast
++import hashlib
++import importlib.util
++import json
++import os
++from pathlib import Path
++import sys
++import uuid
++
++sys.dont_write_bytecode = True
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++GOAL = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++OUTPUT = GOAL / "return_mc_v1"
++PARENT = GOAL / "return_init_v1"
++WAVE = GOAL / "return_policy_wave_v1"
++OLD = REPO / "work/sdmpc_rl_return_init_20260930"
++WAVE_SOURCE = REPO / "work/sdmpc_rl_return_wave_20260930"
++READOUT = REPO / ".superpowers/sdd/rl_budget_return_initialized_policy_20260930/task2-readout.json"
++MODEL_SHA = "7723bad496cd2e2b5f9a8f52b74ac8f65f021ccff42635d396e9f3b248b23904"
++COMPLETION_SHA = "34f617fc171ce0a63611f5883eac7e8af9814a59889f4a545adb3fabb3778757"
++READOUT_SHA = "e8d2795c3828069d88f83797d1b644d3cba9f87f58d428b84ee387601777f1db"
++
++
++def check_hash(path, expected):
++    with Path(path).open("rb") as stream:
++        actual = hashlib.file_digest(stream, "sha256").hexdigest()
++    if actual != expected:
++        raise ValueError("Frozen source/model/data hash mismatch: " + str(path))
++
++
++# Verify reused code before importing it, using the pinned parent's completion.
++check_hash(PARENT / "completion.json", COMPLETION_SHA)
++PARENT_COMPLETION = json.loads((PARENT / "completion.json").read_text(encoding="utf-8-sig"))
++for _name, _expected in PARENT_COMPLETION["settings"]["sources"].items():
++    check_hash(REPO / _name, _expected)
++_spec = importlib.util.spec_from_file_location("mc_parent_offline_runtime", OLD / "runtime.py")
++rt = importlib.util.module_from_spec(_spec)
++_spec.loader.exec_module(rt)
++np, torch = rt.np, rt.torch
++read, sha, digest, plain = rt.read, rt.sha, rt.digest, rt.plain
++finite, tensor_hash, SCENARIOS = rt.finite, rt.tensor_hash, rt.SCENARIOS
++locked, check_stop, Stopped = rt.locked, rt.check_stop, rt.Stopped
++restore, process_identity = rt.restore, rt.process_identity
++ANCESTOR_COUNTS = dict(phi=1000, critic=250, actor=10, polyak=125)
++SPEC = dict(format="sdmpc-on-policy-return-mc-v1", seed=7201, rng="PCG64",
++    observations=2367, width=64, hidden_layers=2, activation="ReLU",
++    action_bounds=[.2, .1], delta_scale=[50., 1000.], budget_scale=[1000., 10000.],
++    capacity=6000., gamma=1., reward_divisor=100., controlled_steps=75, warmup_steps=5,
++    rows=375, critic_updates=250, batch_size=40, samples_per_scenario=8,
++    forced_terminals_per_scenario=1, uniform_per_scenario=7, replacement=True,
++    uniform_pool="all 75 own scenario rows including terminal", lr=3e-4,
++    optimizer="Adam continued from matching parent critics", loss="sum of both head MSEs",
++    target="G_pi1 - frozen Phi(s)", critic_continuation="pi1_recorded_on_policy_MC",
++    phi_updates=0, actor_updates=0, bootstrap=False, target_noise=False,
++    target_updates_during_fit=0, final_target_copy=True, checkpoint_period=1,
++    numerical_workers=1, threads=1, canonical_evaluation=False,
++    heldout=False, traffic_improvement_claim=False)
++
++
++def verify(files):
++    for name, expected in files.items():
++        path = (REPO / name).resolve()
++        if not path.is_relative_to(REPO.resolve()):
++            raise ValueError("Manifest path escaped repository")
++        check_hash(path, expected)
++
++
++def sources():
++    paths = list(HERE.glob("*.py"))
++    return dict(PARENT_COMPLETION["settings"]["sources"], **{
++        p.relative_to(REPO).as_posix(): sha(p) for p in sorted(paths)})
++
++
++def save(path, value):
++    finite(value)
++    path = Path(path)
++    payload = json.dumps(rt.plain(value), indent=2, allow_nan=False).encode("utf-8")
++    path.parent.mkdir(parents=True, exist_ok=True)
++    pending = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
++    with pending.open("xb") as stream:
++        stream.write(payload)
++        stream.flush()
++        os.fsync(stream.fileno())
++    pending.replace(path)
++
++
++def definitions(path, names, namespace):
++    """Reuse only pinned pure definitions, without importing old learner/collector modules."""
++    check_hash(path, PARENT_COMPLETION["settings"]["sources"][path.relative_to(REPO).as_posix()])
++    tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
++    nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
++    if {n.name for n in nodes} != set(names) or len(nodes) != len(names):
++        raise ValueError("Missing/ambiguous pure helper")
++    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), "exec"), namespace)
++
++
++definitions(OLD / "learner.py", ("mlp", "Actor", "residuals"), globals())
++definitions(OLD / "data.py", ("projected", "network_budget", "episode_arrays"), globals())
++definitions(OLD / "runtime.py", ("save_once", "checkpoint"), globals())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_data.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_data.py"
+new file mode 100644
+index 0000000..3540a8a
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_data.py"
+@@ -0,0 +1,135 @@
++"""Authenticate five fixed-policy episodes and load only their 375 MC labels."""
++import json
++import subprocess
++import sys
++from mc_common import (HERE, REPO, PARENT, WAVE, READOUT, READOUT_SHA, MODEL_SHA,
++    COMPLETION_SHA, SCENARIOS, SPEC, np, torch, read, sha, finite, verify,
++    check_hash, episode_arrays, projected, tensor_hash)
++
++
++def manifest():
++    check_hash(READOUT, READOUT_SHA)
++    check_hash(PARENT / "completion.json", COMPLETION_SHA)
++    check_hash(PARENT / "model_final.pt", MODEL_SHA)
++    parent = read(PARENT / "completion.json")
++    files = dict(parent["settings"]["sources"])
++    files.update(parent["settings"]["data"]["files"])
++
++    def bind(path, expected=None):
++        path = path.resolve()
++        if not path.is_relative_to(REPO.resolve()):
++            raise ValueError("Artifact path escaped repository")
++        value = sha(path) if expected is None else expected
++        key = path.relative_to(REPO).as_posix()
++        if key in files and files[key] != value:
++            raise ValueError("Conflicting input hashes")
++        files[key] = value
++
++    bind(READOUT, READOUT_SHA)
++    bind(PARENT / "completion.json", COMPLETION_SHA)
++    for name, expected in parent["outputs_sha256"].items():
++        bind(PARENT / name, expected)
++    bind(PARENT / "settings.json")
++    episodes = []
++    for i, scenario in enumerate(SCENARIOS):
++        folder = WAVE / scenario
++        done, settings = read(folder / "completion.json"), read(folder / "settings.json")
++        if (done["status"] != "completed" or done["settings"] != settings or
++                settings["model_sha256"] != MODEL_SHA or settings["training_seed"] != 7301+i or
++                settings["scenario"] != scenario or settings["evaluation"] is not False or
++                settings["exploration"] is not False or settings["behavior"] != "frozen_shared_actor"):
++            raise ValueError("On-policy episode provenance mismatch")
++        for mapping in (settings["sources"], settings["authentication"]["helper_sources"]):
++            for name, expected in mapping.items():
++                bind(REPO / name, expected)
++        for name in ("settings.json", "completion.json"):
++            bind(folder / name)
++        for name, expected in done["outputs_sha256"].items():
++            bind(folder / name, expected)
++        bind(folder / done["checkpoint"]["path"], done["checkpoint"]["sha256"])
++        for name, expected in read(folder / "timing.json")["session_sha256"].items():
++            bind(folder / name, expected)
++        for path in (folder / "operations").glob("*.json"):
++            bind(path)
++        episodes.append(dict(path=folder.relative_to(REPO).as_posix(), scenario=scenario,
++            training_seed=7301+i, run_id=settings["run_id"], profile_sha256=settings["profile_sha256"]))
++    snapshot = REPO / "artifacts/sdmpc_budget_baseline_20260929"
++    bind(snapshot / "manifest.json")
++    for row in read(snapshot / "manifest.json")["files"]:
++        bind(snapshot / row["snapshot_relative"], row["sha256"])
++    verify(files)
++    return dict(files=files, episodes=episodes, rows=375, model_sha256=MODEL_SHA,
++        readout_sha256=READOUT_SHA, parent_completion_sha256=COMPLETION_SHA,
++        evaluation=False, continuation="pi1_recorded_on_policy_MC")
++
++
++def validate_receipt(receipt, identity):
++    if (receipt["status"] != "authenticated" or receipt["manifest"] != identity or
++            receipt["readout"] != read(READOUT) or not receipt["readout"]["integrity_pass"] or
++            not receipt["readout"]["all_health_gates_pass"] or
++            receipt["raw_environment_loads"] != 0 or receipt["environment_calls"] != 0):
++        raise ValueError("Isolated source validation/readout mismatch")
++
++
++def authenticate():
++    before = manifest()
++    result = subprocess.run([sys.executable, "-I", "-B", str(HERE / "authenticate.py")],
++        cwd=REPO, capture_output=True, text=True, encoding="utf-8", check=True,
++        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++    receipt = json.loads(result.stdout)
++    validate_receipt(receipt, before)
++    if manifest() != before:
++        raise ValueError("Inputs changed during isolated authentication")
++    return receipt
++
++
++def load_data(identity):
++    verify(identity["files"])
++    if identity != manifest():
++        raise ValueError("Data identity differs")
++    rows = []
++    for entry in identity["episodes"]:
++        folder = REPO / entry["path"]
++        settings, trace = read(folder / "settings.json"), read(folder / "trace.json")
++        payload = torch.load(folder / "experience.pt", map_location="cpu", weights_only=False)
++        if payload["settings"] != settings or payload["format"] != settings["format"]:
++            raise ValueError("Experience/settings mismatch")
++        own = episode_arrays(payload["transitions"], trace, settings, entry["scenario"], "frozen_shared_actor")
++        for row, source in zip(own, trace):
++            # The request is retained as float64 from the trace, never decoded from obs.
++            row["request"] = np.asarray(source["B_requested"][0], dtype=np.float64)
++            np.testing.assert_array_equal(projected(torch.from_numpy(row["anchor"]),
++                torch.from_numpy(row["action"])).numpy(), row["request"])
++        rows.extend(own)
++    data = {key: torch.from_numpy(np.asarray([row[key] for row in rows])) for key in
++            ("obs", "action", "reward", "terminal", "anchor", "request", "returns", "scenario", "horizon")}
++    finite(data)
++    if (len(rows) != SPEC["rows"] or data["anchor"].dtype != torch.float64 or
++            data["request"].dtype != torch.float64 or not torch.all(data["request"][:, 1] == 6000.)):
++        raise ValueError("On-policy data size/precision/cap coverage differs")
++    verify(identity["files"])
++    return data
++
++
++def load_parent(identity):
++    verify(identity["files"])
++    check_hash(PARENT / "model_final.pt", MODEL_SHA)
++    payload = torch.load(PARENT / "model_final.pt", map_location="cpu", weights_only=False)
++    finite(payload)
++    if payload["settings"] != read(PARENT / "settings.json"):
++        raise ValueError("Parent settings mismatch")
++    check_hash(PARENT / "model_final.pt", MODEL_SHA)
++    return payload["learner"]
++
++
++def sample_indices(data, rng):
++    indices, forced = [], []
++    for scenario in range(5):
++        pool = torch.where(data["scenario"] == scenario)[0].numpy()
++        terminal = pool[data["terminal"][pool].numpy()]
++        if len(pool) != 75 or len(terminal) != 1:
++            raise ValueError("Need 75 own rows and one true terminal per scenario")
++        indices.extend([int(terminal[0]), *rng.choice(pool, 7, replace=True).tolist()])
++        forced.extend([True] + [False]*7)
++    order = rng.permutation(40)
++    return np.asarray(indices, dtype=np.int64)[order], np.asarray(forced, dtype=bool)[order]
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_learner.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_learner.py"
+new file mode 100644
+index 0000000..8342ecd
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\mc_learner.py"
+@@ -0,0 +1,244 @@
++"""Bounded on-policy MC evaluation of one fixed actor, with continued critic Adam."""
++import copy
++import hashlib
++from mc_common import (np, torch, SPEC, SCENARIOS, ANCESTOR_COUNTS, MODEL_SHA, rt,
++    Actor, mlp, residuals, projected, finite, tensor_hash)
++from mc_data import sample_indices
++
++
++def state_hash(value):
++    """Stable optimizer/RNG identity independent of Torch archive serialization."""
++    h = hashlib.sha256()
++
++    def visit(item):
++        if isinstance(item, torch.Tensor):
++            h.update(tensor_hash({"tensor": item}).encode())
++        elif isinstance(item, dict):
++            for key in sorted(item, key=str):
++                visit(key)
++                visit(item[key])
++        elif isinstance(item, (tuple, list)):
++            h.update(type(item).__name__.encode())
++            for child in item:
++                visit(child)
++        else:
++            h.update(repr((type(item).__name__, item)).encode())
++    visit(value)
++    return h.hexdigest()
++
++
++class Learner:
++    def __init__(self, data, parent):
++        if (parent["spec"] != rt.SPEC or parent["phase"] != "done" or
++                parent["counts"] != ANCESTOR_COUNTS or parent["critic_continuation"] != "carry"):
++            raise ValueError("Parent continuation/specification/counters differ")
++        finite((data, parent))
++        self.data = data
++        self.rng = np.random.Generator(np.random.PCG64(7201))
++        width = data["obs"].shape[1]
++        with torch.device("meta"):
++            self.actor, self.phi = Actor(width), mlp(width, 1)
++            self.critics = torch.nn.ModuleList([mlp(width+2, 1) for _ in range(2)])
++            self.targets = torch.nn.ModuleList([mlp(width+2, 1) for _ in range(2)])
++        for name, model in self.models().items():
++            model.load_state_dict(copy.deepcopy(parent["models"][name]), strict=True, assign=True)
++            model.requires_grad_(name == "critics")
++            model.eval()
++        self.initial_hashes = {name: tensor_hash(model.state_dict()) for name, model in self.models().items()}
++        self.optimizer = torch.optim.Adam(self.critics.parameters(), lr=SPEC["lr"])
++        old_optimizer = parent["optimizers"]["critics"]
++        self.optimizer.load_state_dict(copy.deepcopy(old_optimizer))
++        if state_hash(self.optimizer.state_dict()) != state_hash(old_optimizer):
++            raise ValueError("Matching critic optimizer was not restored exactly")
++        self.optimizer_provenance = dict(parent_model_sha256=MODEL_SHA, key="learner.optimizers.critics",
++            parent_state_sha256=state_hash(old_optimizer), continued=True,
++            ancestor_critic_steps=250, lr=3e-4)
++        self.counts = dict(mc_critic=0)
++        self.phase = "mc_fit"
++        self.losses = []
++        self.sample_counts = [0]*5
++        self.forced_terminal_counts = [0]*5
++        self.terminal_counts = [0]*5
++        with torch.no_grad():
++            self.phi_values = self.phi(data["obs"]).flatten().double()
++            self.mc_targets = data["returns"] - self.phi_values
++            self.budgets = (data["request"] / data["request"].new_tensor([1000., 10000.])).float()
++        self.before = diagnostics(self, "before")
++        self.validate()
++
++    def models(self):
++        return dict(actor=self.actor, phi=self.phi, critics=self.critics, targets=self.targets)
++
++    def update(self):
++        self.validate()
++        if self.phase != "mc_fit":
++            raise ValueError("Exactly 250 MC updates; completed learner is immutable")
++        indices, forced = sample_indices(self.data, self.rng)
++        values = residuals(self.critics, self.data["obs"][indices], self.budgets[indices]).double()
++        errors = values - self.mc_targets[indices, None]
++        head_mse = errors.square().mean(dim=0)
++        loss = head_mse.sum()
++        finite((values, self.mc_targets, loss))
++        self.optimizer.zero_grad(set_to_none=True)
++        loss.backward()
++        for model in self.models().values():
++            for parameter in model.parameters():
++                if parameter.grad is not None:
++                    finite(parameter.grad)
++        self.optimizer.step()
++        self.counts["mc_critic"] += 1
++        per_scenario, forced_counts, terminals = [], [], []
++        scenario_ids = self.data["scenario"][indices]
++        for i in range(5):
++            mask = scenario_ids == i
++            n, f, t = int(mask.sum()), int(forced[mask.numpy()].sum()), int(self.data["terminal"][indices][mask].sum())
++            self.sample_counts[i] += n
++            self.forced_terminal_counts[i] += f
++            self.terminal_counts[i] += t
++            per_scenario.append(n)
++            forced_counts.append(f)
++            terminals.append(t)
++        self.losses.append(dict(update=self.counts["mc_critic"], loss=float(loss.detach()),
++            head_mse=head_mse.detach().tolist(), indices=indices.tolist(),
++            forced_terminal=forced.tolist(), samples_per_scenario=per_scenario,
++            forced_terminals_per_scenario=forced_counts, terminals_per_scenario=terminals,
++            finite=True))
++        if self.counts["mc_critic"] == 250:
++            self.targets.load_state_dict(self.critics.state_dict())
++            self.phase = "done"
++        self.validate()
++
++    def validate(self):
++        n = self.counts["mc_critic"]
++        if type(n) is not int or not 0 <= n <= 250 or self.phase != ("done" if n == 250 else "mc_fit"):
++            raise ValueError("MC phase/counter mismatch")
++        if (len(self.losses) != n or self.sample_counts != [8*n]*5 or
++                self.forced_terminal_counts != [n]*5):
++            raise ValueError("MC loss/quota mismatch")
++        finite((self.mc_targets, self.before, self.losses, self.optimizer.state_dict(),
++                [m.state_dict() for m in self.models().values()]))
++        for name in ("actor", "phi"):
++            model = self.models()[name]
++            if (tensor_hash(model.state_dict()) != self.initial_hashes[name] or
++                    any(p.requires_grad or p.grad is not None for p in model.parameters())):
++                raise ValueError("Frozen actor/Phi changed or received gradients")
++        target_hash = tensor_hash(self.targets.state_dict())
++        expected = tensor_hash(self.critics.state_dict()) if n == 250 else self.initial_hashes["targets"]
++        if target_hash != expected or any(p.requires_grad or p.grad is not None for p in self.targets.parameters()):
++            raise ValueError("Targets updated during MC fit or final copy differs")
++        groups = self.optimizer.param_groups
++        if len(groups) != 1 or groups[0]["lr"] != 3e-4:
++            raise ValueError("Continued Adam learning rate/groups mismatch")
++        if {id(p) for p in groups[0]["params"]} != {id(p) for p in self.critics.parameters()}:
++            raise ValueError("Only critic parameters may be optimized")
++        if len(self.optimizer.state) != len(list(self.critics.parameters())):
++            raise ValueError("Missing matching parent Adam state")
++        for parameter, state in self.optimizer.state.items():
++            if (float(state["step"]) != 250+n or state["exp_avg"].shape != parameter.shape or
++                    state["exp_avg_sq"].shape != parameter.shape):
++                raise ValueError("Continued Adam step/moment provenance differs")
++
++    def state(self):
++        self.validate()
++        return copy.deepcopy(dict(format=SPEC["format"], spec=SPEC, phase=self.phase, counts=self.counts,
++            ancestor_counts=ANCESTOR_COUNTS, models={k: m.state_dict() for k, m in self.models().items()},
++            critic_optimizer=self.optimizer.state_dict(), optimizer_provenance=self.optimizer_provenance,
++            numpy_rng=self.rng.bit_generator.state, initial_hashes=self.initial_hashes,
++            losses=self.losses, sample_counts=self.sample_counts,
++            forced_terminal_counts=self.forced_terminal_counts, terminal_counts=self.terminal_counts,
++            before=self.before, critic_continuation=SPEC["critic_continuation"],
++            target_policy_actor_sha256=self.initial_hashes["actor"],
++            parent_model_sha256=MODEL_SHA, data_arrays_sha256=tensor_hash(self.data)))
++
++    def load(self, state):
++        if (state["format"] != SPEC["format"] or state["spec"] != SPEC or
++                state["ancestor_counts"] != ANCESTOR_COUNTS or
++                state["initial_hashes"] != self.initial_hashes or
++                state["optimizer_provenance"] != self.optimizer_provenance or
++                state["target_policy_actor_sha256"] != self.initial_hashes["actor"] or
++                state["parent_model_sha256"] != MODEL_SHA or
++                state["data_arrays_sha256"] != tensor_hash(self.data) or
++                state["critic_continuation"] != SPEC["critic_continuation"] or state["before"] != self.before):
++            raise ValueError("MC checkpoint source/data/model/continuation identity differs")
++        for name, model in self.models().items():
++            model.load_state_dict(state["models"][name], strict=True)
++        self.optimizer.load_state_dict(copy.deepcopy(state["critic_optimizer"]))
++        self.rng.bit_generator.state = copy.deepcopy(state["numpy_rng"])
++        for key in ("phase", "counts", "losses", "sample_counts", "forced_terminal_counts", "terminal_counts"):
++            setattr(self, key, copy.deepcopy(state[key]))
++        # Reconcile retained sampling evidence, including incidental uniform terminal draws.
++        rng = np.random.Generator(np.random.PCG64(7201))
++        totals = [0]*5
++        for number, loss in enumerate(self.losses, 1):
++            indices, forced = sample_indices(self.data, rng)
++            counts = [int(self.data["terminal"][indices][self.data["scenario"][indices] == i].sum()) for i in range(5)]
++            if (loss["update"] != number or loss["indices"] != indices.tolist() or
++                    loss["forced_terminal"] != forced.tolist() or loss["samples_per_scenario"] != [8]*5 or
++                    loss["forced_terminals_per_scenario"] != [1]*5 or loss["terminals_per_scenario"] != counts or
++                    loss["finite"] is not True or loss["loss"] != sum(loss["head_mse"])):
++                raise ValueError("Retained sampling/loss evidence differs")
++            totals = [a+b for a, b in zip(totals, counts)]
++        if self.rng.bit_generator.state != rng.bit_generator.state or totals != self.terminal_counts:
++            raise ValueError("Retained PCG64/terminal counts differ")
++        self.validate()
++
++
++def error_metrics(errors):
++    return dict(mse=errors.square().mean(dim=0).tolist(), mae=errors.abs().mean(dim=0).tolist(),
++        signed_bias=errors.mean(dim=0).tolist(), max_abs_error=errors.abs().max(dim=0).values.tolist())
++
++
++@torch.no_grad()
++def diagnostics(learner, phase):
++    data = learner.data
++    heads = learner.phi_values[:, None] + residuals(learner.critics, data["obs"], learner.budgets).double()
++    q = torch.cat((heads, heads.min(dim=1, keepdim=True).values), dim=1)
++    errors = q - data["returns"][:, None]
++    raw = data["anchor"] + data["action"].double() * data["anchor"].new_tensor([50., 1000.])
++    finite((q, errors, raw))
++    rows, groups = [], []
++    for i in range(len(q)):
++        rows.append(dict(scenario=SCENARIOS[int(data["scenario"][i])], horizon=int(data["horizon"][i]),
++            terminal=bool(data["terminal"][i]), G_pi1=float(data["returns"][i]),
++            reward=float(data["reward"][i]), phi=float(learner.phi_values[i]),
++            residual_target=float(learner.mc_targets[i]), q1_q2_min=q[i].tolist(),
++            errors=errors[i].tolist(), terminal_reward_errors=(q[i]-data["reward"][i]).tolist()
++                if data["terminal"][i] else None,
++            action=data["action"][i].tolist(), anchor=data["anchor"][i].tolist(), request=data["request"][i].tolist()))
++    for scenario, name in enumerate(SCENARIOS):
++        for low, high in ((1, 75), (51, 75), (26, 50), (1, 25), (1, 1)):
++            mask = (data["scenario"] == scenario) & (data["horizon"] >= low) & (data["horizon"] <= high)
++            groups.append(dict(scenario=name, horizon_range=[low, high], count=int(mask.sum()),
++                **error_metrics(errors[mask])))
++    return dict(phase=phase, heads=["Q1", "Q2", "minQ"], rows=rows, per_scenario_horizon=groups,
++        pooled=error_metrics(errors), terminal_reward_errors=error_metrics(q[data["terminal"]]-data["reward"][data["terminal"], None]),
++        coverage=dict(action_min=data["action"].min(dim=0).values.tolist(),
++            action_max=data["action"].max(dim=0).values.tolist(),
++            action_99pct_saturation=(data["action"].abs() >= data["action"].new_tensor([.2, .1])*.99).sum(dim=0).tolist(),
++            request_min=data["request"].min(dim=0).values.tolist(), request_max=data["request"].max(dim=0).values.tolist(),
++            nuf_cap_count=int((data["request"][:, 1] == 6000.).sum()),
++            nuf_zero_count=int((data["request"][:, 1] == 0.).sum()),
++            nuf_projection_clipped=int((raw[:, 1] != data["request"][:, 1]).sum()),
++            distinct_nuf_requests=int(data["request"][:, 1].unique().numel())),
++        interpretation=("Before: Q-carry versus G-pi1 is continuation discrepancy, not independent Q-pi1 calibration."
++            if phase == "before" else "After: TRAINING fit on the same 375 rows, no heldout calibration."),
++        limitations="Samples label Q^pi1 at observed (s,b_pi1), not Q-star or other actions. All 375 NUF requests "
++            "are 6000: no NUF action variation, so that action axis is not identified. Frozen actor/Phi means "
++            "the physical policy is unchanged; critic-only fitting cannot claim improved traffic TTT.")
++
++
++def final_metrics(learner):
++    learner.validate()
++    if learner.phase != "done":
++        raise ValueError("Final metrics require exactly 250 updates")
++    return dict(before=learner.before, after=diagnostics(learner, "after"), updates=learner.losses,
++        initial_model_sha256=learner.initial_hashes,
++        final_model_sha256={k: tensor_hash(m.state_dict()) for k, m in learner.models().items()},
++        optimizer_provenance=learner.optimizer_provenance,
++        final_optimizer_sha256=state_hash(learner.optimizer.state_dict()),
++        counters=learner.counts, ancestor_counts=ANCESTOR_COUNTS,
++        samples_per_scenario=dict(zip(SCENARIOS, learner.sample_counts)),
++        forced_terminals_per_scenario=dict(zip(SCENARIOS, learner.forced_terminal_counts)),
++        all_sampled_terminals_per_scenario=dict(zip(SCENARIOS, learner.terminal_counts)),
++        target_policy_actor_sha256=learner.initial_hashes["actor"], target_updates_during_fit=0,
++        final_target_copy=True, traffic_improvement_claim=False, heldout=False)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\run_tests.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\run_tests.py"
+new file mode 100644
+index 0000000..ab2826f
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\run_tests.py"
+@@ -0,0 +1,76 @@
++"""Scoped synthetic tests and optional read-only actual authentication; never actual fit."""
++import os
++import sys
++import uuid
++import xml.etree.ElementTree as ET
++from mc_common import (HERE, OUTPUT, SCENARIOS, SPEC, ANCESTOR_COUNTS, np, torch, sources, read, save,
++    sha, digest, tensor_hash, verify)
++from mc_data import manifest, authenticate, load_data, load_parent
++from mc_learner import state_hash
++
++
++def readonly_actual():
++    receipt = authenticate()
++    data = load_data(receipt["manifest"])
++    parent = load_parent(receipt["manifest"])
++    optimizer = parent["optimizers"]["critics"]
++    assert parent["counts"] == ANCESTOR_COUNTS and parent["phase"] == "done"
++    assert parent["critic_continuation"] == "carry"
++    assert len(optimizer["param_groups"]) == 1 and optimizer["param_groups"][0]["lr"] == 3e-4
++    assert {float(state["step"]) for state in optimizer["state"].values()} == {250.}
++    rows = []
++    for i, scenario in enumerate(SCENARIOS):
++        mask = data["scenario"] == i
++        actual = receipt["readout"]["scenarios"][i]
++        intervals = np.asarray(actual["interval_ttt"], dtype=np.float64)
++        expected = -np.cumsum(intervals[::-1]/100.)[::-1].copy()
++        np.testing.assert_allclose(data["returns"][mask].numpy(), expected, rtol=0, atol=1e-12)
++        np.testing.assert_array_equal(data["returns"][mask][-1].numpy(), data["reward"][mask][-1].numpy())
++        np.testing.assert_allclose(float(data["returns"][mask][0]), -(actual["ttt"]-actual["warmup_ttt"])/100., rtol=0, atol=1e-10)
++        assert int(mask.sum()) == 75 and int(data["terminal"][mask].sum()) == 1
++        rows.append(dict(scenario=scenario, rows=75, G0=float(data["returns"][mask][0]),
++            terminal_reward=float(data["reward"][mask][-1]), warmup_excluded=actual["warmup_ttt"],
++            nuf_cap_requests=int((data["request"][mask, 1] == 6000.).sum())))
++    assert data["anchor"].dtype == data["request"].dtype == torch.float64
++    assert data["obs"].shape == (375, 2367)
++    return dict(authentication=receipt, data_arrays_sha256=tensor_hash(data), rows=rows,
++        parent_model_state_sha256={k: tensor_hash(v) for k, v in parent["models"].items()},
++        parent_critic_optimizer_sha256=state_hash(parent["optimizers"]["critics"]),
++        parent_critic_optimizer_steps=250, parent_critic_optimizer_lr=3e-4,
++        ancestor_counts=parent["counts"], actual_optimizer_updates=0, physical_calls=0,
++        note="Actual arrays never passed to a Learner; optimizer tests use generated synthetic arrays only.")
++
++
++def main():
++    os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
++    import pytest
++    args = list(sys.argv[1:])
++    synthetic_only = "--synthetic-only" in args
++    if synthetic_only:
++        args.remove("--synthetic-only")
++    evidence = HERE / "test-evidence" / uuid.uuid4().hex[:8]
++    evidence.mkdir(parents=True)
++    before, source = manifest(), sources()
++    output_existed = OUTPUT.exists()
++    if not synthetic_only:
++        save(evidence / "readonly-actual.json", readonly_actual())
++    code = pytest.main(["-q", "--tb=short", "-p", "no:cacheprovider", "--confcutdir="+str(HERE),
++        "--junitxml="+str(evidence / "tests.xml"), str(HERE / "test_mc.py"), *args])
++    verify(before["files"])
++    if before != manifest() or source != sources() or OUTPUT.exists() != output_existed:
++        raise ValueError("Frozen files/source or actual output existence changed")
++    suite = ET.parse(evidence / "tests.xml").getroot().find("testsuite")
++    save(evidence / "evidence.json", dict(exit_code=code, command=[sys.executable, "-B", str(HERE / "run_tests.py"), *sys.argv[1:]],
++        source_sha256=source, spec=SPEC, spec_sha256=digest(SPEC), test_summary=suite.attrib,
++        tests_xml_sha256=sha(evidence / "tests.xml"),
++        readonly_actual_sha256=None if synthetic_only else sha(evidence / "readonly-actual.json"),
++        preserved_before_after_sha256=before["files"], preserved_file_count=len(before["files"]),
++        actual_rows_validated=0 if synthetic_only else 375, actual_optimizer_updates=0, physical_calls=0,
++        actual_output_existed_before_and_after=output_existed,
++        runtime=dict(python=sys.version, torch=torch.__version__, numpy=np.__version__)))
++    print("EVIDENCE", evidence, flush=True)
++    return code
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\run.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\run.py"
+new file mode 100644
+index 0000000..180e139
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\run.py"
+@@ -0,0 +1,136 @@
++"""One single-thread offline MC job; parent owns review and global worker admission."""
++import argparse
++import os
++from pathlib import Path
++import sys
++import time
++from mc_common import (OUTPUT, SPEC, MODEL_SHA, torch, np, read, save, save_once, sha, digest,
++    sources, verify, check_stop, Stopped, locked, process_identity, checkpoint, restore)
++from mc_data import authenticate, load_data, load_parent
++from mc_learner import Learner, final_metrics
++
++
++def review_receipt(path, source):
++    receipt = read(path)
++    if (receipt.get("status") != "approved" or not receipt.get("reviewer") or
++            receipt.get("source_sha256") != source or receipt.get("spec_sha256") != digest(SPEC)):
++        raise ValueError("Independent review must approve this exact source/specification")
++    return dict(path=str(Path(path).resolve()), sha256=sha(path), review=receipt)
++
++
++def execute(output, data, parent, settings, resume=False):
++    output = Path(output)
++    check_stop(output)
++    with locked(output):
++        check_stop(output)
++        if (output / "completion.json").exists():
++            raise FileExistsError("Completed MC run cannot be repeated or resumed")
++        existing = {p.name for p in output.iterdir()} - {"runner.lock", "stdout.log", "stderr.log", "launcher.json"}
++        if existing and not resume:
++            raise FileExistsError("Partial/orphan run exists; preserve and resume")
++        if resume and (not (output / "settings.json").exists() or read(output / "settings.json") != settings):
++            raise ValueError("Resume settings/source/data/spec/review mismatch")
++        verify(settings["sources"])
++        verify(settings["data"]["files"])
++        save_once(output / "settings.json", settings)
++        identity = process_identity()
++        identity["command"] = list(sys.orig_argv)
++        save(output / "process.json", dict(**identity, lock_held=True, source_sha256=settings["sources"]))
++        session = output / "sessions" / (identity["session_id"] + ".start.json")
++        save_once(session, dict(process=identity, lock_held=True, settings_sha256=digest(settings)))
++        started, outcome, learner = time.perf_counter(), "failed", None
++        try:
++            learner = Learner(data, parent)
++            if (output / "latest.json").exists():
++                state = restore(output)
++                if (state["settings"] != settings or state["format"] != SPEC["format"] or
++                        state["target_policy_parent_model_sha256"] != MODEL_SHA):
++                    raise ValueError("Checkpoint identity mismatch")
++                learner.load(state["learner"])
++            else:
++                checkpoint(output, dict(format=SPEC["format"], settings=settings, learner=learner.state(),
++                    process=identity, target_policy_parent_model_sha256=MODEL_SHA))
++            while learner.phase != "done":
++                check_stop(output)
++                verify(settings["sources"])
++                learner.update()
++                if learner.counts["mc_critic"] % 25 == 0:
++                    verify(settings["data"]["files"])
++                checkpoint(output, dict(format=SPEC["format"], settings=settings, learner=learner.state(),
++                    process=identity, target_policy_parent_model_sha256=MODEL_SHA))
++                save(output / "status.json", dict(status="running", counters=learner.counts))
++                if learner.counts["mc_critic"] % 25 == 0:
++                    print("MC", learner.counts["mc_critic"], flush=True)
++            # Reuse the durable done payload through publication, including STOP/resume.
++            # Never serialize it again with a new process identity after exporting it.
++            check_stop(output)
++            verify(settings["sources"])
++            verify(settings["data"]["files"])
++            save_once(output / "metrics.json", final_metrics(learner))
++            latest = read(output / "latest.json")
++            if latest["phase"] != "done" or latest["counters"] != dict(mc_critic=250):
++                raise ValueError("Final checkpoint is not the durable 250-update boundary")
++            candidate = output / "model_final.pt"
++            if candidate.exists():
++                if sha(candidate) != latest["sha256"]:
++                    raise FileExistsError("Existing final model differs; preserve it")
++            else:
++                os.link(output / latest["path"], candidate)
++            outputs = {name: sha(output / name) for name in
++                ("settings.json", "metrics.json", "latest.json", "model_final.pt", latest["path"])}
++            check_stop(output)
++            verify(settings["sources"])
++            verify(settings["data"]["files"])
++            save_once(output / "completion.json", dict(format=SPEC["format"], status="completed",
++                settings=settings, outputs_sha256=outputs, counters=learner.counts,
++                ancestor_counts=parent["counts"], critic_continuation=SPEC["critic_continuation"],
++                target_policy_actor_sha256=learner.initial_hashes["actor"],
++                target_policy_parent_model_sha256=MODEL_SHA, continued_critic_optimizer=True,
++                training_fit_only=True, heldout=False, actor_changed=False, phi_changed=False,
++                physical_policy_changed=False, traffic_improvement_claim=False, canonical_evaluation=False,
++                next_action="Parent reviews actual fit; no automatic policy proposal or dispatch"))
++            outcome = "completed"
++        except Stopped:
++            outcome = "stopped"
++        except BaseException as exc:
++            save(output / "status.json", dict(status="failed", error=f"{type(exc).__name__}: {exc}",
++                resume_from="latest.json", preserve_orphans=True))
++            raise
++        finally:
++            save_once(session.with_name(identity["session_id"] + ".end.json"), dict(process=identity,
++                start_sha256=sha(session), event=outcome, elapsed_wall_seconds=time.perf_counter()-started))
++        save(output / "status.json", dict(status=outcome, counters=learner.counts if learner else None))
++        return outcome
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--review", type=Path, required=True)
++    parser.add_argument("--output", type=Path, default=OUTPUT)
++    parser.add_argument("--resume", action="store_true")
++    args = parser.parse_args(argv)
++    if args.output.resolve() != OUTPUT.resolve():
++        raise ValueError("Only the fixed return_mc_v1 output is allowed")
++    try:
++        check_stop(args.output)
++        if (args.output / "completion.json").exists():
++            raise FileExistsError("Completed MC run cannot be repeated")
++        source = sources()
++        review = review_receipt(args.review, source)
++        authentication = authenticate()
++        check_stop(args.output)
++        data, parent = load_data(authentication["manifest"]), load_parent(authentication["manifest"])
++        settings = dict(format=SPEC["format"], spec=SPEC, spec_sha256=digest(SPEC), sources=source,
++            review=review, authentication=authentication, data=authentication["manifest"],
++            parent_model_sha256=MODEL_SHA, runtime=dict(python=sys.version, torch=torch.__version__, numpy=np.__version__),
++            scope="offline_on_policy_MC_critic_fit_only", critic_continuation=SPEC["critic_continuation"])
++        outcome = execute(args.output, data, parent, settings, args.resume)
++        print(outcome, flush=True)
++        return 0 if outcome == "completed" else 3
++    except Stopped:
++        print("stopped_before_update", flush=True)
++        return 3
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\test_mc.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\test_mc.py"
+new file mode 100644
+index 0000000..6def215
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_mc_20260930\\test_mc.py"
+@@ -0,0 +1,407 @@
++"""Task 3 only: all optimizer tests use independently generated synthetic arrays."""
++import copy
++from pathlib import Path
++import random
++import sys
++import uuid
++import pytest
++import mc_common as c
++import mc_data as d
++import mc_learner as m
++import run
++
++
++@pytest.fixture
++def folder():
++    path = c.HERE / "synthetic-fixtures" / uuid.uuid4().hex
++    path.mkdir(parents=True)
++    return path
++
++
++@pytest.fixture(scope="session")
++def synthetic():
++    rng = c.np.random.Generator(c.np.random.PCG64(9901))
++    obs = c.torch.from_numpy(rng.normal(size=(375, 6)).astype(c.np.float32))
++    with c.torch.random.fork_rng(devices=[]):
++        c.torch.manual_seed(9902)
++        actor, phi = c.Actor(6), c.mlp(6, 1)
++        critics = c.torch.nn.ModuleList([c.mlp(8, 1) for _ in range(2)])
++    with c.torch.no_grad():
++        actor.net[-1].bias.copy_(c.torch.tensor([.05, .02]))
++    optimizer = c.torch.optim.Adam(critics.parameters(), lr=3e-4)
++    sum(p.square().sum() for p in critics.parameters()).backward()
++    optimizer.step()
++    # Synthetic ancestor fixture has nonzero matching moments and a declared 250-step counter.
++    for state in optimizer.state.values():
++        state["step"].fill_(250)
++    targets = copy.deepcopy(critics)
++    with c.torch.no_grad():
++        action = actor(obs)
++    anchor = c.torch.from_numpy(rng.normal(size=(375, 2))).double()
++    anchor[:, 0] -= 100.
++    anchor[:, 1] = 6000.
++    reward = -c.torch.from_numpy(rng.uniform(.1, .8, 375))
++    returns = reward.clone().reshape(5, 75)
++    returns = returns.flip(1).cumsum(1).flip(1).flatten()
++    data = dict(obs=obs, action=action, reward=reward, returns=returns, anchor=anchor,
++        request=c.projected(anchor, action), scenario=c.torch.arange(5).repeat_interleave(75),
++        terminal=c.torch.tensor([False]*74+[True]).repeat(5), horizon=c.torch.arange(75, 0, -1).repeat(5))
++    parent = dict(spec=c.rt.SPEC, phase="done", counts=c.ANCESTOR_COUNTS, critic_continuation="carry",
++        models={k: v.state_dict() for k, v in dict(actor=actor, phi=phi, critics=critics, targets=targets).items()},
++        optimizers=dict(critics=optimizer.state_dict()))
++    return data, copy.deepcopy(parent)
++
++
++@pytest.fixture
++def learner(synthetic):
++    return m.Learner(*synthetic)
++
++
++@pytest.fixture(scope="session")
++def completed(synthetic):
++    learner = m.Learner(*synthetic)
++    for _ in range(250):
++        learner.update()
++    return learner.state()
++
++
++def settings():
++    return dict(format=c.SPEC["format"], spec=c.SPEC, sources={}, data=dict(files={}), synthetic=True)
++
++
++def seed_checkpoint(folder, learner, state=None):
++    if state is not None:
++        learner.load(state)
++    c.save(folder / "settings.json", settings())
++    return c.checkpoint(folder, dict(format=c.SPEC["format"], settings=settings(), learner=learner.state(),
++        process=dict(synthetic_old_process=1), target_policy_parent_model_sha256=c.MODEL_SHA))
++
++
++def test_pure_import_boundary():
++    assert not {"runtime", "learner", "data", "wave_support", "worker", "budget_env", "src"}.intersection(sys.modules)
++    assert c.torch.get_num_threads() == c.torch.get_num_interop_threads() == 1
++
++
++def test_exact_parent_and_continued_adam(learner, synthetic):
++    parent = synthetic[1]
++    for key, model in learner.models().items():
++        assert c.tensor_hash(model.state_dict()) == c.tensor_hash(parent["models"][key])
++    assert m.state_hash(learner.optimizer.state_dict()) == m.state_hash(parent["optimizers"]["critics"])
++    assert learner.optimizer_provenance["continued"]
++    assert learner.optimizer.param_groups[0]["lr"] == 3e-4
++    learner.update()
++    assert {float(x["step"]) for x in learner.optimizer.state.values()} == {251.}
++    assert "carry" in learner.before["interpretation"] and "not independent" in learner.before["interpretation"]
++
++
++def test_only_critics_receive_gradients(learner):
++    before = learner.initial_hashes.copy()
++    learner.update()
++    assert all(p.grad is not None for p in learner.critics.parameters())
++    assert all(p.grad is None and not p.requires_grad for model in
++        (learner.actor, learner.phi, learner.targets) for p in model.parameters())
++    assert c.tensor_hash(learner.critics.state_dict()) != before["critics"]
++    for name in ("actor", "phi", "targets"):
++        assert c.tensor_hash(learner.models()[name].state_dict()) == before[name]
++
++
++def test_does_not_consume_global_rng(synthetic):
++    torch_before, numpy_before, python_before = c.torch.get_rng_state().clone(), c.np.random.get_state(), random.getstate()
++    learner = m.Learner(*synthetic)
++    learner.update()
++    assert c.torch.equal(torch_before, c.torch.get_rng_state())
++    assert m.state_hash(numpy_before) == m.state_hash(c.np.random.get_state())
++    assert python_before == random.getstate()
++
++
++def test_mc_targets_and_sum_of_head_mse_no_bootstrap(learner, monkeypatch):
++    def forbidden(*args, **kwargs):
++        raise AssertionError("No target network/bootstrap call is allowed")
++    monkeypatch.setattr(learner.targets, "forward", forbidden)
++    for head in learner.targets:
++        monkeypatch.setattr(head, "forward", forbidden)
++    assert c.torch.equal(learner.mc_targets, learner.data["returns"]-learner.phi_values)
++    rng = c.np.random.Generator(c.np.random.PCG64(7201))
++    indices, _ = d.sample_indices(learner.data, rng)
++    errors = c.residuals(learner.critics, learner.data["obs"][indices], learner.budgets[indices]).double() - learner.mc_targets[indices, None]
++    expected = float(errors.square().mean(dim=0).sum().detach())
++    learner.update()
++    assert learner.losses[0]["loss"] == expected
++
++
++def test_fixed_quotas_and_final_copy(completed, learner):
++    learner.load(completed)
++    assert learner.counts == dict(mc_critic=250)
++    assert learner.sample_counts == [2000]*5
++    assert learner.forced_terminal_counts == [250]*5
++    assert all(n > 250 for n in learner.terminal_counts)
++    assert c.tensor_hash(learner.targets.state_dict()) == c.tensor_hash(learner.critics.state_dict())
++    assert all(x["samples_per_scenario"] == [8]*5 and x["forced_terminals_per_scenario"] == [1]*5 for x in learner.losses)
++    assert all({idx for row in learner.losses for idx in row["indices"] if idx//75 == i} == set(range(i*75, (i+1)*75)) for i in range(5))
++    with pytest.raises(ValueError, match="250"):
++        learner.update()
++    metrics = m.final_metrics(learner)
++    assert len(metrics["after"]["rows"]) == 375
++    assert len(metrics["after"]["per_scenario_horizon"]) == 25
++    assert "TRAINING" in metrics["after"]["interpretation"]
++    assert metrics["after"]["coverage"]["nuf_cap_count"] == 375
++    assert metrics["after"]["coverage"]["distinct_nuf_requests"] == 1
++    assert metrics["traffic_improvement_claim"] is False
++
++
++def test_deterministic_resume_including_optimizer_rng_and_metrics(synthetic, completed):
++    first = m.Learner(*synthetic)
++    for _ in range(73):
++        first.update()
++    resumed = m.Learner(*synthetic)
++    resumed.load(first.state())
++    for _ in range(177):
++        resumed.update()
++    assert m.state_hash(resumed.state()) == m.state_hash(completed)
++
++
++def test_float64_projection_signed_np_and_caps():
++    anchor = c.torch.tensor([[-123.123456789012, 5999.9999999], [-1.e8+.123456789, -4.]], dtype=c.torch.float64)
++    action = c.torch.tensor([[.123456789, .1], [-.2, -.1]], dtype=c.torch.float32)
++    expected = anchor.numpy() + action.numpy().astype(c.np.float64)*[50., 1000.]
++    expected[:, 1] = c.np.clip(expected[:, 1], 0., 6000.)
++    c.np.testing.assert_array_equal(c.projected(anchor, action).numpy(), expected)
++    c.np.testing.assert_array_equal(c.network_budget(anchor, action).numpy(), (expected/[1000., 10000.]).astype(c.np.float32))
++    assert bool((c.projected(anchor, action)[:, 0] < 0).all())
++    with pytest.raises(ValueError, match="float64"):
++        c.projected(anchor.float(), action)
++
++
++def episode_fixture():
++    settings = dict(evaluation=False, profile_sha256="synthetic", warmup_ttt=123456.)
++    rows, transitions = [], []
++    for k in range(75):
++        obs = c.np.full(2367, k, dtype=c.np.float32)
++        nxt = c.np.full(2367, k+1, dtype=c.np.float32) if k < 74 else c.np.zeros(2367, dtype=c.np.float32)
++        action = c.np.zeros(2, dtype=c.np.float32)
++        reward = -(k+1)/100.
++        transitions.append((obs, action, reward, nxt, k == 74))
++        rows.append(dict(terminated=k == 74, truncated=False, control_step=k, step=k+5,
++            scenario=c.SCENARIOS[0], behavior="frozen_shared_actor", profile_sha256="synthetic",
++            action_anchor=[-123.123456789, 6000.], B_executed=[-123.123456789, 6000.],
++            B_requested=[[-123.123456789, 6000.]], action_requested=[0., 0.], interval_ttt=k+1))
++    return transitions, rows, settings
++
++
++def test_returns_terminal_and_warmup_exclusion():
++    transitions, trace, settings_ = episode_fixture()
++    rows = c.episode_arrays(transitions, trace, settings_, c.SCENARIOS[0], "frozen_shared_actor")
++    assert abs(rows[0]["returns"] + sum(range(1, 76))/100.) < 1e-12
++    assert rows[-1]["returns"] == transitions[-1][2]
++    assert rows[-1]["horizon"] == 1 and rows[0]["horizon"] == 75
++    settings_["warmup_ttt"] *= 99
++    again = c.episode_arrays(transitions, trace, settings_, c.SCENARIOS[0], "frozen_shared_actor")
++    assert [x["returns"] for x in rows] == [x["returns"] for x in again]
++
++
++@pytest.mark.parametrize("mutation", ["early_terminal", "truncated", "warmup_step", "reward", "next_state", "request", "evaluation"])
++def test_invalid_episode_rejected(mutation):
++    transitions, trace, settings_ = episode_fixture()
++    if mutation == "early_terminal":
++        transitions[3] = (*transitions[3][:4], True)
++    elif mutation == "truncated":
++        trace[74]["truncated"] = True
++    elif mutation == "warmup_step":
++        trace[0]["step"] = 0
++    elif mutation == "reward":
++        trace[3]["interval_ttt"] += 5
++    elif mutation == "next_state":
++        transitions[2][3][0] += 1
++    elif mutation == "request":
++        trace[3]["B_requested"][0][0] += 1
++    else:
++        settings_["evaluation"] = True
++    with pytest.raises((ValueError, AssertionError)):
++        c.episode_arrays(transitions, trace, settings_, c.SCENARIOS[0], "frozen_shared_actor")
++
++
++@pytest.mark.parametrize("mutation", ["continuation", "count", "lr", "moment", "step"])
++def test_parent_provenance_rejected(synthetic, mutation):
++    data, parent = synthetic[0], copy.deepcopy(synthetic[1])
++    opt = parent["optimizers"]["critics"]
++    if mutation == "continuation":
++        parent["critic_continuation"] = "pi1"
++    elif mutation == "count":
++        parent["counts"]["actor"] = 11
++    elif mutation == "lr":
++        opt["param_groups"][0]["lr"] = 1e-3
++    elif mutation == "moment":
++        opt["state"][0]["exp_avg"] = c.torch.zeros(1)
++    else:
++        opt["state"][0]["step"].fill_(0)
++    with pytest.raises(ValueError):
++        m.Learner(data, parent)
++
++
++@pytest.mark.parametrize("mutation", ["rng", "data", "actor", "phi", "targets", "quota", "continuation", "optimizer", "nonfinite"])
++def test_resume_provenance_rejected(learner, mutation):
++    learner.update()
++    state = learner.state()
++    if mutation == "rng":
++        state["numpy_rng"]["state"]["state"] += 1
++    elif mutation == "data":
++        state["data_arrays_sha256"] = "bad"
++    elif mutation in ("actor", "phi", "targets"):
++        next(iter(state["models"][mutation].values())).add_(1.)
++    elif mutation == "quota":
++        state["losses"][0]["indices"][0] = 0
++    elif mutation == "continuation":
++        state["critic_continuation"] = "carry"
++    elif mutation == "optimizer":
++        state["critic_optimizer"]["state"][0]["step"].fill_(250)
++    else:
++        state["models"]["critics"]["0.0.weight"].fill_(float("nan"))
++    with pytest.raises(ValueError):
++        learner.load(state)
++
++
++@pytest.mark.parametrize("label", ["source.py", "model.pt", "experience.pt"])
++def test_source_model_data_hash_failures(folder, label):
++    path = folder / label
++    path.write_bytes(b"synthetic original")
++    manifest = {path.relative_to(c.REPO).as_posix(): c.sha(path)}
++    c.verify(manifest)
++    path.write_bytes(b"synthetic changed")
++    with pytest.raises(ValueError, match="hash mismatch"):
++        c.verify(manifest)
++
++
++def test_authentication_reconciles_readout_not_flags(monkeypatch):
++    baseline = dict(integrity_pass=True, all_health_gates_pass=True, scenarios=[dict(ttt=10)])
++    monkeypatch.setattr(d, "read", lambda path: baseline)
++    receipt = dict(status="authenticated", manifest={}, readout=copy.deepcopy(baseline),
++        raw_environment_loads=0, environment_calls=0)
++    d.validate_receipt(receipt, {})
++    receipt["readout"]["scenarios"][0]["ttt"] = 20
++    with pytest.raises(ValueError, match="readout"):
++        d.validate_receipt(receipt, {})
++
++
++def test_review_receipt_and_fixed_output(folder):
++    path = folder / "review.json"
++    c.save(path, dict(status="approved", reviewer="synthetic", source_sha256={}, spec_sha256=c.digest(c.SPEC)))
++    run.review_receipt(path, {})
++    with pytest.raises(ValueError, match="review"):
++        run.review_receipt(path, {"new": "source"})
++    with pytest.raises(ValueError, match="fixed"):
++        run.main(["--review", str(path), "--output", str(folder)])
++
++
++@pytest.mark.parametrize("location", ["repo", "goal", "output"])
++def test_stop_locations_without_real_markers(folder, monkeypatch, location):
++    repo, goal, output = [folder / name for name in ("repo", "goal", "output")]
++    for path in (repo, goal, output):
++        path.mkdir()
++    monkeypatch.setattr(c.rt, "REPO", repo)
++    monkeypatch.setattr(c.rt, "GOAL", goal)
++    dict(repo=repo, goal=goal, output=output)[location].joinpath("STOP").write_text("synthetic")
++    with pytest.raises(c.Stopped):
++        c.check_stop(output)
++
++
++def test_kernel_lock_exclusion(folder):
++    with c.locked(folder):
++        with pytest.raises(OSError):
++            with c.locked(folder):
++                pass
++
++
++def test_nonfinite_json_rejected(folder):
++    with pytest.raises(ValueError, match="Nonfinite"):
++        c.save(folder / "bad.json", dict(value=float("inf")))
++    assert not (folder / "bad.json").exists()
++
++
++def test_atomic_json_keeps_prior_orphan(folder, learner):
++    orphan = folder / "latest.json.tmp"
++    orphan.write_bytes(b"interrupted previous write")
++    seed_checkpoint(folder, learner)
++    assert orphan.read_bytes() == b"interrupted previous write"
++    c.restore(folder)
++
++
++@pytest.mark.parametrize("boundary", ["metrics", "final_model"])
++def test_final_publication_stop_resume_changed_process(folder, synthetic, learner, completed, monkeypatch, boundary):
++    record = seed_checkpoint(folder, learner, completed)
++    original_stop = run.check_stop
++    intercepted = False
++
++    def stop_once(output):
++        nonlocal intercepted
++        reached = (output / ("metrics.json" if boundary == "metrics" else "model_final.pt")).exists()
++        if reached and not intercepted:
++            intercepted = True
++            raise c.Stopped("synthetic finalization STOP")
++        original_stop(output)
++
++    monkeypatch.setattr(run, "check_stop", stop_once)
++    if boundary == "metrics":
++        original_metrics = run.final_metrics
++        def stop_after_metrics(value):
++            result = original_metrics(value)
++            c.save_once(folder / "metrics.json", result)
++            stop_once(folder)
++            return result
++        monkeypatch.setattr(run, "final_metrics", stop_after_metrics)
++    assert run.execute(folder, *synthetic, settings(), resume=True) == "stopped"
++    assert c.read(folder / "latest.json") == record
++    assert not (folder / "completion.json").exists()
++    monkeypatch.setattr(run, "check_stop", original_stop)
++    if boundary == "metrics":
++        monkeypatch.setattr(run, "final_metrics", original_metrics)
++    assert run.execute(folder, *synthetic, settings(), resume=True) == "completed"
++    assert c.read(folder / "latest.json") == record
++    done = c.read(folder / "completion.json")
++    for name, expected in done["outputs_sha256"].items():
++        assert c.sha(folder / name) == expected
++    assert c.sha(folder / "model_final.pt") == record["sha256"]
++    assert len(list((folder / "sessions").glob("*.start.json"))) == 2
++    with pytest.raises(FileExistsError, match="Completed"):
++        run.execute(folder, *synthetic, settings(), resume=True)
++
++
++def test_runner_stop_midfit_durable_resume_and_orphan(folder, synthetic, completed, monkeypatch):
++    original = run.checkpoint
++    orphan = folder / "orphan.tmp"
++    orphan.write_bytes(b"preserve synthetic evidence")
++    c.save(folder / "settings.json", settings())
++    def interrupted(output, payload):
++        record = original(output, payload)
++        if payload["learner"]["counts"]["mc_critic"] == 7:
++            raise c.Stopped("after durable update 7")
++        return record
++    monkeypatch.setattr(run, "checkpoint", interrupted)
++    assert run.execute(folder, *synthetic, settings(), resume=True) == "stopped"
++    assert c.restore(folder)["learner"]["counts"] == dict(mc_critic=7)
++    monkeypatch.setattr(run, "checkpoint", original)
++    assert run.execute(folder, *synthetic, settings(), resume=True) == "completed"
++    assert m.state_hash(c.restore(folder)["learner"]) == m.state_hash(completed)
++    assert orphan.read_bytes() == b"preserve synthetic evidence"
++
++
++def test_checkpoint_hash_and_settings_mismatch(folder, learner, synthetic):
++    record = seed_checkpoint(folder, learner)
++    mismatched = dict(settings(), changed=True)
++    with pytest.raises(ValueError, match="settings"):
++        run.execute(folder, *synthetic, mismatched, resume=True)
++    path = folder / record["path"]
++    path.write_bytes(b"synthetic corrupt checkpoint")
++    with pytest.raises(ValueError, match="hash"):
++        c.restore(folder)
++
++
++def test_partial_and_mismatched_final_refusal(folder, learner, synthetic, completed):
++    seed_checkpoint(folder, learner, completed)
++    with pytest.raises(FileExistsError, match="Partial"):
++        run.execute(folder, *synthetic, settings())
++    path = folder / "model_final.pt"
++    path.write_bytes(b"synthetic unmatched orphan")
++    with pytest.raises(FileExistsError, match="final model"):
++        run.execute(folder, *synthetic, settings(), resume=True)
++    assert path.read_bytes() == b"synthetic unmatched orphan"
++    assert not (folder / "completion.json").exists()

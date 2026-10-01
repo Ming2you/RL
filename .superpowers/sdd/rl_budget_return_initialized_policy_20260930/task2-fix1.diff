@@ -1,0 +1,593 @@
+diff --git "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\checks.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\checks.py"
+index 18a51d0..7989117 100644
+--- "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\checks.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\checks.py"
+@@ -220,5 +220,8 @@ def summarize(trace, settings, timing):
+         lower_candidate_solves=sum(r["lower_candidate_count"] for r in trace),
+         queue_exposure=w.queue_exposure(trace), timing=times, worker_sessions=timing,
+         health=dict(zero_nuf_requests_le_5=zero <= 5, terminal_inventory_le_550=inventories[-1] <= 550),
+-        timing_note="Actor inference is one component of full decision latency. No wave elapsed wall estimate.",
++        timing_note=("Actor inference is one component of full decision latency. Saved decision timings "
++            "are inherited unchanged on restore. Additional whole-restore cost is separately identified "
++            "in worker_sessions.restoration and already included once in worker session wall time; "
++            "it is not charged to any decision. No wave elapsed wall estimate."),
+         comparison_note="New training profiles have no paired carry; no traffic improvement comparison.")
+diff --git "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\conftest.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\conftest.py"
+index 696435d..3d59ca2 100644
+--- "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\conftest.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\conftest.py"
+@@ -128,6 +128,8 @@ class FakeEnv:
+         self.k, self.sim, self.warmup_ttt = ck["k"], copy.deepcopy(ck["sim"]), ck["warmup_ttt"]
+         self.controller = NS(action_anchor=ck["anchor"].copy())
+         self.previous = copy.deepcopy(ck["previous"])
++        self.reference_timing = copy.deepcopy(ck["reference_timing"])
++        self.observation_timing = copy.deepcopy(ck["observation_timing"])
+         self.last_requested, self.last_executed = ck["last_requested"].copy(), ck["last_executed"].copy()
+         return self.observe()
+ 
+diff --git "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\readout.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\readout.py"
+index 14c0eb4..464a3b1 100644
+--- "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\readout.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\readout.py"
+@@ -61,7 +61,9 @@ def validate_wave():
+         all_health_gates_pass=all(all(r["health"].values()) for r in rows), scenarios=rows,
+         model_sha256=w.MODEL_SHA, evaluation=False, exploration=False, policy_improvement_claim=False,
+         critic_continuation="carry", wave_elapsed_wall_seconds=None,
+-        timing_note="Parent owns dispatch timestamps and actual worker drain; worker seconds are not wave wall time.",
++        timing_note=("Parent owns dispatch timestamps and actual worker drain; worker seconds are not wave wall time. "
++            "Per-scenario worker_sessions.restoration is a component of session time, not an additional charge "
++            "or an isolated reference-only duration. Saved decision timings remain unchanged."),
+         health_note="Each zero-NUF requests <=5 and terminal inventory <=550. Failure is diagnostic; preserve results.",
+         next_action="Parent reviews actual readout and decides Task3; no automatic fit, retry or next wave.")
+ 
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\restore_accounting.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\restore_accounting.py"
+new file mode 100644
+index 0000000..5401989
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\restore_accounting.py"
+@@ -0,0 +1,134 @@
++"""Whole-call restore accounting; no change to the frozen restoration path."""
++import copy
++import time
++import wave_support as w
++
++PINS = {
++    "budget_env.py": "6ccb4ef400106e29282797ec5d69b7a8dbeee5a1310bd7d6f97b7c7e0c7ee2c4",
++    "budget_controller.py": "0402511ae8e965e315b4b9808e23bbdc9c2fd274666a983b2a3303e6b916f9c2",
++}
++SCOPE = (
++    "Wall and process CPU around the entire unchanged env.restore call only, including "
++    "validation, copies, observer work and reference reconstruction. Not an isolated "
++    "reference-only duration. This extra restore cost is already inside worker session "
++    "wall time; never add it to that total or to saved decision timings. Reconstruction "
++    "counts are source-derived from the pinned k<80 branch, not measured preview counts. "
++    "An interrupted call has UNKNOWN duration/completion; a raised call has measured "
++    "duration but UNKNOWN reconstruction completion.")
++TIMINGS = ("reference_timing", "observation_timing")
++
++
++def files(output, sid):
++    return {p.relative_to(output).as_posix(): w.file_hash(p)
++            for kind in ("start", "end")
++            if (p := output / "sessions" / f"{sid}.restore-{kind}.json").exists()}
++
++
++def restore_environment(env, checkpoint, output, sid, settings, record):
++    for name, sha in PINS.items():
++        w.check_hash(w.OLD / name, sha)
++    start = output / "sessions" / f"{sid}.restore-start.json"
++    end = output / "sessions" / f"{sid}.restore-end.json"
++    if start.exists() or end.exists():
++        raise FileExistsError("Restore already attempted in this session")
++    inherited = copy.deepcopy({key: w.plain(checkpoint[key]) for key in TIMINGS})
++    w.save_once(start, dict(session_id=sid, run_id=settings["run_id"],
++        session_start_sha256=w.file_hash(output / "sessions" / f"{sid}.start.json"),
++        settings_digest=w.digest(settings), checkpoint=record, checkpoint_k=checkpoint["k"],
++        expected_reference_reconstructions=int(checkpoint["k"] < 80),
++        frozen_source_sha256=PINS, inherited_decision_timing=inherited, scope=SCOPE))
++    outcome = "raised"
++    tick, cpu = time.perf_counter(), time.process_time()
++    try:
++        observation = env.restore(checkpoint)
++        outcome = "returned"
++    finally:
++        elapsed, cpu_elapsed = time.perf_counter()-tick, time.process_time()-cpu
++        after = {key: w.plain(getattr(env, key, None)) for key in TIMINGS} if outcome == "returned" else None
++        w.save_once(end, dict(session_id=sid, restore_start_sha256=w.file_hash(start),
++            outcome=outcome, elapsed_wall_seconds=elapsed, elapsed_cpu_seconds=cpu_elapsed,
++            inherited_decision_timing_after=after))
++    if after != inherited:
++        raise ValueError("Restore changed inherited decision timing")
++    return observation
++
++
++def session_record(output, sid, settings, session_start, session_end):
++    """Read only JSON and checkpoint hashes, never deserialize physical state."""
++    hashes = files(output, sid)
++    if session_end is not None and session_end.get("restoration_sha256") != hashes:
++        raise ValueError("Session restoration binding differs")
++    start = output / "sessions" / f"{sid}.restore-start.json"
++    end = output / "sessions" / f"{sid}.restore-end.json"
++    resume = session_start.get("resume_requested")
++    if type(resume) is not bool:
++        raise ValueError("Session restore intent missing")
++    result = dict(session_id=sid, records_sha256=hashes, timing_status="KNOWN",
++                  elapsed_wall_seconds=0., elapsed_cpu_seconds=0.,
++                  expected_reference_reconstructions=None,
++                  returned_branch_reference_reconstructions=0, outcome="not_started")
++    if not start.exists():
++        if end.exists():
++            raise ValueError("Restore end without start")
++        if resume and session_end is None:
++            result.update(outcome="UNKNOWN", timing_status="UNKNOWN", elapsed_wall_seconds=None,
++                          elapsed_cpu_seconds=None, returned_branch_reference_reconstructions=None)
++        return result
++    saved = w.read(start)
++    k, record = saved["checkpoint_k"], saved["checkpoint"]
++    if (not resume or type(k) is not int or not 5 <= k <= 80 or
++            saved["session_id"] != sid or saved["run_id"] != settings["run_id"] or
++            saved["session_start_sha256"] != w.file_hash(output / "sessions" / f"{sid}.start.json") or
++            saved["settings_digest"] != w.digest(settings) or
++            session_start["settings_digest"] != w.digest(settings) or
++            record["settings_digest"] != w.digest(settings) or record["control_steps"] != k-5 or
++            saved["expected_reference_reconstructions"] != int(k < 80) or
++            saved["frozen_source_sha256"] != PINS or saved["scope"] != SCOPE or
++            set(saved["inherited_decision_timing"]) != set(TIMINGS)):
++        raise ValueError("Restore checkpoint/session/source binding differs")
++    path = (output / record["path"]).resolve()
++    if path.parent != (output / "checkpoints").resolve() or path.suffix != ".pt":
++        raise ValueError("Restore checkpoint escaped slot")
++    w.check_hash(path, record["sha256"])
++    result.update(provenance=saved, outcome="UNKNOWN", timing_status="UNKNOWN",
++                  elapsed_wall_seconds=None, elapsed_cpu_seconds=None,
++                  expected_reference_reconstructions=int(k < 80),
++                  returned_branch_reference_reconstructions=None)
++    if not end.exists():
++        return result
++    finish = w.read(end)
++    if (finish["session_id"] != sid or finish["restore_start_sha256"] != w.file_hash(start) or
++            finish["outcome"] not in ("returned", "raised")):
++        raise ValueError("Restore end binding differs")
++    for key in ("elapsed_wall_seconds", "elapsed_cpu_seconds"):
++        value = w.finite(finish[key], "restore elapsed")
++        if value < 0:
++            raise ValueError("Negative restore duration")
++        result[key] = value
++    if session_end is not None and result["elapsed_wall_seconds"] > session_end["elapsed_wall_seconds"]:
++        raise ValueError("Restore duration exceeds enclosing session")
++    after = finish["inherited_decision_timing_after"]
++    if finish["outcome"] == "returned":
++        if after != saved["inherited_decision_timing"]:
++            raise ValueError("Restore changed inherited decision timing")
++        result["returned_branch_reference_reconstructions"] = int(k < 80)
++    elif after is not None:
++        raise ValueError("Raised restore cannot attest inherited decision timing")
++    result.update(outcome=finish["outcome"], timing_status="KNOWN",
++                  inherited_decision_timing_after=after)
++    return result
++
++
++def summarize(records):
++    unknown = [r["session_id"] for r in records if r["timing_status"] == "UNKNOWN"]
++    incomplete = [r["session_id"] for r in records if r["returned_branch_reference_reconstructions"] is None]
++    result = dict(scope=SCOPE, records=records, timing_status="UNKNOWN" if unknown else "KNOWN",
++        unknown_timing_sessions=unknown, unknown_reconstruction_sessions=incomplete,
++        reference_reconstruction_status="UNKNOWN" if incomplete else "SOURCE_DERIVED",
++        returned_branch_reference_reconstructions=None if incomplete else
++            sum(r["returned_branch_reference_reconstructions"] for r in records))
++    for key in ("elapsed_wall_seconds", "elapsed_cpu_seconds"):
++        known = sum(r[key] for r in records if r[key] is not None)
++        result["known_"+key] = known
++        result[key] = None if unknown else known
++    return result
+diff --git "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\run_tests.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\run_tests.py"
+index a0a8f04..a665696 100644
+--- "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\run_tests.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\run_tests.py"
+@@ -32,7 +32,7 @@ def main():
+     w.save(output / "parity-authentication.json", checked)
+     code = pytest.main(["-q", "--tb=short", "-p", "no:cacheprovider", "--confcutdir="+str(w.HERE),
+         "--basetemp="+str(w.HERE / "_t" / run_id), "--junitxml="+str(output / "tests.xml"),
+-        str(w.HERE / "test_wave.py"), *sys.argv[1:]])
++        str(w.HERE / "test_wave.py"), str(w.HERE / "test_restore.py"), *sys.argv[1:]])
+     if preservation() != before or w.sources() != source:
+         raise ValueError("Preserved inputs or tested source changed")
+     suite = ET.parse(output / "tests.xml").getroot().find("testsuite")
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_restore.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_restore.py"
+new file mode 100644
+index 0000000..db74ac2
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_restore.py"
+@@ -0,0 +1,283 @@
++"""Pinned real restore/reference bodies, with strictly in-memory lower spies."""
++import builtins
++import copy
++from dataclasses import dataclass, field
++from types import SimpleNamespace as NS
++import pytest
++import wave_support as w
++import restore_accounting as accounting
++from budget_env import Observation
++
++
++@dataclass
++class SpyState:
++    time_sec: float
++    urban_arrival_buffer: dict = field(default_factory=dict)
++    urban_storage_release_buffer: dict = field(default_factory=dict)
++    ramp_queue: dict = field(default_factory=lambda: {"r": 3.})
++
++
++def plain_namespace(value):
++    if isinstance(value, NS):
++        return {key: plain_namespace(v) for key, v in vars(value).items()}
++    return w.plain(value)
++
++
++def frozen_case(k, source="previous", raise_at=None):
++    calls = []
++    def forbidden(*args, **kwargs):
++        calls.append("FORBIDDEN reset/step/PFO/solve")
++        raise AssertionError(calls[-1])
++    def imported(name, *args, **kwargs):
++        if name == "fixed_policy":
++            return NS(mask=lambda: w.np.ones((2, 2), dtype=bool))
++        return builtins.__import__(name, *args, **kwargs)
++    # Extract unchanged class definitions only; imports and lower physics never run.
++    namespace = dict(np=w.np, copy=copy, plain=w.plain, Observation=Observation,
++        SimpleNamespace=NS, __builtins__=dict(vars(builtins), __import__=imported))
++    w.definitions(w.OLD / "budget_controller.py", {"BudgetController", "InvalidReference"},
++                  namespace, accounting.PINS["budget_controller.py"])
++    w.definitions(w.OLD / "budget_env.py", {"BudgetEnv"},
++                  namespace, accounting.PINS["budget_env.py"])
++    cfg = NS(network=NS(urban_link_storage_veh={"u": 50.}, urban_movements={},
++        boundary_queue_max_veh=100., urban_avg_vehicle_length_m=5., urban_avg_speed_km_h=30.,
++        freeway_lanes=2, freeway_links=["a"], freeway_segments_per_link=1,
++        signals=["A"], cycle_length=120.), simulation=NS(T_u_h=5./3600., T_u_sec=5.))
++    previous = NS(point=w.np.array([.25, .75]), offsets={"A": 10.})
++    control = NS(point=w.np.array([.5, .75]), offsets={"A": 10.})
++    budget = w.np.array([-5., 4000.])
++    last_budget = None if k == 5 else w.np.array([-10., 3500.])
++    dual = w.np.array([[1., 2.], [3., 4.]])
++    class Coordinates:
++        lower, upper = w.np.zeros(2), w.np.ones(2)
++        def __init__(self, *args):
++            pass
++        def encode(self, value):
++            return value.point.copy()
++        def decode(self, point):
++            return NS(point=point.copy(), offsets={"A": 10.})
++        def quantize(self, point):
++            return point.copy()
++    class Lower:
++        def __init__(self, cfg, options):
++            self.cfg, self.options = cfg, options
++            self.dual, self.last_budget = w.np.zeros((2, 2)), None
++        def begin(self, state, forecast, prior):
++            calls.append("lower.begin")
++            assert state.time_sec == k*180.
++            w.np.testing.assert_array_equal(prior.point, previous.point)
++            self.coords = Coordinates()
++        def evaluate(self, seed):
++            calls.append("lower.evaluate")
++            if raise_at == "evaluate":
++                raise RuntimeError("spy interrupted")
++            w.np.testing.assert_array_equal(seed, control.point)
++            return NS(budget_vector=budget.copy(), total_ttt=12.)
++        def execution_check(self, seed, value):
++            calls.append("lower.execution_check")
++            w.np.testing.assert_array_equal(value, budget)
++            return dict(physical_control_valid=True, budget_feasible=True)
++        solve = staticmethod(forbidden)
++    rt = dict(cfg=cfg, options={}, baseline=Lower, coordinates=Coordinates,
++              rc=NS(to_plain_dict=plain_namespace), snapshot_identity={"synthetic": True})
++    env = namespace["BudgetEnv"].__new__(namespace["BudgetEnv"])
++    env.rt, env.cfg, env.observer = rt, cfg, Observation(cfg)
++    env.reward_scale, env.guard_mode, env.profile_hash, env.warm = 100., "physical", "spy-profile", None
++    env.reset = env.step = forbidden
++    reference = dict(budget=budget.copy(), point=control.point.copy(), control=copy.deepcopy(control),
++        evaluation=NS(total_ttt=12.), source=source,
++        action_anchor=budget.copy() if last_budget is None else last_budget.copy())
++    ck = dict(k=k, profile_hash=env.profile_hash, sim=NS(cfg=cfg, state=SpyState(k*180.),
++        total_ttt=22., step=forbidden), warm=NS(memory={"retained": [7, 9]}, solve=forbidden),
++        previous=previous, forecast=[NS(freeway_mainline={"a": 1000.}, urban_boundary={"u": 200.},
++        ramp_arrival={"r": 100.}, incident_capacity_factor=1., freeway_lane_loss={})],
++        last_requested=w.np.array([-10., 3500.]), last_executed=w.np.array([-10., 3500.]),
++        last_slack=w.np.array([0., 1.]), last_fallback=False, warmup_ttt=5.,
++        dual=dual, last_budget=last_budget, prepared=reference if k < 80 else None,
++        reference_timing=dict(reference_wall_seconds=7., reference_cpu_seconds=6., pfo_calls=int(k == 5)),
++        observation_timing=dict(observation_wall_seconds=.5, observation_cpu_seconds=.25))
++    probe = NS(**ck, controller=NS(incoming=dual, lower=NS(coords=Coordinates()),
++        reference=reference, action_anchor=reference["action_anchor"]))
++    expected = env.observer.encode(probe)
++    ck["contract"], ck["observer"] = env.contract(), copy.deepcopy(env.observer)
++    env.observer = Observation(cfg)
++    return NS(env=env, checkpoint=ck, calls=calls,
++              observation=expected if k < 80 else w.np.zeros_like(expected))
++
++
++def ledger(tmp_path, k, resume=True):
++    output, sid = tmp_path / "slot", "a"*32
++    settings = dict(run_id="spy-run", sources=w.sources(), scenario=w.SCENARIOS[0])
++    start = dict(session_id=sid, run_id=settings["run_id"], sources=settings["sources"],
++        model_sha256=w.MODEL_SHA, scenario=settings["scenario"], lock_held=True,
++        process=dict(pid=1, created=1, command=["spy"]), resume_requested=resume,
++        settings_digest=w.digest(settings) if resume else None)
++    w.save(output / "sessions" / f"{sid}.start.json", start)
++    checkpoint_path = output / "checkpoints/spy.pt"
++    w.save(checkpoint_path, {"synthetic_only": True, "k": k})
++    record = dict(path="checkpoints/spy.pt", sha256=w.file_hash(checkpoint_path),
++        settings_digest=w.digest(settings), control_steps=k-5, session_ids=[])
++    return NS(output=output, sid=sid, settings=settings, record=record, start=start)
++
++
++def finish_session(data):
++    w.save(data.output / "sessions" / f"{data.sid}.end.json", dict(session_id=data.sid,
++        start_sha256=w.file_hash(data.output / "sessions" / f"{data.sid}.start.json"),
++        process=data.start["process"], elapsed_wall_seconds=100.,
++        restoration_sha256=accounting.files(data.output, data.sid)))
++
++
++def measured(case, data, monkeypatch):
++    wall, cpu = iter([10., 13.]), iter([20., 22.])
++    monkeypatch.setattr(accounting, "time", NS(perf_counter=lambda: next(wall), process_time=lambda: next(cpu)))
++    return accounting.restore_environment(case.env, case.checkpoint, data.output, data.sid,
++                                           data.settings, data.record)
++
++
++@pytest.mark.parametrize("k,source", [(5, "pfo_initial"), (6, "previous"),
++    (6, "pfo_recovery"), (79, "previous"), (80, "previous")])
++def test_real_frozen_restore_boundary_and_cost(tmp_path, monkeypatch, k, source):
++    case, data = frozen_case(k, source), ledger(tmp_path, k)
++    ck, env = case.checkpoint, case.env
++    before = copy.deepcopy(ck)
++    obs = measured(case, data, monkeypatch)
++    assert case.calls == (["lower.begin", "lower.evaluate", "lower.execution_check"] if k < 80 else [])
++    w.np.testing.assert_array_equal(obs, case.observation)
++    assert obs.dtype == w.np.float32 and env.observer.contract() == ck["observer"].contract()
++    assert env.observer is not ck["observer"] and env.sim is not ck["sim"]
++    assert env.k == k and env.sim.state == ck["sim"].state and env.sim.total_ttt == 22.
++    assert env.warm.memory == {"retained": [7, 9]} and env.warm is not ck["warm"]
++    w.np.testing.assert_array_equal(env.controller.lower.dual, ck["dual"])
++    w.np.testing.assert_array_equal(env.controller.lower.last_budget, ck["last_budget"])
++    w.np.testing.assert_array_equal(env.previous.point, before["previous"].point)
++    for name in ("last_requested", "last_executed", "last_slack"):
++        w.np.testing.assert_array_equal(getattr(env, name), before[name])
++    assert env.controller.prepared is (k < 80)
++    if k < 80:
++        ref = env.controller.reference
++        assert ref["source"] == source and ref["evaluation"].total_ttt == 12.
++        for name in ("budget", "point", "action_anchor"):
++            w.np.testing.assert_array_equal(ref[name], before["prepared"][name])
++        w.np.testing.assert_array_equal(ref["control"].point, ck["prepared"]["control"].point)
++        w.np.testing.assert_array_equal(env.controller.incoming, ck["dual"])
++    else:
++        assert env.controller.action_anchor is None and ck["prepared"] is None
++    for name in accounting.TIMINGS:
++        assert getattr(env, name) == ck[name] == before[name]
++        assert getattr(env, name) is not ck[name]
++    finish_session(data)
++    timing = w.session_timing(data.output, data.settings)
++    restore = timing["restoration"]
++    assert timing["elapsed_wall_seconds"] == 100.  # Not 103: restore is already enclosed.
++    assert restore["elapsed_wall_seconds"] == 3. and restore["elapsed_cpu_seconds"] == 2.
++    assert restore["returned_branch_reference_reconstructions"] == int(k < 80)
++    row = restore["records"][0]
++    assert row["expected_reference_reconstructions"] == int(k < 80)
++    assert row["provenance"]["checkpoint"] == data.record
++    assert row["provenance"]["inherited_decision_timing"] == row["inherited_decision_timing_after"]
++    assert row["provenance"]["frozen_source_sha256"] == accounting.PINS
++    assert len(row["records_sha256"]) == 2
++    assert "Not an isolated reference-only duration" in restore["scope"]
++
++
++def test_real_frozen_raised_restore_measured_but_count_unknown(tmp_path, monkeypatch):
++    case, data = frozen_case(6, raise_at="evaluate"), ledger(tmp_path, 6)
++    with pytest.raises(RuntimeError, match="spy interrupted"):
++        measured(case, data, monkeypatch)
++    assert case.calls == ["lower.begin", "lower.evaluate"]
++    finish_session(data)
++    restore = w.session_timing(data.output, data.settings)["restoration"]
++    assert restore["elapsed_wall_seconds"] == 3. and restore["elapsed_cpu_seconds"] == 2.
++    assert restore["reference_reconstruction_status"] == "UNKNOWN"
++    assert restore["returned_branch_reference_reconstructions"] is None
++    assert restore["records"][0]["outcome"] == "raised"
++    assert restore["records"][0]["inherited_decision_timing_after"] is None
++
++
++@pytest.mark.parametrize("k", [6, 80])
++def test_interrupted_restore_publication_retains_unknown(tmp_path, monkeypatch, k):
++    case, data = frozen_case(k), ledger(tmp_path, k)
++    original = w.save_once
++    def interrupted(path, value):
++        if path.name.endswith(".restore-end.json"):
++            raise KeyboardInterrupt("synthetic lost end")
++        original(path, value)
++    monkeypatch.setattr(w, "save_once", interrupted)
++    with pytest.raises(KeyboardInterrupt):
++        measured(case, data, monkeypatch)
++    timing = w.session_timing(data.output, data.settings)
++    assert timing["timing_status"] == "UNKNOWN" and timing["elapsed_wall_seconds"] is None
++    restore = timing["restoration"]
++    assert restore["timing_status"] == restore["reference_reconstruction_status"] == "UNKNOWN"
++    assert restore["elapsed_wall_seconds"] is restore["elapsed_cpu_seconds"] is None
++    assert restore["known_elapsed_wall_seconds"] == 0.
++    assert restore["returned_branch_reference_reconstructions"] is None
++    assert restore["records"][0]["expected_reference_reconstructions"] == int(k < 80)
++    # Even a retained enclosing end cannot invent a lost restore measurement.
++    finish_session(data)
++    assert w.session_timing(data.output, data.settings)["restoration"]["timing_status"] == "UNKNOWN"
++
++
++@pytest.mark.parametrize("resume,ended,status", [(False, False, "KNOWN"),
++    (False, True, "KNOWN"), (True, False, "UNKNOWN"), (True, True, "KNOWN")])
++def test_restore_not_started_or_uncertain(tmp_path, resume, ended, status):
++    data = ledger(tmp_path, 6, resume)
++    if ended:
++        finish_session(data)
++    timing = w.session_timing(data.output, data.settings)
++    restore = timing["restoration"]
++    assert restore["timing_status"] == status
++    assert restore["elapsed_wall_seconds"] == (None if status == "UNKNOWN" else 0.)
++    assert timing["elapsed_wall_seconds"] == (100. if ended else None)
++
++
++@pytest.mark.parametrize("bad", ["session_hash", "checkpoint_bytes", "checkpoint_escape", "branch", "source",
++    "settings", "session", "restore_start_hash", "inherited", "negative", "nonfinite", "enclosing"])
++def test_restore_provenance_rejects_tamper(tmp_path, monkeypatch, bad):
++    case, data = frozen_case(6), ledger(tmp_path, 6)
++    measured(case, data, monkeypatch)
++    finish_session(data)
++    start = data.output / "sessions" / f"{data.sid}.restore-start.json"
++    end = data.output / "sessions" / f"{data.sid}.restore-end.json"
++    saved, finish = w.read(start), w.read(end)
++    if bad == "checkpoint_bytes":
++        w.save(data.output / data.record["path"], {"changed": True})
++    elif bad == "checkpoint_escape":
++        saved["checkpoint"]["path"] = "../escaped.pt"
++    elif bad == "branch":
++        saved["expected_reference_reconstructions"] = 0
++    elif bad == "source":
++        saved["frozen_source_sha256"]["budget_env.py"] = "wrong"
++    elif bad == "settings":
++        saved["settings_digest"] = "wrong"
++    elif bad == "session":
++        saved["session_id"] = "b"*32
++    elif bad == "inherited":
++        finish["inherited_decision_timing_after"]["reference_timing"]["reference_wall_seconds"] += 3.
++    elif bad in ("negative", "nonfinite", "enclosing"):
++        finish["elapsed_wall_seconds"] = {"negative": -1., "nonfinite": "NaN", "enclosing": 101.}[bad]
++    else:
++        finish["elapsed_cpu_seconds"] += 1.
++    w.save(start, saved)
++    finish["restore_start_sha256"] = "wrong" if bad == "restore_start_hash" else w.file_hash(start)
++    w.save(end, finish)
++    if bad != "session_hash":
++        finish_session(data)  # Exercise inner semantic validation beyond the outer hash binding.
++    with pytest.raises(ValueError):
++        w.session_timing(data.output, data.settings)
++
++
++def test_changed_inherited_timing_fails_without_rewriting_checkpoint(tmp_path, monkeypatch):
++    case, data = frozen_case(6), ledger(tmp_path, 6)
++    original = case.env.restore
++    def changed(ck):
++        obs = original(ck)
++        case.env.reference_timing["reference_wall_seconds"] += 3.
++        return obs
++    case.env.restore = changed
++    with pytest.raises(ValueError, match="inherited decision timing"):
++        measured(case, data, monkeypatch)
++    assert case.checkpoint["reference_timing"]["reference_wall_seconds"] == 7.
++    finish_session(data)
++    with pytest.raises(ValueError, match="inherited decision timing"):
++        w.session_timing(data.output, data.settings)
+diff --git "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\test_wave.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_wave.py"
+index 587997e..6402c37 100644
+--- "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\test_wave.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\test_wave.py"
+@@ -129,6 +129,13 @@ def test_kernel_duplicate_and_prefix_resume(synthetic):
+     for actual, expected in zip(resumed["transitions"][0], first):
+         w.np.testing.assert_array_equal(actual, expected)
+     assert len(resumed["session_ids"]) == 2
++    assert resumed["trace"][0] == ck["trace"][0]
++    timing = w.session_timing(folder, resumed["settings"])
++    restore = timing["restoration"]
++    assert restore["returned_branch_reference_reconstructions"] == 1
++    assert restore["elapsed_wall_seconds"] > 0 and restore["elapsed_cpu_seconds"] >= 0
++    assert timing["elapsed_wall_seconds"] == sum(w.read(p)["elapsed_wall_seconds"]
++        for p in (folder / "sessions").glob("*.end.json"))
+     checks.validate_checkpoint(resumed, resumed["settings"], ACTOR)
+ 
+ 
+@@ -341,9 +348,18 @@ def test_five_completed_readonly_and_rejections(synthetic):
+         assert row["ttt"] == 80. and row["terminal_inventory"] == 63.
+         assert row["pfo_calls"] == 1 and row["lower_candidate_solves"] == 75
+         assert row["timing"]["decision_wall"]["sum_seconds"] > row["timing"]["actor_wall"]["sum_seconds"]
++        restore = row["worker_sessions"]["restoration"]
++        assert restore["timing_status"] == "KNOWN"
++        assert restore["returned_branch_reference_reconstructions"] == int(row["scenario"] == w.SCENARIOS[0])
+         with pytest.raises(FileExistsError):
+             worker.run(request(row["scenario"], resume=True))
+     done = w.read(first / "completion.json")
++    restore_path = next((first / "sessions").glob("*.restore-end.json"))
++    restore_end = w.read(restore_path)
++    w.save(restore_path, dict(restore_end, elapsed_cpu_seconds=restore_end["elapsed_cpu_seconds"]+1.))
++    with pytest.raises(ValueError, match="restoration binding"):
++        readout.validate_wave()
++    w.save(restore_path, restore_end)
+     settings = w.read(first / "settings.json")
+     for field, bad in (("model_sha256", "different"), ("profile_sha256", "wrong-profile"),
+                        ("training_seed", 42), ("evaluation", True)):
+diff --git "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\wave_support.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\wave_support.py"
+index 6505cc5..9b65c57 100644
+--- "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\wave_support.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\wave_support.py"
+@@ -208,8 +208,11 @@ def session_ids(output):
+ 
+ 
+ def session_timing(output, settings, required=()):
++    import restore_accounting
+     ids = sorted(set(required) | set(session_ids(output)))
+-    known, unknown, hashes = 0., [], {}
++    known, unknown, hashes, restores = 0., [], {}, []
++    if any(p.name.split(".")[0] not in ids for p in (output / "sessions").glob("*.restore-*.json")):
++        raise ValueError("Restoration without retained session")
+     for sid in ids:
+         if len(sid) != 32 or any(c not in "0123456789abcdef" for c in sid):
+             raise ValueError("Malformed worker session")
+@@ -225,6 +228,8 @@ def session_timing(output, settings, required=()):
+                 type(proc["created"]) is not int or proc["created"] <= 0 or not proc["command"]):
+             raise ValueError("Session worker/source identity differs")
+         hashes[start.relative_to(output).as_posix()] = file_hash(start)
++        restores.append(restore_accounting.session_record(output, sid, settings, record,
++                                                           read(end) if end.exists() else None))
+         if not end.exists():
+             unknown.append(sid)
+             continue
+@@ -236,4 +241,5 @@ def session_timing(output, settings, required=()):
+         hashes[end.relative_to(output).as_posix()] = file_hash(end)
+     return dict(timing_status="UNKNOWN" if unknown else "KNOWN", session_ids=ids,
+         elapsed_wall_seconds=None if unknown else known, known_elapsed_wall_seconds=known,
+-        unknown_sessions=unknown, session_sha256=hashes, timing_scope=TIMING_SCOPE)
++        unknown_sessions=unknown, session_sha256=hashes, timing_scope=TIMING_SCOPE,
++        restoration=restore_accounting.summarize(restores))
+diff --git "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\worker.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\worker.py"
+index e1a34bd..ad6aa7b 100644
+--- "a/.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\before-task2-fix1\\worker.py"
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_wave_20260930\\worker.py"
+@@ -6,6 +6,7 @@ import wave_support as w
+ from actor import authenticate, verify_live
+ from checks import helpers, validate_settings, validate_checkpoint, validate_rows, tag, audit_receipt, summarize
+ from budget_env import BudgetEnv
++import restore_accounting
+ 
+ 
+ def check_output(output, resume):
+@@ -52,7 +53,7 @@ def run(args):
+         w.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
+             run_id=run_id, scenario=args.scenario, model_sha256=w.MODEL_SHA, sources=source,
+             settings_digest=w.digest(previous) if previous else None, lock_held=True,
+-            scope=w.TIMING_SCOPE))
++            resume_requested=bool(args.resume), scope=w.TIMING_SCOPE))
+         w.save(output / "process.json", dict(**process, session_id=session, run_id=run_id,
+             scenario=args.scenario, model_sha256=w.MODEL_SHA, sources=source, lock_held=True))
+         env, settings, ready = None, None, False
+@@ -97,7 +98,8 @@ def run(args):
+                 w.session_timing(output, settings, ck["session_ids"])
+                 w.check_stop(output)
+                 verify_live(authentication, source)
+-                obs = env.restore(ck["environment"])
++                obs = restore_accounting.restore_environment(env, ck["environment"], output,
++                                                              session, settings, record)
+                 w.np.testing.assert_array_equal(obs, ck["observation"])
+                 trace, transitions = ck["trace"], ck["transitions"]
+             else:
+@@ -179,6 +181,7 @@ def run(args):
+             finally:
+                 w.save_once(output / "sessions" / f"{session}.end.json", dict(session_id=session,
+                     process=process, start_sha256=w.file_hash(start_path), outcome=outcome,
++                    restoration_sha256=restore_accounting.files(output, session),
+                     elapsed_wall_seconds=time.perf_counter()-started, control_steps=steps))
+                 w.save(output / "status.json", dict(status=outcome, session_id=session, control_steps=steps))
+         if ready:

@@ -1,0 +1,18 @@
+{
+  "status": "approved",
+  "reviewer": "Carver/01a0efc3-43aa-7d03-8497-26acd994b3fc",
+  "source_sha256": {
+    "work/sdmpc_rl_multi_20260929/budget_runtime.py": "6ae552bad2c092af9d2ab55b0c81e34558754861217fe427788820689800e9a6",
+    "work/sdmpc_rl_nuf_retention_20260930/launch_identity.py": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+    "work/sdmpc_rl_return_init_20260930/authenticate.py": "747ca1b8e1e2f8787e3fe368f0a190f2c9874cba9c04e85df073269b336063a5",
+    "work/sdmpc_rl_return_init_20260930/data.py": "10a8e894cd6c54a77fe26ed96bd314026e9390a6674b7ad64960fb82c9102cdb",
+    "work/sdmpc_rl_return_init_20260930/learner.py": "b667bcf8accbcc5ed105a4c2069017e1d29f73274826d5052590fb804a912ebe",
+    "work/sdmpc_rl_return_init_20260930/run.py": "f1019cc867c074810493024e40716cf801cde4987c172dbbf85bde1c966ef5d6",
+    "work/sdmpc_rl_return_init_20260930/run_tests.py": "7b395f1352bf0a6070c73ce8bcd5605c385f5b400b8565583940524d280949c2",
+    "work/sdmpc_rl_return_init_20260930/runtime.py": "8663b77b76abeb3777c827470491bfb14ab332f2523ee044e7348ecdd9af4975",
+    "work/sdmpc_rl_return_init_20260930/test_return_init.py": "13a1689aeaa708c1538b29f9555bd6cd209f98ef3d959a7570391c2b671ec016"
+  },
+  "spec_sha256": "933e29c1b316530ceff1605d527532e482a658c12fa6c13fd24a93074ef6593e",
+  "review_sha256": "1717bdcdaefee4ffa672f558c0da296e583d052eab44e282fde8eafb439701bf",
+  "approved_at": "2026-09-30T10:08:57.1793499+09:00"
+}

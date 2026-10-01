@@ -1,0 +1,577 @@
+{
+  "status": "authenticated",
+  "manifest": {
+    "files": {
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/completion.json": "2d5c7a881fe5cb818686b13dd83f2c98eb08059e4b698cbe3a1be8757fc0c117",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/comparison.json": "60f7b670e262348d3d24548809b2aafc26bc7c2a7e7c8f17340fbd17c2803801",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/plan.json": "8f54b055e2a779da436db0846918322f2e84f5269d1ced18c211c1e82cd357d2",
+      "work\\sdmpc_rl_export_recovery_20260930\\coordinator_bootstrap.py": "9aead7b555b2bb192932a718ac29c07c28b1a4c8aa3673b3bbd7466f871622e3",
+      "work\\sdmpc_rl_export_recovery_20260930\\export_recovery.py": "f79513942cd892e346dd68a188ecd2221e862b55558170c3a35d90ed8f80a4b3",
+      "work\\sdmpc_rl_export_recovery_20260930\\supervise.py": "a119ee8a87b9c280d9a887f253f02308331543f04eb9331cc474eb8ca945e5a9",
+      "work\\sdmpc_rl_nuf_retention_20260930\\collect.py": "7e5b7958413676de01e4d109f3caedf1d00c857d8fbe465b12221e923cf5acf7",
+      "work\\sdmpc_rl_nuf_retention_20260930\\conftest.py": "8642d91c4482f804e79aa5537a8d80dd8b6505f48e577ff7903a1f65a3d97918",
+      "work\\sdmpc_rl_nuf_retention_20260930\\diagnostics.py": "1e2965244fbcbccc35d9e981727fdceba70a66cbbb8d97b55e8832b0de2fc3f3",
+      "work\\sdmpc_rl_nuf_retention_20260930\\exploration.py": "5338c784c997e3427ef2c1b39ee7e572f0d6fc96940f200acf445a87f5741291",
+      "work\\sdmpc_rl_nuf_retention_20260930\\frozen_inventory.py": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+      "work\\sdmpc_rl_nuf_retention_20260930\\launch_identity.py": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+      "work\\sdmpc_rl_nuf_retention_20260930\\local_runtime.py": "1cf91506f5f3d4ec209854b46d5318a06ba27f1983259f859d1d658622bbf4e1",
+      "work\\sdmpc_rl_nuf_retention_20260930\\probe.py": "5010eb080e8e43b7031c650a91cf272d749708e277b589250cd4eaeebec64cb5",
+      "work\\sdmpc_rl_nuf_retention_20260930\\reference_check.py": "cc20e78f98d540aeda6fa49f285b07117b0b49ee55b95d87c9669618e09d3b94",
+      "work\\sdmpc_rl_nuf_retention_20260930\\references.py": "7639c4a006dc1eadd384e523d7fafc535754cb40c10d9759437503512879e66a",
+      "work\\sdmpc_rl_nuf_retention_20260930\\run_tests.py": "03a94a7862a43e7c2ddd18b200ff21d2ad87ca9abeafb502b77cef26839b05e8",
+      "work\\sdmpc_rl_nuf_retention_20260930\\run_wave.py": "a9fdf4cc390eba170e79b8439cf518b1959795a800f053bb223a0bff1f18f9af",
+      "work\\sdmpc_rl_nuf_retention_20260930\\validate.py": "7110993c8dff56ff399f0f843d23d64854a6800f099d8ccc7c4716c34086567f",
+      "work\\sdmpc_rl_recovery_20260929\\common.py": "6e6eba07e1189e833203e1d43c9192f51e4de360798c807b3636f656163a7076",
+      "work\\sdmpc_rl_value_audit_20260930\\projection_audit.py": "ab3787b94c8bbc4a1e76a9d04b942159a01c6753b292b6d6f5d9c21a256b86db",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/comparison.json": "c294c1f5b2100daeaccb4c927357a8bc73d44391f34641fd37b4ba5b2555c4cd",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/completion.json": "5b6e645f6f6ca64c4f593c52d19ee3ab5bda7ae3c3d31f423d6fae2d2f3ef4a3",
+      "work\\sdmpc_rl_local_20260930_v2\\collect.py": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1",
+      "work\\sdmpc_rl_local_20260930_v2\\exploration.py": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb",
+      "work\\sdmpc_rl_local_20260930_v2\\frozen_inventory.py": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+      "work\\sdmpc_rl_local_20260930_v2\\identity_probe.py": "db9e615d41e8de65c2dd1c9113dbe485fc776813b9231109769c67cfab718d2a",
+      "work\\sdmpc_rl_local_20260930_v2\\launch_identity.py": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+      "work\\sdmpc_rl_local_20260930_v2\\local_runtime.py": "6312136f5fb5a8acfcf24483b57cd23165f9ea191c7ca364ba928270d50c87dd",
+      "work\\sdmpc_rl_local_20260930_v2\\migrate_prefix.py": "3934e15d8664603a1eb302b8a2e23581602aacba4e86fae37e08908562a66eb7",
+      "work\\sdmpc_rl_local_20260930_v2\\run_wave.py": "7304669f4a5c65cb42237f8e79e0e6fa7bab766d5827e99d2169e33465dd6952",
+      "work\\sdmpc_rl_local_20260930_v2\\validate.py": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/completion.json": "656d59a611e95c44d50ca28a5ee756ea319e02228c0626bd8fb0ea613ed5f833",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/settings.json": "6f9a41a30c7abfbb65e4a1292f9468c01e67226140b1bd06c9a29f152aec26a1",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/trace.json": "8d64807bc694d7df1c72f243d782cd6eb0def203f02229e03354ec9780971ca7",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/summary.json": "796e39fb1ef9d397773a992e8a72361433b15be203391059bc30dd62d87d46b0",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/experience.pt": "5e95b4820d9ccca0895e8c674443a78347af9c2fac7658a9c59cb83d38706d4f",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w/timing.json": "69eae078b2d140b5ea720419a134670a2f05d5992366da0081a86b9c23543be2",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/completion.json": "9d0cb1352e090291038847e727089cb2eaea6f8317ae21e5654b6d64e5689561",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/settings.json": "afb120eb515c842a2d2072765d6a3bd228af502a6dc141d4f061c62a9081fd33",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/trace.json": "272fbc341b44ad010f59b0669c902d10c37450f93ea81c5b37fde9c11f232263",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/summary.json": "13ed5f4af9f4bb9c959ddc8e55d2f6c06af10bfbcf14151e0fc1395b30430007",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/experience.pt": "3adf1ed3cdd08df2b4dd6cd944b56f9149578397365b559a5efee510f7935106",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/diagnostic-audit.json": "67995aba5de9f6db8228efc2d6edcf70c0b57d25f17287b11e2387bb63c14eca",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w/timing.json": "407b0e44e0278c3a4476ee720154d95c8c48cd9898034129910d774612b40f04",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/completion.json": "1d573db51fde479cf309d26750d0c256eee7d8ece27798ac79e57038ce4d3af8",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/settings.json": "74a53407060dbd3046568a4079ae6f9eb88628961bcd9105a3b5cc2f4b8fc119",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/trace.json": "bd51a6b5c94909d777b13bab42071548ab8b06b77bd3d78fa284fd145a67b59a",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/summary.json": "dbc690b5db68a436c4d8124653cb83d8aa371ba7f4e3fdf99622475d04a1a9db",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/experience.pt": "2b40015a056ca4b9606193575b8c25370d4e679e872f511dd5a4ecb5e9984959",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w/timing.json": "282fb6ee16e59825cb51dee1625c49c598e6900a05121af06b1b82b59ef5683f",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/completion.json": "c967305db88e54e3684ac74bc3630f7b831885ae3c4e04068e8a43b9c069ed2e",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/settings.json": "f06631a359bcd85d8490445a4b330b66f08bf690fcc99c3dc72c5ab28557d46f",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/trace.json": "8001a8f9ca465adc41a25412c90c60a38033c451de8b8ab94d2418645a5e5c7e",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/summary.json": "4362e3f0600922747794afad59c3db619acc6c93a1618914327cf85ea5b27006",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/experience.pt": "6f37ef60ee3cd344a0be6b4e5137802c33661c1ec22097c57143efebe35421ee",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/diagnostic-audit.json": "279f95e404f07cd99a21ed9ca2e3c8101ec46cccfc633ffb1d5568555e3d7384",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w/timing.json": "7f525c918f9c0d65bad0beb70bd5f722c9bcfbe05d0d74fbbe4227256d5c81f1",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/completion.json": "9fffa713212b1949e67343a2ff53564f31caa35b8de415b24b353b17ea76e22d",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/settings.json": "7beb94277c94ea88f5a249a51fda1d9c84d0d8b70a206346b5f3f6159d10b6ee",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/trace.json": "37e6de83be48507899b5215b5151eb1696beb2f89ad128c88243a0f01599fc40",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/summary.json": "071b42ae85f3cf7cc281d901c7f663906247907eb7689053d40270c0eb92f470",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/experience.pt": "298eb78edcd020f4c4ef7906d71e456fb8a988efb0a4985f01866537e0d24825",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w/timing.json": "9ad2bf4d54431d79aab765520d7c5d70ecd09c6fe6b8430521e8df3278dd56cb",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/completion.json": "9500eb7c90c342f79a68b783f2eb4c640f08929061b1550b4e1af25e42c31ea3",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/settings.json": "06db096377a2da52a469f6084499d862c9b3f0f37990348640f486e0ba635ad6",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/trace.json": "da267ab3d528330f93faaf8dc2a3ca905047d51ced21554b241699819fa69879",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/summary.json": "e1b0474c4288070bfd2e50e48cd206836c1a116bda27e95e62a34fc4ebd5be77",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/experience.pt": "e939bda100eecd56e3492f2c84ffdc0f8662c5f22aa7bb49038b3df70aa44bda",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/diagnostic-audit.json": "12051232fe00c97e564ffa91c73bb4dc220d9bae87df7d4928f68d66186047d2",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w/timing.json": "59dac36d840839a17e5391f62950d070581e894c0a48f8717994d2d46ed0848b",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/completion.json": "e485cebe34c973ffd697f3491666aa71037d7faf940d259c733ec95f6f03f2ed",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/settings.json": "fdf0d34b44a414c62803034ff9ddcbec55bf1c5b27264665ec10a15088b73b17",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/trace.json": "4ea681c5a92b97cdad78b415ace280f33efcf30dde6dd56617a293b1738be1ff",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/summary.json": "40b4c065237dfb746c0a84d9cf0bcd7805732f2d8b898b9fa68f79ca962791b9",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/experience.pt": "cc4e0160d79f3a1a343c9535a4083c85f58a1b667a4f14bc3a35c9385aa44e54",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w/timing.json": "a2e9d585a3d5489516da4678490843f0a31472b9cc2292b3eeb6061e2e7ab563",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/completion.json": "459123ce70cbe67eac207082a9b1553a35378b9700a2f6d8f92aca56a2960e90",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/settings.json": "2e901470c66e2c4a378b2eb502c95b7d1649501b9d81132a51148d4028b93df3",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/trace.json": "c568388f5e8e8fad4961b777f8ade37d2a701758c5b8e127d7c1bd16aebc9cf0",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/summary.json": "d67122974e280db5eaf4743b40e5d4348f2ac2d62122ab3c7e96833fef818c14",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/experience.pt": "8a1d2d2a4657324886a1d7a78f478714f7af318c4e31064cbea876ed7e6804f9",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/diagnostic-audit.json": "6714268ff4d053e9db29535c8190adc792fc1f81fc92566f5ad3845446f60dc2",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w/timing.json": "9aef51af85dd7b40f9f2b97daa2ecc894a437f45eb334fb97abd62b963861eb4",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/completion.json": "60bbe2bc1f36241dfb3d561a83de13216de2df967efece57187a2aaa19d20d12",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/settings.json": "bdaa28396b19552e9b5541449a759626cbdf08756576d7cc7b5f2e7adce93a53",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/trace.json": "1674c677c55429780dd8cb80bd4c503b4fc76aab8d2e13cbb754ad3571ddd2a0",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/summary.json": "8d6e86f152401772730640be389159360c9e4659ae6bc2f9db474737d7b67dd9",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/experience.pt": "fff8d516ee3a4e160017f85ca2d3606e9f213303ff62c6bdf0ce62f17abda33f",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w/timing.json": "19e79169ef5dd93334df920978e52afb24b65bfc90048c8dce1742a9e2e71963",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/completion.json": "d3e179a5213694987d94f4dc9ff2b8813c388cf3f77d4a422e49dbd461589cb8",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/settings.json": "b69f80b4c22ea9889685888e2f79a6b329b6137c3cb7a0d127565c75c5b8d29f",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/trace.json": "42972984adf85c9a73eb085b8320bae7f50affda656d39990a7de87e085ea425",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/summary.json": "591ad50805458fef1d03bc53d8ff571069fa7f5274db542699e0e44596e21c6c",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/experience.pt": "e9afe8ff429a60233f4fb5c28f63e9c8e04dbbcfc0476593160256871d80d9b6",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/diagnostic-audit.json": "dd63aeff0c0349d2b68513f55f0ea1f8547499f24f60a45bf14f512b87aa3653",
+      "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w/timing.json": "0fd683bae611bf1bf134329aeca8ab5bb8ca164ee84666345c8bf90952d46699"
+    },
+    "episodes": [
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_155_w",
+        "scenario": "sweet_155_w",
+        "behavior": "carry",
+        "run_id": "2962784e595d4ee8b1272dda7762dbc6",
+        "profile_sha256": "a1565128474f96f6f891bb6103417c534a341baad5b35c5526e589ec27e4953f",
+        "training_seed": 6801
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_155_w",
+        "scenario": "sweet_155_w",
+        "behavior": "local",
+        "run_id": "76df62371ab349a88085c72186793869",
+        "profile_sha256": "a1565128474f96f6f891bb6103417c534a341baad5b35c5526e589ec27e4953f",
+        "training_seed": 6801
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_w",
+        "scenario": "sweet_170_w",
+        "behavior": "carry",
+        "run_id": "de4e39bed79b4be6ab87d2d4ffca49d4",
+        "profile_sha256": "8eca313a95684868101d6dde30b51010ac423f851803031f2e2c837df2dc3c60",
+        "training_seed": 6802
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_w",
+        "scenario": "sweet_170_w",
+        "behavior": "local",
+        "run_id": "37d7556feeab499c9e0467850e0cb81b",
+        "profile_sha256": "8eca313a95684868101d6dde30b51010ac423f851803031f2e2c837df2dc3c60",
+        "training_seed": 6802
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_incident_w",
+        "scenario": "sweet_170_incident_w",
+        "behavior": "carry",
+        "run_id": "5676e1d4329549c0836cd1fbbf57416e",
+        "profile_sha256": "8fd725a9b285b5e0b88be94f111a340cbb2896c1d518e966c19aea0864b464f0",
+        "training_seed": 6803
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_incident_w",
+        "scenario": "sweet_170_incident_w",
+        "behavior": "local",
+        "run_id": "8ee9f23eabe64203b8de24e2c8f0d0c4",
+        "profile_sha256": "8fd725a9b285b5e0b88be94f111a340cbb2896c1d518e966c19aea0864b464f0",
+        "training_seed": 6803
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_170_skew15_w",
+        "scenario": "sweet_170_skew15_w",
+        "behavior": "carry",
+        "run_id": "e5a42235215a489a93be5bd9a2939fde",
+        "profile_sha256": "e9ad43c929311a35a4fe96f2a95ce707cf3a16b361554db7e9978114c32f171a",
+        "training_seed": 6804
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_170_skew15_w",
+        "scenario": "sweet_170_skew15_w",
+        "behavior": "local",
+        "run_id": "27016c492dd54e8b9c805a5abac12c43",
+        "profile_sha256": "e9ad43c929311a35a4fe96f2a95ce707cf3a16b361554db7e9978114c32f171a",
+        "training_seed": 6804
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/local_budget_v2/carry/sweet_190_w",
+        "scenario": "sweet_190_w",
+        "behavior": "carry",
+        "run_id": "806a9e5b823844b883730ab7a7376c48",
+        "profile_sha256": "a85e02779043d80e23a965d71b6050325e747ebb96bf737307ba52b2f42eeb78",
+        "training_seed": 6805
+      },
+      {
+        "path": "results/sdmpc_rl_balanced_goal_20260930/nuf_retention_v1/local/sweet_190_w",
+        "scenario": "sweet_190_w",
+        "behavior": "local",
+        "run_id": "b6033be08ac3452d9f6665a49822d4ab",
+        "profile_sha256": "a85e02779043d80e23a965d71b6050325e747ebb96bf737307ba52b2f42eeb78",
+        "training_seed": 6805
+      }
+    ],
+    "root_pins": {
+      "completion.json": "2d5c7a881fe5cb818686b13dd83f2c98eb08059e4b698cbe3a1be8757fc0c117",
+      "comparison.json": "60f7b670e262348d3d24548809b2aafc26bc7c2a7e7c8f17340fbd17c2803801"
+    },
+    "frozen_identity": {
+      "physical": {
+        "snapshot_manifest_sha256": "07836ff139e2e2f9bf8db549d30b5dfba0e4f8c7478165315feef84ab5ed0005",
+        "frozen_file_count": 151,
+        "implementation": {
+          "budget_controller.py": "0402511ae8e965e315b4b9808e23bbdc9c2fd274666a983b2a3303e6b916f9c2",
+          "budget_env.py": "6ccb4ef400106e29282797ec5d69b7a8dbeee5a1310bd7d6f97b7c7e0c7ee2c4",
+          "budget_runtime.py": "6ae552bad2c092af9d2ab55b0c81e34558754861217fe427788820689800e9a6",
+          "build_preflight.py": "064d14ce37696f2565402d9d5956222a28c0bd65ee974a58ced334ebc0c66d24",
+          "compare_runs.py": "a659700dba89f08948e5817b4866e7256e36a1ae9e87cb9d1e64d6e8b746c738",
+          "freeze_runtime.py": "8a13455b1d87a117eec7f97786f7996786bf49c0d8aaef6e2a3ef8c1cca608ab",
+          "run_budget.py": "7524b335458753c15d7894e872f6bcc80056b7cc4c3756cf7728abdeb48e985e",
+          "run_pilot.py": "c2e184f02b93da06475d1ac905f4a888b68bff80e6e01e7f85019678135ae09f",
+          "run_tests.py": "5baf8cc7f833540a9fdd9009cb3ebf0e8f3018283b02fbebad96a39054f249e5",
+          "smoke_budget.py": "e389faa343082330fad571e7ef1a4d2ec212b4fad33b7e877d6a3edeb0dfb714",
+          "td3.py": "e27665133ccb3fac2b1769da1c93df73a60c73572fa4ccede24a1296292e2e8e",
+          "train_round.py": "c994f8d1bd10c065e6ad1e608cb2fec0df4016a47e255bcfe6388041105e6998"
+        }
+      },
+      "runtime": {
+        "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+        "numpy": "2.3.5",
+        "scipy": "1.16.3",
+        "torch": "2.14.0+cpu",
+        "PyYAML": "6.0.3"
+      },
+      "gate_sha256": "b6fabf1ccaa095fed6b5bcb33dea88cf7f39de4a419ed41b2459a940db6857d3",
+      "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+      "local_sources": {
+        "work\\sdmpc_rl_export_recovery_20260930\\coordinator_bootstrap.py": "9aead7b555b2bb192932a718ac29c07c28b1a4c8aa3673b3bbd7466f871622e3",
+        "work\\sdmpc_rl_export_recovery_20260930\\export_recovery.py": "f79513942cd892e346dd68a188ecd2221e862b55558170c3a35d90ed8f80a4b3",
+        "work\\sdmpc_rl_export_recovery_20260930\\supervise.py": "a119ee8a87b9c280d9a887f253f02308331543f04eb9331cc474eb8ca945e5a9",
+        "work\\sdmpc_rl_nuf_retention_20260930\\collect.py": "7e5b7958413676de01e4d109f3caedf1d00c857d8fbe465b12221e923cf5acf7",
+        "work\\sdmpc_rl_nuf_retention_20260930\\conftest.py": "8642d91c4482f804e79aa5537a8d80dd8b6505f48e577ff7903a1f65a3d97918",
+        "work\\sdmpc_rl_nuf_retention_20260930\\diagnostics.py": "1e2965244fbcbccc35d9e981727fdceba70a66cbbb8d97b55e8832b0de2fc3f3",
+        "work\\sdmpc_rl_nuf_retention_20260930\\exploration.py": "5338c784c997e3427ef2c1b39ee7e572f0d6fc96940f200acf445a87f5741291",
+        "work\\sdmpc_rl_nuf_retention_20260930\\frozen_inventory.py": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+        "work\\sdmpc_rl_nuf_retention_20260930\\launch_identity.py": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+        "work\\sdmpc_rl_nuf_retention_20260930\\local_runtime.py": "1cf91506f5f3d4ec209854b46d5318a06ba27f1983259f859d1d658622bbf4e1",
+        "work\\sdmpc_rl_nuf_retention_20260930\\probe.py": "5010eb080e8e43b7031c650a91cf272d749708e277b589250cd4eaeebec64cb5",
+        "work\\sdmpc_rl_nuf_retention_20260930\\reference_check.py": "cc20e78f98d540aeda6fa49f285b07117b0b49ee55b95d87c9669618e09d3b94",
+        "work\\sdmpc_rl_nuf_retention_20260930\\references.py": "7639c4a006dc1eadd384e523d7fafc535754cb40c10d9759437503512879e66a",
+        "work\\sdmpc_rl_nuf_retention_20260930\\run_tests.py": "03a94a7862a43e7c2ddd18b200ff21d2ad87ca9abeafb502b77cef26839b05e8",
+        "work\\sdmpc_rl_nuf_retention_20260930\\run_wave.py": "a9fdf4cc390eba170e79b8439cf518b1959795a800f053bb223a0bff1f18f9af",
+        "work\\sdmpc_rl_nuf_retention_20260930\\validate.py": "7110993c8dff56ff399f0f843d23d64854a6800f099d8ccc7c4716c34086567f",
+        "work\\sdmpc_rl_recovery_20260929\\common.py": "6e6eba07e1189e833203e1d43c9192f51e4de360798c807b3636f656163a7076",
+        "work\\sdmpc_rl_value_audit_20260930\\projection_audit.py": "ab3787b94c8bbc4a1e76a9d04b942159a01c6753b292b6d6f5d9c21a256b86db"
+      }
+    },
+    "references": {
+      "entries": {
+        "carry/sweet_155_w": {
+          "behavior": "carry",
+          "capacity": 6000.0,
+          "completion_sha256": "656d59a611e95c44d50ca28a5ee756ea319e02228c0626bd8fb0ea613ed5f833",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 1,
+          "exploration_seed": 6901,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "8e54beb7fcfb8e7ec322aed45b18ef1096ae7497e6adc83f00e8f6228ee5a83e"
+          },
+          "outputs_sha256": {
+            "experience.pt": "5e95b4820d9ccca0895e8c674443a78347af9c2fac7658a9c59cb83d38706d4f",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "796e39fb1ef9d397773a992e8a72361433b15be203391059bc30dd62d87d46b0",
+            "timing.json": "69eae078b2d140b5ea720419a134670a2f05d5992366da0081a86b9c23543be2",
+            "trace.json": "8d64807bc694d7df1c72f243d782cd6eb0def203f02229e03354ec9780971ca7"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\carry\\sweet_155_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "a1565128474f96f6f891bb6103417c534a341baad5b35c5526e589ec27e4953f",
+          "run_id": "2962784e595d4ee8b1272dda7762dbc6",
+          "scenario": "sweet_155_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6801,
+          "warmup_ttt": 110.18243453644385
+        },
+        "carry/sweet_170_incident_w": {
+          "behavior": "carry",
+          "capacity": 6000.0,
+          "completion_sha256": "9fffa713212b1949e67343a2ff53564f31caa35b8de415b24b353b17ea76e22d",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 16,
+          "exploration_seed": 6903,
+          "export_recovery": null,
+          "outputs_sha256": {
+            "experience.pt": "298eb78edcd020f4c4ef7906d71e456fb8a988efb0a4985f01866537e0d24825",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "071b42ae85f3cf7cc281d901c7f663906247907eb7689053d40270c0eb92f470",
+            "timing.json": "9ad2bf4d54431d79aab765520d7c5d70ecd09c6fe6b8430521e8df3278dd56cb",
+            "trace.json": "37e6de83be48507899b5215b5151eb1696beb2f89ad128c88243a0f01599fc40"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\carry\\sweet_170_incident_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "8fd725a9b285b5e0b88be94f111a340cbb2896c1d518e966c19aea0864b464f0",
+          "run_id": "5676e1d4329549c0836cd1fbbf57416e",
+          "scenario": "sweet_170_incident_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6803,
+          "warmup_ttt": 108.89611191882436
+        },
+        "carry/sweet_170_skew15_w": {
+          "behavior": "carry",
+          "capacity": 6000.0,
+          "completion_sha256": "e485cebe34c973ffd697f3491666aa71037d7faf940d259c733ec95f6f03f2ed",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 64,
+          "exploration_seed": 6904,
+          "export_recovery": null,
+          "outputs_sha256": {
+            "experience.pt": "cc4e0160d79f3a1a343c9535a4083c85f58a1b667a4f14bc3a35c9385aa44e54",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "40b4c065237dfb746c0a84d9cf0bcd7805732f2d8b898b9fa68f79ca962791b9",
+            "timing.json": "a2e9d585a3d5489516da4678490843f0a31472b9cc2292b3eeb6061e2e7ab563",
+            "trace.json": "4ea681c5a92b97cdad78b415ace280f33efcf30dde6dd56617a293b1738be1ff"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\carry\\sweet_170_skew15_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "e9ad43c929311a35a4fe96f2a95ce707cf3a16b361554db7e9978114c32f171a",
+          "run_id": "e5a42235215a489a93be5bd9a2939fde",
+          "scenario": "sweet_170_skew15_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6804,
+          "warmup_ttt": 109.93707304665847
+        },
+        "carry/sweet_170_w": {
+          "behavior": "carry",
+          "capacity": 6000.0,
+          "completion_sha256": "1d573db51fde479cf309d26750d0c256eee7d8ece27798ac79e57038ce4d3af8",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 4,
+          "exploration_seed": 6902,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "f46fb97f1df250d9efa15a640b8c654d7995d0ab12d237c4006aea3c2c078a51"
+          },
+          "outputs_sha256": {
+            "experience.pt": "2b40015a056ca4b9606193575b8c25370d4e679e872f511dd5a4ecb5e9984959",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "dbc690b5db68a436c4d8124653cb83d8aa371ba7f4e3fdf99622475d04a1a9db",
+            "timing.json": "282fb6ee16e59825cb51dee1625c49c598e6900a05121af06b1b82b59ef5683f",
+            "trace.json": "bd51a6b5c94909d777b13bab42071548ab8b06b77bd3d78fa284fd145a67b59a"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\carry\\sweet_170_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "8eca313a95684868101d6dde30b51010ac423f851803031f2e2c837df2dc3c60",
+          "run_id": "de4e39bed79b4be6ab87d2d4ffca49d4",
+          "scenario": "sweet_170_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6802,
+          "warmup_ttt": 110.46526744052423
+        },
+        "carry/sweet_190_w": {
+          "behavior": "carry",
+          "capacity": 6000.0,
+          "completion_sha256": "60bbe2bc1f36241dfb3d561a83de13216de2df967efece57187a2aaa19d20d12",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 256,
+          "exploration_seed": 6905,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "03c3bc5d8172e3910a677125211473ccf0a887c034ac73468a0296ca7669f140"
+          },
+          "outputs_sha256": {
+            "experience.pt": "fff8d516ee3a4e160017f85ca2d3606e9f213303ff62c6bdf0ce62f17abda33f",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "8d6e86f152401772730640be389159360c9e4659ae6bc2f9db474737d7b67dd9",
+            "timing.json": "19e79169ef5dd93334df920978e52afb24b65bfc90048c8dce1742a9e2e71963",
+            "trace.json": "1674c677c55429780dd8cb80bd4c503b4fc76aab8d2e13cbb754ad3571ddd2a0"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\carry\\sweet_190_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "a85e02779043d80e23a965d71b6050325e747ebb96bf737307ba52b2f42eeb78",
+          "run_id": "806a9e5b823844b883730ab7a7376c48",
+          "scenario": "sweet_190_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6805,
+          "warmup_ttt": 110.3807256667429
+        },
+        "local/sweet_155_w": {
+          "behavior": "local",
+          "capacity": 6000.0,
+          "completion_sha256": "6d1835120cda8a02363a18a5f6da069ad0b2448afc1b06dccfd5a332dd3dbdb2",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 1,
+          "exploration_seed": 6901,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "3c7790069796a6e536ce63a1fec06d3feca46464311df72ba5601328dd54a14a"
+          },
+          "outputs_sha256": {
+            "experience.pt": "410cd54068fec831e43d9518b0c167f5068bc2db250ad73dc9bb3bd9fc936c61",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "ae269e2d4cf91cf3c0ed631892a0b7064124155716b14caff81b518625caf00d",
+            "timing.json": "cdb818f99ddab29243291d2845e829b47008a58bf4e28f29378e9b0eda54f740",
+            "trace.json": "aa04886dedda1a62edd9fe1d0189ae7140bbc04ea25e1247e8a6643e64e0c693"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\local\\sweet_155_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "a1565128474f96f6f891bb6103417c534a341baad5b35c5526e589ec27e4953f",
+          "run_id": "87031fa1b51f42a098b8b52636e239a7",
+          "scenario": "sweet_155_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6801,
+          "warmup_ttt": 110.18243453644385
+        },
+        "local/sweet_170_incident_w": {
+          "behavior": "local",
+          "capacity": 6000.0,
+          "completion_sha256": "0a272510e1dd6cc6e5ccf13bf27a855e619ccfe8ab7ea436ebb0546e89aa7c20",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 16,
+          "exploration_seed": 6903,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "abde1e8acd439ff6d03e76c10acc669d24aa091ae24406c0256bbf2d124cdaa0"
+          },
+          "outputs_sha256": {
+            "experience.pt": "98ad5a56c98bdd0fe3ef0570f5239b56c03c4bd0f07aa3b5afd787ef4b74e076",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "cd3c6f966fc7d03cdbe1bf70abc0cba7c0430a8bb009f682fdc7d21835f730b2",
+            "timing.json": "df6a793f8f69767f28594082d4faad4ce8bc23f42d03ca90cafd078f04e66789",
+            "trace.json": "d05c455d8e3daa641854ba02c93ba39d6758f193f792b57b13f4727813266873"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\local\\sweet_170_incident_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "8fd725a9b285b5e0b88be94f111a340cbb2896c1d518e966c19aea0864b464f0",
+          "run_id": "ef00f070010847f8b3a49fce0e9a12f2",
+          "scenario": "sweet_170_incident_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6803,
+          "warmup_ttt": 108.89611191882436
+        },
+        "local/sweet_170_skew15_w": {
+          "behavior": "local",
+          "capacity": 6000.0,
+          "completion_sha256": "9164585b8ccdd9ba5515bbf8351fdf271b577d2be93a321ac5b765b506428fed",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 64,
+          "exploration_seed": 6904,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "4c93bedf029d67218d27ef6cc74b9cdf76de3452f646cb3e17fa798b2c4d9470"
+          },
+          "outputs_sha256": {
+            "experience.pt": "52b2338114186f5758cf5a6f1b042cf73d7c73c80607ddfc7a360c3a46a79b81",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "3a1489f2f15c91cea0c7ba3422ce4816e3cfcc9d31eb88835355b88797acbf5b",
+            "timing.json": "ed995b3072df22c748ad4c137053ef71a5167ac6798c245d207ebda8ea1ff8c9",
+            "trace.json": "edfd4db671344e4d2c7f7ba6701b9cf0ec94cd6f6aa71ee3d2d258525a97964f"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\local\\sweet_170_skew15_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "e9ad43c929311a35a4fe96f2a95ce707cf3a16b361554db7e9978114c32f171a",
+          "run_id": "3950f4e712154fadba5cc0dc78414e42",
+          "scenario": "sweet_170_skew15_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6804,
+          "warmup_ttt": 109.93707304665847
+        },
+        "local/sweet_170_w": {
+          "behavior": "local",
+          "capacity": 6000.0,
+          "completion_sha256": "1cf453f6e564bebaa31f718ee3082d852f6f08aa818fe9d9ee6e08806d2fa282",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 4,
+          "exploration_seed": 6902,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "332529d89230b067fcd123a2f296cf62f64a39e19871b71c23d38f219f2d52f1"
+          },
+          "outputs_sha256": {
+            "experience.pt": "45d79b775c18e40e179fe5fe52b5e6f0f5541611c9be0a6cbabc2345d8f524f6",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "9d7c0f24ee8492e28b4cec7f777087ef8ddd60e86493d97984d0623716a299e0",
+            "timing.json": "8f5ada7af5206e1856bf0a69477d6e1ec754fa179f3f2be3c3a64705d1e03b5a",
+            "trace.json": "6e8b8601ee1966d1712c57cf84040c5454fd21e9174cb859f4664032f16af584"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\local\\sweet_170_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "8eca313a95684868101d6dde30b51010ac423f851803031f2e2c837df2dc3c60",
+          "run_id": "f484bfa461494f3d9c061d470844b675",
+          "scenario": "sweet_170_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6802,
+          "warmup_ttt": 110.46526744052423
+        },
+        "local/sweet_190_w": {
+          "behavior": "local",
+          "capacity": 6000.0,
+          "completion_sha256": "f67b2b1e31050e6cc91bf0afbaf584b5dc6d27196186ba04d236b948ab3c074e",
+          "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+          "cpu_mask": 256,
+          "exploration_seed": 6905,
+          "export_recovery": {
+            "receipt": "export-receipt.json",
+            "sha256": "109462f23f10adfc96be7e9afd4b1e5124d7dfd25602aaf158d3b36e2d562226"
+          },
+          "outputs_sha256": {
+            "experience.pt": "68055db48e73c2bf30b5a490b39529aaee58e3132c2231c049b8990a625f3bf8",
+            "observation_schema.json": "aa16d39ef63b9d37dd51fbf11171210669a7e75a5ad7e88e99eaabd5208920d6",
+            "summary.json": "df4de64e744c13c4db1bf39d7497af4860de5ad5a639f8dcf9739310e5254899",
+            "timing.json": "5bd7b9c45f53007b59c3916e49fe6ffbe9282bea1bdda62e9a8ef52d8ae80c43",
+            "trace.json": "bb925c691d5e8e3676bf08a2039eecc981cb3cf72da583876f8efaa909b2fa6c"
+          },
+          "path": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2\\local\\sweet_190_w",
+          "physical_config_sha256": "c41757d7ed19567ce63f1fa344052e6103b711799bf8b434c0e283d417d96270",
+          "profile_sha256": "a85e02779043d80e23a965d71b6050325e747ebb96bf737307ba52b2f42eeb78",
+          "run_id": "5d45efbce8a34c19a7116a82f00f95e4",
+          "scenario": "sweet_190_w",
+          "source_identity_sha256": "2f2b8aaf26ebbd098ddb34f4cd4f44165270e4092d1909f6f807d1d7fb83fd1f",
+          "training_seed": 6805,
+          "warmup_ttt": 110.3807256667429
+        }
+      },
+      "helper_sha256": {
+        "coordinator_bootstrap.py": "9aead7b555b2bb192932a718ac29c07c28b1a4c8aa3673b3bbd7466f871622e3",
+        "export_recovery.py": "f79513942cd892e346dd68a188ecd2221e862b55558170c3a35d90ed8f80a4b3",
+        "supervise.py": "a119ee8a87b9c280d9a887f253f02308331543f04eb9331cc474eb8ca945e5a9"
+      },
+      "root": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\results\\sdmpc_rl_balanced_goal_20260930\\local_budget_v2",
+      "root_sha256": {
+        "comparison.json": "c294c1f5b2100daeaccb4c927357a8bc73d44391f34641fd37b4ba5b2555c4cd",
+        "completion.json": "5b6e645f6f6ca64c4f593c52d19ee3ab5bda7ae3c3d31f423d6fae2d2f3ef4a3"
+      },
+      "source_identity": {
+        "contract_sha256": "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70",
+        "gate_sha256": "b6fabf1ccaa095fed6b5bcb33dea88cf7f39de4a419ed41b2459a940db6857d3",
+        "local_sources": {
+          "work\\sdmpc_rl_local_20260930_v2\\collect.py": "0213a7f48e7202ae02dab20019d2193f1942f9c4f80ad92cfe12e6ef7b5e4cd1",
+          "work\\sdmpc_rl_local_20260930_v2\\exploration.py": "ac75013514583ac83b9965d9e8f57b619b187a5b8511a5e0e801e972301a6feb",
+          "work\\sdmpc_rl_local_20260930_v2\\frozen_inventory.py": "9d8204d860df1a673f0e6f59941cb4a0ace35aa04fedcd6f79fa36de8201feaa",
+          "work\\sdmpc_rl_local_20260930_v2\\identity_probe.py": "db9e615d41e8de65c2dd1c9113dbe485fc776813b9231109769c67cfab718d2a",
+          "work\\sdmpc_rl_local_20260930_v2\\launch_identity.py": "5cc1a94037b349072ff7ff37e9ceb756c3205b84cb8c1940b4305a5f1514e160",
+          "work\\sdmpc_rl_local_20260930_v2\\local_runtime.py": "6312136f5fb5a8acfcf24483b57cd23165f9ea191c7ca364ba928270d50c87dd",
+          "work\\sdmpc_rl_local_20260930_v2\\migrate_prefix.py": "3934e15d8664603a1eb302b8a2e23581602aacba4e86fae37e08908562a66eb7",
+          "work\\sdmpc_rl_local_20260930_v2\\run_wave.py": "7304669f4a5c65cb42237f8e79e0e6fa7bab766d5827e99d2169e33465dd6952",
+          "work\\sdmpc_rl_local_20260930_v2\\validate.py": "195a5753d5566d1774ed5225c4a00f9462c75536d68195b841f88b0155c53662",
+          "work\\sdmpc_rl_recovery_20260929\\common.py": "6e6eba07e1189e833203e1d43c9192f51e4de360798c807b3636f656163a7076",
+          "work\\sdmpc_rl_value_audit_20260930\\projection_audit.py": "ab3787b94c8bbc4a1e76a9d04b942159a01c6753b292b6d6f5d9c21a256b86db"
+        },
+        "physical": {
+          "frozen_file_count": 151,
+          "implementation": {
+            "budget_controller.py": "0402511ae8e965e315b4b9808e23bbdc9c2fd274666a983b2a3303e6b916f9c2",
+            "budget_env.py": "6ccb4ef400106e29282797ec5d69b7a8dbeee5a1310bd7d6f97b7c7e0c7ee2c4",
+            "budget_runtime.py": "6ae552bad2c092af9d2ab55b0c81e34558754861217fe427788820689800e9a6",
+            "build_preflight.py": "064d14ce37696f2565402d9d5956222a28c0bd65ee974a58ced334ebc0c66d24",
+            "compare_runs.py": "a659700dba89f08948e5817b4866e7256e36a1ae9e87cb9d1e64d6e8b746c738",
+            "freeze_runtime.py": "8a13455b1d87a117eec7f97786f7996786bf49c0d8aaef6e2a3ef8c1cca608ab",
+            "run_budget.py": "7524b335458753c15d7894e872f6bcc80056b7cc4c3756cf7728abdeb48e985e",
+            "run_pilot.py": "c2e184f02b93da06475d1ac905f4a888b68bff80e6e01e7f85019678135ae09f",
+            "run_tests.py": "5baf8cc7f833540a9fdd9009cb3ebf0e8f3018283b02fbebad96a39054f249e5",
+            "smoke_budget.py": "e389faa343082330fad571e7ef1a4d2ec212b4fad33b7e877d6a3edeb0dfb714",
+            "td3.py": "e27665133ccb3fac2b1769da1c93df73a60c73572fa4ccede24a1296292e2e8e",
+            "train_round.py": "c994f8d1bd10c065e6ad1e608cb2fec0df4016a47e255bcfe6388041105e6998"
+          },
+          "snapshot_manifest_sha256": "07836ff139e2e2f9bf8db549d30b5dfba0e4f8c7478165315feef84ab5ed0005"
+        },
+        "runtime": {
+          "PyYAML": "6.0.3",
+          "numpy": "2.3.5",
+          "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+          "scipy": "1.16.3",
+          "torch": "2.14.0+cpu"
+        }
+      }
+    },
+    "rows": 750,
+    "carry_rows": 375,
+    "local_rows": 375,
+    "evaluation": false
+  },
+  "carry_references": 5,
+  "local_episodes": 5,
+  "new_environment_runs": 0,
+  "raw_environment_loads": 0
+}

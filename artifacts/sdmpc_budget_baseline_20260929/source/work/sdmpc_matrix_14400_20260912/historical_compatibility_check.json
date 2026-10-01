@@ -1,0 +1,1789 @@
+{
+  "pass": true,
+  "scope": "8 NC intervals original/observer-off/observer-on exact equality; H3 evaluation only, no optimization",
+  "original_coupling_sha256": "a4540c7792dbc5f9b67f5c8a5931438662442fbe479b197e6678627aa04af8c8",
+  "cfg": {
+    "simulation": {
+      "T_total": 14400.0,
+      "T_f": 10,
+      "T_u": 5,
+      "control_interval": 180,
+      "random_seed": 42,
+      "unit_time": "seconds",
+      "unit_flow": "veh/h",
+      "unit_speed": "km/h",
+      "unit_density": "veh/km/lane",
+      "derived_time_ratios": {
+        "T_f_h": 0.002777777777777778,
+        "T_u_h": 0.001388888888888889,
+        "control_interval_h": 0.05,
+        "K_cu": 36,
+        "K_cf": 18,
+        "K_fu": 2
+      }
+    },
+    "network": {
+      "freeway_links": [
+        "FW_W",
+        "FW_E"
+      ],
+      "freeway_segments_per_link": 8,
+      "freeway_buffer_segments": 8,
+      "freeway_segment_length_km": 0.5,
+      "freeway_lanes": 2,
+      "v_free": 115.0,
+      "rho_crit": 31.5,
+      "rho_max": 180.0,
+      "freeway_capacity_veh_h": 4000.0,
+      "capacity_drop_discharge_phi": 1.0,
+      "metanet_delta_merge": 0.9,
+      "ramps": [
+        "R_D_W",
+        "R_F_W",
+        "R_D_E",
+        "R_F_E"
+      ],
+      "ramp_to_freeway": {
+        "R_D_W": "FW_W",
+        "R_F_W": "FW_W",
+        "R_D_E": "FW_E",
+        "R_F_E": "FW_E"
+      },
+      "ramp_capacity_veh_h": {
+        "R_D_W": 1500.0,
+        "R_F_W": 1500.0,
+        "R_D_E": 1500.0,
+        "R_F_E": 1500.0
+      },
+      "ramp_merge_segment_index": {
+        "R_D_W": 3,
+        "R_F_W": 5,
+        "R_D_E": 3,
+        "R_F_E": 5
+      },
+      "ramp_queue_max_veh": 180.0,
+      "signals": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "F"
+      ],
+      "uncontrolled_nodes": [
+        "E"
+      ],
+      "urban_links": [
+        "A_B",
+        "B_C",
+        "A_D",
+        "B_E",
+        "C_F",
+        "D_E",
+        "E_F"
+      ],
+      "cycle_length": 120.0,
+      "lost_time": 8.0,
+      "green_min": 20.0,
+      "green_max": 92.0,
+      "boundary_in_links": [
+        "in_A_top",
+        "in_A_left",
+        "in_B_top",
+        "in_C_top",
+        "in_C_right",
+        "in_D_left",
+        "in_F_right"
+      ],
+      "boundary_out_links": [
+        "out_A_top",
+        "out_A_left",
+        "out_B_top",
+        "out_C_top",
+        "out_C_right",
+        "out_D_left",
+        "out_F_right"
+      ],
+      "boundary_queue_max_veh": 240.0,
+      "boundary_out_capacity_veh_h": 1600.0,
+      "movement_capacity_veh_h": 1400.0,
+      "grid_node_legs": {
+        "A": {
+          "N": {
+            "type": "boundary",
+            "in": "in_A_top",
+            "out": "out_A_top",
+            "out_link": "A_top_out"
+          },
+          "S": {
+            "type": "grid",
+            "node": "D"
+          },
+          "E": {
+            "type": "grid",
+            "node": "B"
+          },
+          "W": {
+            "type": "boundary",
+            "in": "in_A_left",
+            "out": "out_A_left",
+            "out_link": "A_left_out"
+          }
+        },
+        "B": {
+          "N": {
+            "type": "boundary",
+            "in": "in_B_top",
+            "out": "out_B_top",
+            "out_link": "B_top_out"
+          },
+          "S": {
+            "type": "grid",
+            "node": "E"
+          },
+          "E": {
+            "type": "grid",
+            "node": "C"
+          },
+          "W": {
+            "type": "grid",
+            "node": "A"
+          }
+        },
+        "C": {
+          "N": {
+            "type": "boundary",
+            "in": "in_C_top",
+            "out": "out_C_top",
+            "out_link": "C_top_out"
+          },
+          "S": {
+            "type": "grid",
+            "node": "F"
+          },
+          "E": {
+            "type": "boundary",
+            "in": "in_C_right",
+            "out": "out_C_right",
+            "out_link": "C_right_out"
+          },
+          "W": {
+            "type": "grid",
+            "node": "B"
+          }
+        },
+        "D": {
+          "N": {
+            "type": "grid",
+            "node": "A"
+          },
+          "S": {
+            "type": "ramp",
+            "on": {
+              "W": "R_D_W",
+              "E": "R_D_E"
+            },
+            "off": {
+              "W": "OR_D_W",
+              "E": "OR_D_E"
+            }
+          },
+          "E": {
+            "type": "grid",
+            "node": "E"
+          },
+          "W": {
+            "type": "boundary",
+            "in": "in_D_left",
+            "out": "out_D_left",
+            "out_link": "D_left_out"
+          }
+        },
+        "E": {
+          "N": {
+            "type": "grid",
+            "node": "B"
+          },
+          "E": {
+            "type": "grid",
+            "node": "F"
+          },
+          "W": {
+            "type": "grid",
+            "node": "D"
+          }
+        },
+        "F": {
+          "N": {
+            "type": "grid",
+            "node": "C"
+          },
+          "S": {
+            "type": "ramp",
+            "on": {
+              "W": "R_F_W",
+              "E": "R_F_E"
+            },
+            "off": {
+              "W": "OR_F_W",
+              "E": "OR_F_E"
+            }
+          },
+          "E": {
+            "type": "boundary",
+            "in": "in_F_right",
+            "out": "out_F_right",
+            "out_link": "F_right_out"
+          },
+          "W": {
+            "type": "grid",
+            "node": "E"
+          }
+        }
+      },
+      "turning_ratios": {
+        "A": {
+          "N": {
+            "S": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "S": {
+            "N": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "E": {
+            "W": 0.5,
+            "N": 0.25,
+            "S": 0.25
+          },
+          "W": {
+            "E": 0.5,
+            "N": 0.25,
+            "S": 0.25
+          }
+        },
+        "B": {
+          "N": {
+            "S": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "S": {
+            "N": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "E": {
+            "W": 0.5,
+            "N": 0.25,
+            "S": 0.25
+          },
+          "W": {
+            "E": 0.5,
+            "N": 0.25,
+            "S": 0.25
+          }
+        },
+        "C": {
+          "N": {
+            "S": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "S": {
+            "N": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "E": {
+            "W": 0.5,
+            "N": 0.25,
+            "S": 0.25
+          },
+          "W": {
+            "E": 0.5,
+            "N": 0.25,
+            "S": 0.25
+          }
+        },
+        "D": {
+          "N": {
+            "onW": 0.25,
+            "onE": 0.25,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "offW": {
+            "N": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "offE": {
+            "N": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "E": {
+            "W": 0.5,
+            "N": 0.25,
+            "onW": 0.125,
+            "onE": 0.125
+          },
+          "W": {
+            "E": 0.5,
+            "N": 0.25,
+            "onW": 0.125,
+            "onE": 0.125
+          }
+        },
+        "E": {
+          "N": {
+            "E": 0.5,
+            "W": 0.5
+          },
+          "E": {
+            "W": 0.5,
+            "N": 0.5
+          },
+          "W": {
+            "E": 0.5,
+            "N": 0.5
+          }
+        },
+        "F": {
+          "N": {
+            "onW": 0.25,
+            "onE": 0.25,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "offW": {
+            "N": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "offE": {
+            "N": 0.5,
+            "E": 0.25,
+            "W": 0.25
+          },
+          "E": {
+            "W": 0.5,
+            "N": 0.25,
+            "onW": 0.125,
+            "onE": 0.125
+          },
+          "W": {
+            "E": 0.5,
+            "N": 0.25,
+            "onW": 0.125,
+            "onE": 0.125
+          }
+        }
+      },
+      "urban_movements": {
+        "A_N_to_S": {
+          "intersection": "A",
+          "approach": "N",
+          "exit": "S",
+          "beta": 0.5,
+          "signal": "A",
+          "phase": "A_p1",
+          "origin": "in_A_top",
+          "destination": "A_to_D",
+          "receiving_link": "A_to_D",
+          "kind": "boundary_in"
+        },
+        "A_N_to_E": {
+          "intersection": "A",
+          "approach": "N",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p1",
+          "origin": "in_A_top",
+          "destination": "A_to_B",
+          "receiving_link": "A_to_B",
+          "kind": "boundary_in"
+        },
+        "A_N_to_W": {
+          "intersection": "A",
+          "approach": "N",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p1",
+          "origin": "in_A_top",
+          "destination": "out_A_left",
+          "receiving_link": "A_left_out",
+          "kind": "boundary_in"
+        },
+        "A_S_to_N": {
+          "intersection": "A",
+          "approach": "S",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "A",
+          "phase": "A_p1",
+          "origin": "D_to_A",
+          "destination": "out_A_top",
+          "receiving_link": "A_top_out",
+          "kind": "boundary_out"
+        },
+        "A_S_to_E": {
+          "intersection": "A",
+          "approach": "S",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p1",
+          "origin": "D_to_A",
+          "destination": "A_to_B",
+          "receiving_link": "A_to_B",
+          "kind": "internal"
+        },
+        "A_S_to_W": {
+          "intersection": "A",
+          "approach": "S",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p1",
+          "origin": "D_to_A",
+          "destination": "out_A_left",
+          "receiving_link": "A_left_out",
+          "kind": "boundary_out"
+        },
+        "A_E_to_W": {
+          "intersection": "A",
+          "approach": "E",
+          "exit": "W",
+          "beta": 0.5,
+          "signal": "A",
+          "phase": "A_p2",
+          "origin": "B_to_A",
+          "destination": "out_A_left",
+          "receiving_link": "A_left_out",
+          "kind": "boundary_out"
+        },
+        "A_E_to_N": {
+          "intersection": "A",
+          "approach": "E",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p2",
+          "origin": "B_to_A",
+          "destination": "out_A_top",
+          "receiving_link": "A_top_out",
+          "kind": "boundary_out"
+        },
+        "A_E_to_S": {
+          "intersection": "A",
+          "approach": "E",
+          "exit": "S",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p2",
+          "origin": "B_to_A",
+          "destination": "A_to_D",
+          "receiving_link": "A_to_D",
+          "kind": "internal"
+        },
+        "A_W_to_E": {
+          "intersection": "A",
+          "approach": "W",
+          "exit": "E",
+          "beta": 0.5,
+          "signal": "A",
+          "phase": "A_p2",
+          "origin": "in_A_left",
+          "destination": "A_to_B",
+          "receiving_link": "A_to_B",
+          "kind": "boundary_in"
+        },
+        "A_W_to_N": {
+          "intersection": "A",
+          "approach": "W",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p2",
+          "origin": "in_A_left",
+          "destination": "out_A_top",
+          "receiving_link": "A_top_out",
+          "kind": "boundary_in"
+        },
+        "A_W_to_S": {
+          "intersection": "A",
+          "approach": "W",
+          "exit": "S",
+          "beta": 0.25,
+          "signal": "A",
+          "phase": "A_p2",
+          "origin": "in_A_left",
+          "destination": "A_to_D",
+          "receiving_link": "A_to_D",
+          "kind": "boundary_in"
+        },
+        "B_N_to_S": {
+          "intersection": "B",
+          "approach": "N",
+          "exit": "S",
+          "beta": 0.5,
+          "signal": "B",
+          "phase": "B_p1",
+          "origin": "in_B_top",
+          "destination": "B_to_E",
+          "receiving_link": "B_to_E",
+          "kind": "boundary_in"
+        },
+        "B_N_to_E": {
+          "intersection": "B",
+          "approach": "N",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p1",
+          "origin": "in_B_top",
+          "destination": "B_to_C",
+          "receiving_link": "B_to_C",
+          "kind": "boundary_in"
+        },
+        "B_N_to_W": {
+          "intersection": "B",
+          "approach": "N",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p1",
+          "origin": "in_B_top",
+          "destination": "B_to_A",
+          "receiving_link": "B_to_A",
+          "kind": "boundary_in"
+        },
+        "B_S_to_N": {
+          "intersection": "B",
+          "approach": "S",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "B",
+          "phase": "B_p1",
+          "origin": "E_to_B",
+          "destination": "out_B_top",
+          "receiving_link": "B_top_out",
+          "kind": "boundary_out"
+        },
+        "B_S_to_E": {
+          "intersection": "B",
+          "approach": "S",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p1",
+          "origin": "E_to_B",
+          "destination": "B_to_C",
+          "receiving_link": "B_to_C",
+          "kind": "internal"
+        },
+        "B_S_to_W": {
+          "intersection": "B",
+          "approach": "S",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p1",
+          "origin": "E_to_B",
+          "destination": "B_to_A",
+          "receiving_link": "B_to_A",
+          "kind": "internal"
+        },
+        "B_E_to_W": {
+          "intersection": "B",
+          "approach": "E",
+          "exit": "W",
+          "beta": 0.5,
+          "signal": "B",
+          "phase": "B_p2",
+          "origin": "C_to_B",
+          "destination": "B_to_A",
+          "receiving_link": "B_to_A",
+          "kind": "internal"
+        },
+        "B_E_to_N": {
+          "intersection": "B",
+          "approach": "E",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p2",
+          "origin": "C_to_B",
+          "destination": "out_B_top",
+          "receiving_link": "B_top_out",
+          "kind": "boundary_out"
+        },
+        "B_E_to_S": {
+          "intersection": "B",
+          "approach": "E",
+          "exit": "S",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p2",
+          "origin": "C_to_B",
+          "destination": "B_to_E",
+          "receiving_link": "B_to_E",
+          "kind": "internal"
+        },
+        "B_W_to_E": {
+          "intersection": "B",
+          "approach": "W",
+          "exit": "E",
+          "beta": 0.5,
+          "signal": "B",
+          "phase": "B_p2",
+          "origin": "A_to_B",
+          "destination": "B_to_C",
+          "receiving_link": "B_to_C",
+          "kind": "internal"
+        },
+        "B_W_to_N": {
+          "intersection": "B",
+          "approach": "W",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p2",
+          "origin": "A_to_B",
+          "destination": "out_B_top",
+          "receiving_link": "B_top_out",
+          "kind": "boundary_out"
+        },
+        "B_W_to_S": {
+          "intersection": "B",
+          "approach": "W",
+          "exit": "S",
+          "beta": 0.25,
+          "signal": "B",
+          "phase": "B_p2",
+          "origin": "A_to_B",
+          "destination": "B_to_E",
+          "receiving_link": "B_to_E",
+          "kind": "internal"
+        },
+        "C_N_to_S": {
+          "intersection": "C",
+          "approach": "N",
+          "exit": "S",
+          "beta": 0.5,
+          "signal": "C",
+          "phase": "C_p1",
+          "origin": "in_C_top",
+          "destination": "C_to_F",
+          "receiving_link": "C_to_F",
+          "kind": "boundary_in"
+        },
+        "C_N_to_E": {
+          "intersection": "C",
+          "approach": "N",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p1",
+          "origin": "in_C_top",
+          "destination": "out_C_right",
+          "receiving_link": "C_right_out",
+          "kind": "boundary_in"
+        },
+        "C_N_to_W": {
+          "intersection": "C",
+          "approach": "N",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p1",
+          "origin": "in_C_top",
+          "destination": "C_to_B",
+          "receiving_link": "C_to_B",
+          "kind": "boundary_in"
+        },
+        "C_S_to_N": {
+          "intersection": "C",
+          "approach": "S",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "C",
+          "phase": "C_p1",
+          "origin": "F_to_C",
+          "destination": "out_C_top",
+          "receiving_link": "C_top_out",
+          "kind": "boundary_out"
+        },
+        "C_S_to_E": {
+          "intersection": "C",
+          "approach": "S",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p1",
+          "origin": "F_to_C",
+          "destination": "out_C_right",
+          "receiving_link": "C_right_out",
+          "kind": "boundary_out"
+        },
+        "C_S_to_W": {
+          "intersection": "C",
+          "approach": "S",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p1",
+          "origin": "F_to_C",
+          "destination": "C_to_B",
+          "receiving_link": "C_to_B",
+          "kind": "internal"
+        },
+        "C_E_to_W": {
+          "intersection": "C",
+          "approach": "E",
+          "exit": "W",
+          "beta": 0.5,
+          "signal": "C",
+          "phase": "C_p2",
+          "origin": "in_C_right",
+          "destination": "C_to_B",
+          "receiving_link": "C_to_B",
+          "kind": "boundary_in"
+        },
+        "C_E_to_N": {
+          "intersection": "C",
+          "approach": "E",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p2",
+          "origin": "in_C_right",
+          "destination": "out_C_top",
+          "receiving_link": "C_top_out",
+          "kind": "boundary_in"
+        },
+        "C_E_to_S": {
+          "intersection": "C",
+          "approach": "E",
+          "exit": "S",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p2",
+          "origin": "in_C_right",
+          "destination": "C_to_F",
+          "receiving_link": "C_to_F",
+          "kind": "boundary_in"
+        },
+        "C_W_to_E": {
+          "intersection": "C",
+          "approach": "W",
+          "exit": "E",
+          "beta": 0.5,
+          "signal": "C",
+          "phase": "C_p2",
+          "origin": "B_to_C",
+          "destination": "out_C_right",
+          "receiving_link": "C_right_out",
+          "kind": "boundary_out"
+        },
+        "C_W_to_N": {
+          "intersection": "C",
+          "approach": "W",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p2",
+          "origin": "B_to_C",
+          "destination": "out_C_top",
+          "receiving_link": "C_top_out",
+          "kind": "boundary_out"
+        },
+        "C_W_to_S": {
+          "intersection": "C",
+          "approach": "W",
+          "exit": "S",
+          "beta": 0.25,
+          "signal": "C",
+          "phase": "C_p2",
+          "origin": "B_to_C",
+          "destination": "C_to_F",
+          "receiving_link": "C_to_F",
+          "kind": "internal"
+        },
+        "D_N_to_onW": {
+          "intersection": "D",
+          "approach": "N",
+          "exit": "onW",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "A_to_D",
+          "ramp": "R_D_W",
+          "destination": "FW_W",
+          "receiving_link": "D_R_W",
+          "kind": "on_ramp"
+        },
+        "D_N_to_onE": {
+          "intersection": "D",
+          "approach": "N",
+          "exit": "onE",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "A_to_D",
+          "ramp": "R_D_E",
+          "destination": "FW_E",
+          "receiving_link": "D_R_E",
+          "kind": "on_ramp"
+        },
+        "D_N_to_E": {
+          "intersection": "D",
+          "approach": "N",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "A_to_D",
+          "destination": "D_to_E",
+          "receiving_link": "D_to_E",
+          "kind": "internal"
+        },
+        "D_N_to_W": {
+          "intersection": "D",
+          "approach": "N",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "A_to_D",
+          "destination": "out_D_left",
+          "receiving_link": "D_left_out",
+          "kind": "boundary_out"
+        },
+        "D_offW_to_N": {
+          "intersection": "D",
+          "approach": "offW",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "OR_D_W",
+          "off_ramp": "OR_D_W",
+          "destination": "D_to_A",
+          "receiving_link": "D_to_A",
+          "kind": "off_ramp"
+        },
+        "D_offW_to_E": {
+          "intersection": "D",
+          "approach": "offW",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "OR_D_W",
+          "off_ramp": "OR_D_W",
+          "destination": "D_to_E",
+          "receiving_link": "D_to_E",
+          "kind": "off_ramp"
+        },
+        "D_offW_to_W": {
+          "intersection": "D",
+          "approach": "offW",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "OR_D_W",
+          "off_ramp": "OR_D_W",
+          "destination": "out_D_left",
+          "receiving_link": "D_left_out",
+          "kind": "off_ramp"
+        },
+        "D_offE_to_N": {
+          "intersection": "D",
+          "approach": "offE",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "OR_D_E",
+          "off_ramp": "OR_D_E",
+          "destination": "D_to_A",
+          "receiving_link": "D_to_A",
+          "kind": "off_ramp"
+        },
+        "D_offE_to_E": {
+          "intersection": "D",
+          "approach": "offE",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "OR_D_E",
+          "off_ramp": "OR_D_E",
+          "destination": "D_to_E",
+          "receiving_link": "D_to_E",
+          "kind": "off_ramp"
+        },
+        "D_offE_to_W": {
+          "intersection": "D",
+          "approach": "offE",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p1",
+          "origin": "OR_D_E",
+          "off_ramp": "OR_D_E",
+          "destination": "out_D_left",
+          "receiving_link": "D_left_out",
+          "kind": "off_ramp"
+        },
+        "D_E_to_W": {
+          "intersection": "D",
+          "approach": "E",
+          "exit": "W",
+          "beta": 0.5,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "E_to_D",
+          "destination": "out_D_left",
+          "receiving_link": "D_left_out",
+          "kind": "boundary_out"
+        },
+        "D_E_to_N": {
+          "intersection": "D",
+          "approach": "E",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "E_to_D",
+          "destination": "D_to_A",
+          "receiving_link": "D_to_A",
+          "kind": "internal"
+        },
+        "D_E_to_onW": {
+          "intersection": "D",
+          "approach": "E",
+          "exit": "onW",
+          "beta": 0.125,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "E_to_D",
+          "ramp": "R_D_W",
+          "destination": "FW_W",
+          "receiving_link": "D_R_W",
+          "kind": "on_ramp"
+        },
+        "D_E_to_onE": {
+          "intersection": "D",
+          "approach": "E",
+          "exit": "onE",
+          "beta": 0.125,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "E_to_D",
+          "ramp": "R_D_E",
+          "destination": "FW_E",
+          "receiving_link": "D_R_E",
+          "kind": "on_ramp"
+        },
+        "D_W_to_E": {
+          "intersection": "D",
+          "approach": "W",
+          "exit": "E",
+          "beta": 0.5,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "in_D_left",
+          "destination": "D_to_E",
+          "receiving_link": "D_to_E",
+          "kind": "boundary_in"
+        },
+        "D_W_to_N": {
+          "intersection": "D",
+          "approach": "W",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "in_D_left",
+          "destination": "D_to_A",
+          "receiving_link": "D_to_A",
+          "kind": "boundary_in"
+        },
+        "D_W_to_onW": {
+          "intersection": "D",
+          "approach": "W",
+          "exit": "onW",
+          "beta": 0.125,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "in_D_left",
+          "ramp": "R_D_W",
+          "destination": "FW_W",
+          "receiving_link": "D_R_W",
+          "kind": "boundary_in"
+        },
+        "D_W_to_onE": {
+          "intersection": "D",
+          "approach": "W",
+          "exit": "onE",
+          "beta": 0.125,
+          "signal": "D",
+          "phase": "D_p2",
+          "origin": "in_D_left",
+          "ramp": "R_D_E",
+          "destination": "FW_E",
+          "receiving_link": "D_R_E",
+          "kind": "boundary_in"
+        },
+        "E_N_to_E": {
+          "intersection": "E",
+          "approach": "N",
+          "exit": "E",
+          "beta": 0.5,
+          "signal": "E",
+          "phase": "",
+          "origin": "B_to_E",
+          "destination": "E_to_F",
+          "receiving_link": "E_to_F",
+          "kind": "internal"
+        },
+        "E_N_to_W": {
+          "intersection": "E",
+          "approach": "N",
+          "exit": "W",
+          "beta": 0.5,
+          "signal": "E",
+          "phase": "",
+          "origin": "B_to_E",
+          "destination": "E_to_D",
+          "receiving_link": "E_to_D",
+          "kind": "internal"
+        },
+        "E_E_to_W": {
+          "intersection": "E",
+          "approach": "E",
+          "exit": "W",
+          "beta": 0.5,
+          "signal": "E",
+          "phase": "",
+          "origin": "F_to_E",
+          "destination": "E_to_D",
+          "receiving_link": "E_to_D",
+          "kind": "internal"
+        },
+        "E_E_to_N": {
+          "intersection": "E",
+          "approach": "E",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "E",
+          "phase": "",
+          "origin": "F_to_E",
+          "destination": "E_to_B",
+          "receiving_link": "E_to_B",
+          "kind": "internal"
+        },
+        "E_W_to_E": {
+          "intersection": "E",
+          "approach": "W",
+          "exit": "E",
+          "beta": 0.5,
+          "signal": "E",
+          "phase": "",
+          "origin": "D_to_E",
+          "destination": "E_to_F",
+          "receiving_link": "E_to_F",
+          "kind": "internal"
+        },
+        "E_W_to_N": {
+          "intersection": "E",
+          "approach": "W",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "E",
+          "phase": "",
+          "origin": "D_to_E",
+          "destination": "E_to_B",
+          "receiving_link": "E_to_B",
+          "kind": "internal"
+        },
+        "F_N_to_onW": {
+          "intersection": "F",
+          "approach": "N",
+          "exit": "onW",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "C_to_F",
+          "ramp": "R_F_W",
+          "destination": "FW_W",
+          "receiving_link": "F_R_W",
+          "kind": "on_ramp"
+        },
+        "F_N_to_onE": {
+          "intersection": "F",
+          "approach": "N",
+          "exit": "onE",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "C_to_F",
+          "ramp": "R_F_E",
+          "destination": "FW_E",
+          "receiving_link": "F_R_E",
+          "kind": "on_ramp"
+        },
+        "F_N_to_E": {
+          "intersection": "F",
+          "approach": "N",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "C_to_F",
+          "destination": "out_F_right",
+          "receiving_link": "F_right_out",
+          "kind": "boundary_out"
+        },
+        "F_N_to_W": {
+          "intersection": "F",
+          "approach": "N",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "C_to_F",
+          "destination": "F_to_E",
+          "receiving_link": "F_to_E",
+          "kind": "internal"
+        },
+        "F_offW_to_N": {
+          "intersection": "F",
+          "approach": "offW",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "OR_F_W",
+          "off_ramp": "OR_F_W",
+          "destination": "F_to_C",
+          "receiving_link": "F_to_C",
+          "kind": "off_ramp"
+        },
+        "F_offW_to_E": {
+          "intersection": "F",
+          "approach": "offW",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "OR_F_W",
+          "off_ramp": "OR_F_W",
+          "destination": "out_F_right",
+          "receiving_link": "F_right_out",
+          "kind": "off_ramp"
+        },
+        "F_offW_to_W": {
+          "intersection": "F",
+          "approach": "offW",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "OR_F_W",
+          "off_ramp": "OR_F_W",
+          "destination": "F_to_E",
+          "receiving_link": "F_to_E",
+          "kind": "off_ramp"
+        },
+        "F_offE_to_N": {
+          "intersection": "F",
+          "approach": "offE",
+          "exit": "N",
+          "beta": 0.5,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "OR_F_E",
+          "off_ramp": "OR_F_E",
+          "destination": "F_to_C",
+          "receiving_link": "F_to_C",
+          "kind": "off_ramp"
+        },
+        "F_offE_to_E": {
+          "intersection": "F",
+          "approach": "offE",
+          "exit": "E",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "OR_F_E",
+          "off_ramp": "OR_F_E",
+          "destination": "out_F_right",
+          "receiving_link": "F_right_out",
+          "kind": "off_ramp"
+        },
+        "F_offE_to_W": {
+          "intersection": "F",
+          "approach": "offE",
+          "exit": "W",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p1",
+          "origin": "OR_F_E",
+          "off_ramp": "OR_F_E",
+          "destination": "F_to_E",
+          "receiving_link": "F_to_E",
+          "kind": "off_ramp"
+        },
+        "F_E_to_W": {
+          "intersection": "F",
+          "approach": "E",
+          "exit": "W",
+          "beta": 0.5,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "in_F_right",
+          "destination": "F_to_E",
+          "receiving_link": "F_to_E",
+          "kind": "boundary_in"
+        },
+        "F_E_to_N": {
+          "intersection": "F",
+          "approach": "E",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "in_F_right",
+          "destination": "F_to_C",
+          "receiving_link": "F_to_C",
+          "kind": "boundary_in"
+        },
+        "F_E_to_onW": {
+          "intersection": "F",
+          "approach": "E",
+          "exit": "onW",
+          "beta": 0.125,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "in_F_right",
+          "ramp": "R_F_W",
+          "destination": "FW_W",
+          "receiving_link": "F_R_W",
+          "kind": "boundary_in"
+        },
+        "F_E_to_onE": {
+          "intersection": "F",
+          "approach": "E",
+          "exit": "onE",
+          "beta": 0.125,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "in_F_right",
+          "ramp": "R_F_E",
+          "destination": "FW_E",
+          "receiving_link": "F_R_E",
+          "kind": "boundary_in"
+        },
+        "F_W_to_E": {
+          "intersection": "F",
+          "approach": "W",
+          "exit": "E",
+          "beta": 0.5,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "E_to_F",
+          "destination": "out_F_right",
+          "receiving_link": "F_right_out",
+          "kind": "boundary_out"
+        },
+        "F_W_to_N": {
+          "intersection": "F",
+          "approach": "W",
+          "exit": "N",
+          "beta": 0.25,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "E_to_F",
+          "destination": "F_to_C",
+          "receiving_link": "F_to_C",
+          "kind": "internal"
+        },
+        "F_W_to_onW": {
+          "intersection": "F",
+          "approach": "W",
+          "exit": "onW",
+          "beta": 0.125,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "E_to_F",
+          "ramp": "R_F_W",
+          "destination": "FW_W",
+          "receiving_link": "F_R_W",
+          "kind": "on_ramp"
+        },
+        "F_W_to_onE": {
+          "intersection": "F",
+          "approach": "W",
+          "exit": "onE",
+          "beta": 0.125,
+          "signal": "F",
+          "phase": "F_p2",
+          "origin": "E_to_F",
+          "ramp": "R_F_E",
+          "destination": "FW_E",
+          "receiving_link": "F_R_E",
+          "kind": "on_ramp"
+        }
+      },
+      "grid_link_storage_veh": 220.0,
+      "urban_link_storage_veh": {
+        "A_top_out": 220.0,
+        "A_left_out": 220.0,
+        "B_top_out": 220.0,
+        "C_top_out": 220.0,
+        "C_right_out": 220.0,
+        "D_left_out": 220.0,
+        "F_right_out": 220.0,
+        "A_to_B": 220.0,
+        "B_to_A": 220.0,
+        "B_to_C": 220.0,
+        "C_to_B": 220.0,
+        "A_to_D": 220.0,
+        "D_to_A": 220.0,
+        "B_to_E": 220.0,
+        "E_to_B": 220.0,
+        "C_to_F": 220.0,
+        "F_to_C": 220.0,
+        "D_to_E": 220.0,
+        "E_to_D": 220.0,
+        "E_to_F": 220.0,
+        "F_to_E": 220.0,
+        "D_R_W": 180.0,
+        "F_R_W": 180.0,
+        "D_R_E": 180.0,
+        "F_R_E": 180.0,
+        "OR_D_W_storage": 60.0,
+        "OR_F_W_storage": 60.0,
+        "OR_D_E_storage": 60.0,
+        "OR_F_E_storage": 60.0
+      },
+      "on_ramp_to_movement": {
+        "R_D_W": [
+          "D_N_to_onW",
+          "D_E_to_onW"
+        ],
+        "R_F_W": [
+          "F_N_to_onW",
+          "F_W_to_onW"
+        ],
+        "R_D_E": [
+          "D_N_to_onE",
+          "D_E_to_onE"
+        ],
+        "R_F_E": [
+          "F_N_to_onE",
+          "F_W_to_onE"
+        ]
+      },
+      "off_ramps": [
+        "OR_D_W",
+        "OR_F_W",
+        "OR_D_E",
+        "OR_F_E"
+      ],
+      "off_ramp_from_freeway": {
+        "OR_D_W": "FW_W",
+        "OR_F_W": "FW_W",
+        "OR_D_E": "FW_E",
+        "OR_F_E": "FW_E"
+      },
+      "off_ramp_segment_index": {
+        "OR_D_W": 2,
+        "OR_F_W": 4,
+        "OR_D_E": 2,
+        "OR_F_E": 4
+      },
+      "off_ramp_storage_link": {
+        "OR_D_W": "OR_D_W_storage",
+        "OR_F_W": "OR_F_W_storage",
+        "OR_D_E": "OR_D_E_storage",
+        "OR_F_E": "OR_F_E_storage"
+      },
+      "off_ramp_to_movement": {
+        "OR_D_W": [
+          "D_offW_to_N",
+          "D_offW_to_E",
+          "D_offW_to_W"
+        ],
+        "OR_F_W": [
+          "F_offW_to_N",
+          "F_offW_to_E",
+          "F_offW_to_W"
+        ],
+        "OR_D_E": [
+          "D_offE_to_N",
+          "D_offE_to_E",
+          "D_offE_to_W"
+        ],
+        "OR_F_E": [
+          "F_offE_to_N",
+          "F_offE_to_E",
+          "F_offE_to_W"
+        ]
+      },
+      "off_ramp_split_ratio": {
+        "OR_D_W": 0.2,
+        "OR_F_W": 0.2,
+        "OR_D_E": 0.2,
+        "OR_F_E": 0.2
+      },
+      "v_min": 5.0,
+      "alpha_vsl": 0.0,
+      "metanet_tau_h": 0.0056111,
+      "metanet_tau_sec": 18.0,
+      "metanet_nu_km2_h": 22.5,
+      "metanet_kappa_veh_km_lane": 10.0,
+      "metanet_a_m": 1.867,
+      "metanet_nu_cong_km2_h": 250.0,
+      "capacity_drop_anticipation": false,
+      "metanet_rho_eps": 0.001,
+      "urban_Q_sat_veh_h": 1000.0,
+      "urban_avg_vehicle_length_m": 6.0,
+      "urban_avg_speed_km_h": 50.0,
+      "green_min_fraction": 0.2,
+      "green_max_fraction": 0.8
+    },
+    "freeway_offramp_capacity_drop": {
+      "enabled": true,
+      "lane_reduction": 1.0,
+      "gamma": 0.5,
+      "b": 2.0
+    },
+    "mpc": {
+      "horizon_steps": 3,
+      "leader_value_depth": 0,
+      "leader_mfd_far_enabled": true,
+      "leader_mfd_far_state_aware": true,
+      "leader_gradseed_enabled": false,
+      "leader_bias_sample_pow": 1.0,
+      "leader_mfd_far_real_speed": false,
+      "leader_mfd_far_weight": 1.0,
+      "leader_mfd_far_urban_weight": 1.0,
+      "leader_mfd_far_freeway_weight": 1.0,
+      "leader_urban_clf_enabled": false,
+      "leader_urban_clf_gated": true,
+      "leader_urban_clf_nref": 450.0,
+      "leader_urban_clf_ncrit": 550.0,
+      "leader_urban_clf_njam": 1540.0,
+      "leader_urban_clf_pmax": 640.0,
+      "leader_urban_clf_gmin": 60.0,
+      "leader_urban_clf_ttail": 0.5,
+      "leader_mfd_far_at_d0": false,
+      "leader_search_mode": "grid",
+      "leader_candidate_count": 49,
+      "leader_refinement_candidate_count": 25,
+      "leader_global_refresh_sec": 1800.0,
+      "leader_local_np_radius_veh": 40.0,
+      "leader_local_nuf_radius_veh_h": 1500.0,
+      "leader_local_radius_strict": false,
+      "leader_budget_fair": false,
+      "leader_budget_off": false,
+      "seg13_meter_box_veh_h": null,
+      "seg13_meter_box_up_veh_h": null,
+      "seg13_vsl_box_kmh": null,
+      "leader_rollout_box_walk": false,
+      "leader_rollout_box_walk_vg": false,
+      "baseline_move_box": false,
+      "leader_continuous_max_evals": 10,
+      "leader_continuous_seed_count": 7,
+      "leader_continuous_prefilter_samples": 31,
+      "leader_continuous_prefilter_top_k": 7,
+      "leader_continuous_local_max_evals": 3,
+      "leader_continuous_local_seed_count": 3,
+      "leader_continuous_local_prefilter_samples": 12,
+      "leader_continuous_local_prefilter_top_k": 3,
+      "leader_continuous_hard_precheck": true,
+      "leader_continuous_precheck_spillback_tolerance_veh": 0.0,
+      "leader_continuous_parallel_multistart": true,
+      "leader_continuous_use_sensitivity_directions": true,
+      "leader_continuous_local_iterations": 4,
+      "leader_continuous_initial_step_fraction": 0.35,
+      "leader_continuous_shrink_factor": 0.5,
+      "leader_continuous_min_np_step_veh": 40.0,
+      "leader_continuous_min_nuf_step_veh_h": 125.0,
+      "follower_solver_mode": "two_block",
+      "max_nash_iter": 10,
+      "nash_obj_tol": 0.001,
+      "nash_control_tol": 0.001,
+      "nash_relaxation_alpha": 0.8,
+      "distributed_coupling_tol": 0.001,
+      "control_horizon_steps": 3,
+      "urban_freeway_tts_weight_alpha": 1.0,
+      "optimizer_maxiter": 40,
+      "optimizer_n_starts": 5,
+      "centralized_solver_mode": "structured_grid",
+      "centralized_slsqp_ftol": 0.001,
+      "centralized_slsqp_max_eval": 0,
+      "centralized_grid_refresh_sec": 1800.0,
+      "centralized_grid_dense": false,
+      "relaxed_quantized_controls": true,
+      "relaxed_green_quantum_sec": 1.0,
+      "relaxed_vsl_quantum_km_h": 10.0,
+      "relaxed_rounding_mode": "floor",
+      "relaxed_wu_vsl_include_neutral": true,
+      "grid_global_refresh_sec": 1800.0,
+      "grid_parallel_backend": "serial",
+      "grid_parallel_max_workers": 8,
+      "grid_parallel_min_items": 2,
+      "grid_parallel_chunk_size": 8,
+      "grid_reuse_process_pool": true,
+      "stackelberg_prefilter_top_k": 4,
+      "stackelberg_prefilter_local_top_k": 4,
+      "stackelberg_fallback_full_refresh_sec": 1800.0,
+      "stackelberg_fallback_use_cached_pfo": true,
+      "stackelberg_enable_fallback": true,
+      "stackelberg_enable_pfo_incumbent": true,
+      "stackelberg_fallback_guard_use_rollout_ttt": true,
+      "leader_bias_estimator": true,
+      "fallback_guard_beta": false,
+      "regret_guard_steps": 3,
+      "stackelberg_leader_parallel_backend": "serial",
+      "stackelberg_leader_parallel_max_workers": 4,
+      "stackelberg_inner_backend_when_outer_process": "thread",
+      "stackelberg_reuse_process_pool": true,
+      "stackelberg_allocation_mode": "direct",
+      "wu_np_storage_guard": false,
+      "wu_np_arrival_mode": "horizon",
+      "wu_np_phase_substep": false,
+      "wu_faithful_np_predictor_mode": "legacy",
+      "np_target_interior_frac": 0.25,
+      "np_dual_deadband_frac": 0.9,
+      "np_candidate_lambda": true,
+      "np_bias_correction": false,
+      "np_deadband_violation_override": false,
+      "np_primal_dual_iters": 0,
+      "np_pd_gain_mult": 25.0,
+      "eps_gap_probe": false,
+      "leader_hinge_enabled": false,
+      "leader_hinge_weight": 1.0,
+      "leader_hinge_spill_frac": 0.5,
+      "leader_spillback_enabled": false,
+      "leader_spillback_weight": 1.0,
+      "leader_spillback_urban_weight": 1.0,
+      "leader_spillback_freeway_weight": 1.0,
+      "leader_spillback_lead_h": 0.5,
+      "leader_spillback_nref_urban": 500.0,
+      "leader_spillback_nref_freeway": 0.0,
+      "leader_move_enabled": false,
+      "leader_move_weight": 1.0,
+      "leader_move_nuf_weight": 1.0,
+      "leader_move_np_weight": 0.0,
+      "wu_faithful_np_coordination_mode": "cap",
+      "wu_faithful_nuf_coordination_mode": "equality"
+    },
+    "leader": {
+      "objective_mode": "follower_ttt",
+      "w_P": 1.0,
+      "w_F": 1.0,
+      "w_L": 0.0,
+      "w_boundary_in": 0.0,
+      "w_ramp_queue": 0.0,
+      "mfd_penalty_mode": "all_urban_halfcap",
+      "mfd_storage_threshold_ratio": 0.5,
+      "mfd_storage_weight": 1.0,
+      "mfd_boundary_queue_capacity_veh": 220.0,
+      "N_P_star_range": [
+        -3500.0,
+        3500.0
+      ],
+      "N_UF_star_range": [
+        0.0,
+        6000.0
+      ],
+      "N_P_crit_veh": 1142.058,
+      "N_P_candidate_lower_factor": 0.4,
+      "N_P_candidate_upper_factor": 1.35,
+      "N_P_star_unit": "veh",
+      "N_UF_star_unit": "veh_per_hour",
+      "N_P_feedback_horizon_h": 1.5,
+      "N_P_feedback_flow_limit_veh_h": 800.0,
+      "N_UF_feasible_margin": 0.95,
+      "non_convergence_penalty": 500.0,
+      "non_convergence_objective_residual_scale": 1.0,
+      "non_convergence_control_residual_scale": 1.0,
+      "state_accumulation_exclude_boundary_legs": true,
+      "use_effective_lanes_for_density_penalty": true,
+      "metering_congestion_weight": 0.45,
+      "metering_queue_weight": 4.0,
+      "vsl_activation_density_ratio": 0.95,
+      "metering_activation_density_ratio": 0.95,
+      "uncongested_nuf_floor_frac": 0.0
+    },
+    "freeway_follower": {
+      "eps_F": 100.0,
+      "vsl_set": [
+        115,
+        100,
+        90,
+        80,
+        70,
+        60,
+        50
+      ],
+      "max_vsl_step": 20.0,
+      "ramp_queue_penalty": 10.0,
+      "density_penalty": 10.0,
+      "metering_smoothness_weight": 0.1,
+      "vsl_smoothness_weight": 0.0,
+      "freeway_prediction_horizon_steps": 3,
+      "horizon_beam_width": 2,
+      "horizon_ramp_candidate_limit": 3,
+      "horizon_vsl_candidate_limit_per_link": 3,
+      "vsl_sequence_search": true,
+      "vsl_sequence_horizon_steps": 4,
+      "vsl_sequence_candidate_limit": 12,
+      "ramp_metering_rate_min": 0.2,
+      "ramp_metering_rate_max": 1.0,
+      "vsl_min_km_h": 60.0,
+      "vsl_max_km_h": 106.0
+    },
+    "urban_follower": {
+      "eps_U": 100.0,
+      "eps_g": 5.0,
+      "max_offset_step": 15.0,
+      "boundary_balance_weight": 10.0,
+      "offset_smoothness_weight": 0.1,
+      "green_smoothness_weight": 0.1,
+      "receiving_space_rule": "proportional",
+      "allocation_pso_particles": 36,
+      "allocation_pso_iterations": 48,
+      "allocation_green_band_sec": 5.0
+    },
+    "evaluation": {
+      "main_metric": "total_ttt",
+      "main_metric_direction": "lower_is_better",
+      "min_improvement_pct": 8.0,
+      "eps": 1e-09,
+      "eps_balance": 0.03,
+      "boundary_degenerate_saturation_fraction": 0.95,
+      "boundary_degenerate_ratio": 0.5,
+      "boundary_controllable_min_fraction": 0.25
+    },
+    "auto_tuning": {
+      "enabled": true,
+      "max_iterations": 5,
+      "preserve_all_runs": true
+    }
+  },
+  "rows": [
+    {
+      "step": 0,
+      "total_ttt": 24.785860738900226,
+      "buffer_vehicles": 233.72072140333216,
+      "conservation_residual_veh": 5.684341886080801e-13,
+      "ledger_residual": -2.1316282072803006e-14
+    },
+    {
+      "step": 1,
+      "total_ttt": 47.25534046332477,
+      "buffer_vehicles": 152.88186834770863,
+      "conservation_residual_veh": -3.410605131648481e-13,
+      "ledger_residual": -1.4210854715202004e-14
+    },
+    {
+      "step": 2,
+      "total_ttt": 68.15985492873698,
+      "buffer_vehicles": 160.3711132793713,
+      "conservation_residual_veh": -1.3073986337985843e-12,
+      "ledger_residual": -4.263256414560601e-14
+    },
+    {
+      "step": 3,
+      "total_ttt": 88.97595036281948,
+      "buffer_vehicles": 158.98749448921177,
+      "conservation_residual_veh": -1.0800249583553523e-12,
+      "ledger_residual": -4.263256414560601e-14
+    },
+    {
+      "step": 4,
+      "total_ttt": 109.70347290216282,
+      "buffer_vehicles": 158.81837470086893,
+      "conservation_residual_veh": -9.094947017729282e-13,
+      "ledger_residual": -5.684341886080802e-14
+    },
+    {
+      "step": 5,
+      "total_ttt": 130.4214816426267,
+      "buffer_vehicles": 158.62545410544146,
+      "conservation_residual_veh": -9.663381206337363e-13,
+      "ledger_residual": -1.1368683772161603e-13
+    },
+    {
+      "step": 6,
+      "total_ttt": 151.13104937999645,
+      "buffer_vehicles": 158.79628204882113,
+      "conservation_residual_veh": -7.958078640513122e-13,
+      "ledger_residual": -2.8421709430404007e-13
+    },
+    {
+      "step": 7,
+      "total_ttt": 171.84388338216993,
+      "buffer_vehicles": 158.59403323146108,
+      "conservation_residual_veh": -1.0800249583553523e-12,
+      "ledger_residual": -3.126388037344441e-13
+    }
+  ],
+  "core_cells_per_link": 8,
+  "buffer_cells_per_side_per_link": 8,
+  "ledger_max_substep_residual": 5.551115123125783e-16,
+  "buffer_cost_veh_h": 65.58765906752012,
+  "player_ids": [
+    "FW:FW_W",
+    "FW:FW_E",
+    "URBAN:A",
+    "URBAN:B",
+    "URBAN:C",
+    "URBAN:D",
+    "URBAN:F"
+  ],
+  "player_H3_physical_valid": true,
+  "player_H3_control_valid": true,
+  "FU_H3_physical_valid": true,
+  "player_H3_conservation": 1.3642420526593924e-12,
+  "vsl_menu": [
+    115,
+    100,
+    90,
+    80,
+    70,
+    60,
+    50
+  ],
+  "active_vsl_indices": [
+    [
+      "FW_W",
+      0
+    ],
+    [
+      "FW_W",
+      1
+    ],
+    [
+      "FW_E",
+      0
+    ],
+    [
+      "FW_E",
+      1
+    ]
+  ]
+}

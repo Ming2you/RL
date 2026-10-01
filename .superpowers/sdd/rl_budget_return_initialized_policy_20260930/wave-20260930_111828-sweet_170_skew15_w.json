@@ -1,0 +1,16 @@
+{
+  "scenario": "sweet_170_skew15_w",
+  "launcher_pid": 35908,
+  "created_filetime": 134352083090371402,
+  "started": "2026-09-30T11:18:29.0371402+09:00",
+  "command": [
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+    "-B",
+    "-u",
+    "work/sdmpc_rl_return_wave_20260930/worker.py",
+    "--scenario",
+    "sweet_170_skew15_w"
+  ],
+  "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_skew15_w.stdout.log",
+  "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\wave-20260930_111828-sweet_170_skew15_w.stderr.log"
+}

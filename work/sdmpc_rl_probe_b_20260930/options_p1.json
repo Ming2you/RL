@@ -1,0 +1,8 @@
+[
+  {"name": "np_tight_early", "np_shift": -5.0, "window": 14, "after": "hold", "at": 1},
+  {"name": "np_relax_early", "np_shift": 5.0, "window": 14, "after": "hold", "at": 1},
+  {"name": "tiny_nuf_down", "nuf_shift": -2.0, "window": 1, "after": "hold", "at": 16},
+  {"name": "nuf_bind", "nuf_delta": 500.0, "window": 10, "after": "return", "at": 16},
+  {"name": "np_bind", "np_delta": 50.0, "window": 10, "after": "return", "at": 16},
+  {"name": "np_bind", "np_delta": 100.0, "window": 20, "after": "return", "at": 16}
+]

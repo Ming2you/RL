@@ -1,0 +1,1556 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\collect.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\collect.py"
+new file mode 100644
+index 0000000..ce394df
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\collect.py"
+@@ -0,0 +1,179 @@
++"""One checkpointed, training-only carry or local-budget trajectory."""
++import argparse
++import os
++from pathlib import Path
++import sys
++import time
++import uuid
++from local_runtime import (np, torch, REPO, FORMAT, BEHAVIORS, MASKS, SCENARIOS,
++    DEFAULT_SNAPSHOT, boot, read, save, plain, digest, file_hash, exclusive_run,
++    identity, verify_identity, contract, verify_environment, seeds, check_stop,
++    Stopped, checkpoint_save, observation_schema)
++from budget_env import BudgetEnv
++from exploration import LocalBudgetPolicy
++from validate import validate_rows, summarize, replay_policy
++
++
++def check_output(output, resume):
++    if (output / "completion.json").exists():
++        raise ValueError("Already completed; refusing duplicate collection")
++    if resume:
++        if not (output / "checkpoint.pt").exists():
++            raise ValueError("Resume requires a durable interval checkpoint")
++    else:
++        allowed = {"runner.lock", "stdout.log", "stderr.log", "launcher.json"}
++        if output.exists() and any(p.name not in allowed for p in output.iterdir()):
++            raise ValueError("Nonempty output; resume the durable checkpoint")
++
++
++def validate_checkpoint(ck, settings):
++    if ck["format"] != FORMAT or ck["settings"] != settings:
++        raise ValueError("Checkpoint identity changed")
++    if ck["schema"] != settings["contract"]["observation_schema"]:
++        raise ValueError("Checkpoint schema changed")
++    trace, experience, env = ck["trace"], ck["transitions"], ck["environment"]
++    n = len(trace)
++    if env["k"] != n+5 or env["profile_hash"] != settings["profile_sha256"]:
++        raise ValueError("Checkpoint boundary differs")
++    total = validate_rows(trace, experience, settings, ck["schema"], settings["capacity"], complete=False)
++    if abs(env["sim"].total_ttt-total) > 1e-8 or env["sim"].state.time_sec != (5+n)*180:
++        raise ValueError("Checkpoint simulator/trace boundary differs")
++    policy = replay_policy(trace, settings)
++    if digest(policy.state_dict()) != digest(ck["policy"]):
++        raise ValueError("Saved exploration state differs from actual trace")
++    if n:
++        np.testing.assert_array_equal(ck["observation"], experience[-1][3])
++    return policy
++
++
++def run(args):
++    output = args.output.resolve()
++    check_stop(output, args.abort_file)
++    check_output(output, args.resume)
++    with exclusive_run(output):
++        check_stop(output, args.abort_file)
++        check_output(output, args.resume)
++        started = time.perf_counter()
++        save(output / "process.json", dict(pid=os.getpid(), started=time.time(), command=sys.argv))
++        save(output / "status.json", dict(status="initializing", pid=os.getpid()))
++        env = None
++        try:
++            source = identity()
++            expected = contract()
++            rt = boot(DEFAULT_SNAPSHOT, args.cpu_mask)
++            torch.set_num_threads(1)
++            if torch.get_num_interop_threads() != 1:
++                torch.set_num_interop_threads(1)
++            demand_seed, exploration_seed = seeds(args.scenario)
++            env = BudgetEnv(rt, scenario=args.scenario, training_seed=demand_seed, guard_mode="physical")
++            verify_environment(env, rt, expected)
++            capacity = float(rt["cfg"].network.total_ramp_capacity)
++            previous = read(output / "settings.json") if args.resume else None
++            settings = dict(format=FORMAT, run_id=previous["run_id"] if previous else uuid.uuid4().hex,
++                scenario=args.scenario, behavior=args.behavior, training_seed=demand_seed,
++                exploration_seed=exploration_seed, profile_sha256=env.profile_hash,
++                evaluation=False, model_sha256=None, identity=source, contract=expected,
++                capacity=capacity, cpu_mask=args.cpu_mask,
++                warmup_ttt=previous["warmup_ttt"] if previous else None)
++            check_stop(output, args.abort_file)
++            if args.resume:
++                if previous != settings:
++                    raise ValueError("Resume settings changed")
++                ck = torch.load(output / "checkpoint.pt", map_location="cpu", weights_only=False)
++                policy = validate_checkpoint(ck, settings)
++                obs = env.restore(ck["environment"])
++                np.testing.assert_array_equal(obs, ck["observation"])
++                trace, experience = ck["trace"], ck["transitions"]
++                elapsed_before = ck["elapsed_wall_seconds"]
++            else:
++                obs = env.reset()
++                settings["warmup_ttt"] = env.warmup_ttt
++                policy = LocalBudgetPolicy(args.behavior, exploration_seed, capacity)
++                trace, experience, elapsed_before = [], [], 0.
++            verify_environment(env, rt, expected, schema=True)
++            schema = observation_schema(env)
++            check_stop(output, args.abort_file)
++            save(output / "settings.json", settings)
++            save(output / "observation_schema.json", schema)
++
++            def checkpoint():
++                checkpoint_save(torch, output / "checkpoint.pt", dict(format=FORMAT,
++                    settings=settings, schema=schema, environment=env.checkpoint(),
++                    observation=obs.copy(), trace=trace, transitions=experience,
++                    policy=policy.state_dict(), elapsed_wall_seconds=elapsed_before+time.perf_counter()-started))
++
++            checkpoint()
++            steps_this_session = 0
++            while env.k < 80:
++                check_stop(output, args.abort_file)
++                verify_identity(source)
++                tick, cpu = time.perf_counter(), time.process_time()
++                action, _ = policy.choose(env.controller.action_anchor.copy())
++                actor_wall, actor_cpu = time.perf_counter()-tick, time.process_time()-cpu
++                nxt, reward, terminal, row = env.step(action, "center" if args.behavior == "carry" else "rl",
++                                                    actor_wall, actor_cpu_seconds=actor_cpu)
++                exploration = policy.commit(row)
++                row.update(exploration_audit=exploration, reward=reward, scenario=args.scenario,
++                           behavior=args.behavior, profile_sha256=env.profile_hash,
++                           policy_q=None, learning=[], learning_wall_seconds=0.)
++                experience.append((obs.copy(), action.copy(), reward, nxt.copy(), bool(terminal)))
++                trace.append(plain(row))
++                obs = nxt
++                checkpoint()
++                steps_this_session += 1
++                save(output / "status.json", dict(status="running", pid=os.getpid(),
++                    control_steps=len(trace), simulation_seconds=env.sim.state.time_sec,
++                    ttt=env.sim.total_ttt))
++                print(args.behavior, args.scenario, f"{len(trace)}/75", f"TTT={env.sim.total_ttt:.6f}", flush=True)
++                if args.max_new_steps is not None and steps_this_session >= args.max_new_steps and not terminal:
++                    save(output / "status.json", dict(status="checkpointed", control_steps=len(trace), pid=os.getpid()))
++                    return "checkpointed"
++            check_stop(output, args.abort_file)
++            verify_identity(source)
++            validate_rows(trace, experience, settings, schema, capacity)
++            replay_policy(trace, settings)
++            elapsed = elapsed_before+time.perf_counter()-started
++            summary = summarize(trace, settings, elapsed)
++            save(output / "trace.json", trace)
++            save(output / "summary.json", summary)
++            checkpoint_save(torch, output / "experience.pt", dict(format=FORMAT, settings=settings, transitions=experience))
++            result = dict(format=FORMAT, status="completed", settings=settings,
++                outputs_sha256={name: file_hash(output / name) for name in
++                    ("trace.json", "summary.json", "experience.pt", "observation_schema.json")})
++            verify_identity(source)
++            if read(output / "settings.json") != settings:
++                raise ValueError("Persisted settings changed during collection")
++            check_stop(output, args.abort_file)
++            save(output / "status.json", dict(status="completed", control_steps=75, pid=os.getpid()))
++            save(output / "completion.json", result)
++            return "completed"
++        except Stopped:
++            save(output / "status.json", dict(status="stopped", pid=os.getpid()))
++            return "stopped"
++        except Exception as exc:
++            save(output / "status.json", dict(status="failed", pid=os.getpid(), error=f"{type(exc).__name__}: {exc}"))
++            raise
++        finally:
++            if env is not None:
++                env.close()
++
++
++def main(argv=None):
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument("--output", type=Path, required=True)
++    p.add_argument("--scenario", choices=SCENARIOS, required=True)
++    p.add_argument("--behavior", choices=BEHAVIORS, required=True)
++    p.add_argument("--cpu-mask", type=int, required=True)
++    p.add_argument("--resume", action="store_true")
++    p.add_argument("--abort-file", type=Path)
++    p.add_argument("--max-new-steps", type=int)
++    args = p.parse_args(argv)
++    if args.cpu_mask != MASKS[SCENARIOS.index(args.scenario)]:
++        p.error("Use the pinned scenario CPU mask")
++    if args.max_new_steps is not None and not 1 <= args.max_new_steps <= 75:
++        p.error("max-new-steps must be 1..75; it checkpoints, never declares completion")
++    return 2 if run(args) == "stopped" else 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\exploration.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\exploration.py"
+new file mode 100644
+index 0000000..bb6a411
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\exploration.py"
+@@ -0,0 +1,254 @@
++"""Pure carry/local exploration; the physical controller remains the executor."""
++
++import copy
++import json
++from collections.abc import Mapping
++from numbers import Integral, Real
++
++import numpy as np
++
++
++_FORMAT = "local-budget-policy-v1"
++_FORMULA = {
++    "mean_reversion": 0.8,
++    "noise_scales": [10.0, 100.0],
++    "offset_limits": [50.0, 500.0],
++    "action_scales": [50.0, 1000.0],
++    "action_limits": [-1.0, 1.0],
++    "action_dtype": "float32",
++    "budget_dtype": "float64",
++    "projection": "NUF:[0,capacity];NP:signed",
++    "rng": "numpy.PCG64.normal(size=2)",
++    "rebase": ["reference_fallback", "pfo_recovery"],
++}
++
++
++def _pair(value, name):
++    try:
++        value = np.asarray(value)
++        if value.shape != (2,) or value.dtype.kind not in "iuf":
++            raise ValueError
++        value = value.astype(np.float64, copy=True)
++        if not np.isfinite(value).all():
++            raise ValueError
++    except (TypeError, ValueError, OverflowError) as exc:
++        raise ValueError(f"{name} must be a finite numeric length-2 array") from exc
++    return value
++
++
++def _json(value):
++    try:
++        return json.dumps(value, sort_keys=True, allow_nan=False)
++    except (TypeError, ValueError, OverflowError) as exc:
++        raise ValueError("State must contain only finite JSON values") from exc
++
++
++class LocalBudgetPolicy:
++    """One outstanding choice at a time; count records completed commits."""
++
++    def __init__(self, behavior, seed, capacity):
++        if not isinstance(behavior, str) or behavior not in ("carry", "local"):
++            raise ValueError("behavior must be carry or local")
++        if isinstance(seed, (bool, np.bool_)) or not isinstance(seed, Integral) or seed < 0:
++            raise ValueError("seed must be a nonnegative integer")
++        if (isinstance(capacity, (bool, np.bool_)) or not isinstance(capacity, Real)
++                or not np.isfinite(capacity) or capacity <= 0):
++            raise ValueError("capacity must be positive and finite")
++        self.behavior, self.seed, self.capacity = behavior, int(seed), float(capacity)
++        self._rng = np.random.default_rng(self.seed)
++        self._base = None
++        self._realized_offset = np.zeros(2, dtype=np.float64)
++        self._last_executed = None
++        self._pending = None
++        self._count = 0
++
++    def _project(self, budget):
++        projected = budget.copy()
++        projected[1] = np.clip(projected[1], 0.0, self.capacity)
++        return projected
++
++    def _choice(self, anchor, base, noise):
++        scales = np.array([50.0, 1000.0])
++        with np.errstate(over="raise", invalid="raise"):
++            if self.behavior == "local":
++                offset_raw = 0.8 * self._realized_offset + [10.0, 100.0] * noise
++                offset = np.clip(offset_raw, [-50.0, -500.0], [50.0, 500.0])
++                desired_raw = base + offset
++                desired = self._project(desired_raw)
++                raw_action = (desired - anchor) / scales
++                action = np.clip(raw_action, -1.0, 1.0).astype(np.float32)
++            else:
++                desired_raw = anchor.copy()
++                desired = self._project(anchor)
++                offset = desired - base
++                offset_raw = offset.copy()
++                raw_action = np.zeros(2)
++                action = np.zeros(2, dtype=np.float32)
++            # Match residual_budget: promote the final float32 action before scaling.
++            raw_request = anchor + scales * action.astype(np.float64)
++            request = self._project(raw_request)
++            requested_offset = request - base
++        return {
++            "behavior": self.behavior,
++            "step": self._count,
++            "committed": False,
++            "action_anchor": anchor.tolist(),
++            "base_before": base.tolist(),
++            "base_after": None,
++            "realized_offset_before": self._realized_offset.tolist(),
++            "realized_offset_after": None,
++            "noise": noise.tolist(),
++            "desired_offset": offset.tolist(),
++            "desired_budget_raw": desired_raw.tolist(),
++            "desired_budget": desired.tolist(),
++            "raw_action": raw_action.tolist(),
++            "action": action.tolist(),
++            "raw_request": raw_request.tolist(),
++            "projected_request": request.tolist(),
++            "requested_offset": requested_offset.tolist(),
++            "offset_limited": (offset != offset_raw).tolist(),
++            "rate_limited": (np.abs(raw_action) > 1.0).tolist(),
++            "desired_nuf_projected": bool(desired_raw[1] != desired[1]),
++            "request_nuf_projected": bool(raw_request[1] != request[1]),
++            "executed_budget": None,
++            "executed_offset": None,
++            "rebased": False,
++            "rebase_reasons": [],
++        }
++
++    def choose(self, anchor):
++        if self._pending is not None:
++            raise RuntimeError("commit the pending choice before choosing again")
++        anchor = _pair(anchor, "anchor")
++        base = anchor.copy() if self._base is None else self._base.copy()
++        rng = copy.deepcopy(self._rng)
++        noise = rng.normal(size=2) if self.behavior == "local" else np.zeros(2)
++        try:
++            audit = self._choice(anchor, base, noise)
++            _json(audit)
++        except FloatingPointError as exc:
++            raise ValueError("Choice arithmetic must remain finite") from exc
++        self._base, self._rng, self._pending = base, rng, audit
++        return np.asarray(audit["action"], dtype=np.float32), copy.deepcopy(audit)
++
++    def commit(self, row):
++        if self._pending is None:
++            raise RuntimeError("choose an action before committing")
++        if not isinstance(row, Mapping):
++            raise ValueError("row must be a mapping")
++        audit = copy.deepcopy(self._pending)
++        try:
++            for key, expected in (("action_anchor", audit["action_anchor"]),
++                                  ("action_requested", audit["action"])):
++                if not np.array_equal(_pair(row[key], key), expected):
++                    raise ValueError(f"{key} does not match the pending choice")
++            request = _pair(row["B_requested"][0], "B_requested[0]")
++            if not np.array_equal(request, audit["projected_request"]):
++                raise ValueError("B_requested[0] does not match the projected request")
++            executed = _pair(row["B_executed"], "B_executed")
++            selection, reference = row["selection_source"], row["reference_source"]
++            recovery = row["reference_recovery"]
++            if (not isinstance(selection, str)
++                    or selection not in ("lower_solution", "reference_fallback")):
++                raise ValueError("Invalid selection_source")
++            if (not isinstance(reference, str)
++                    or reference not in ("previous", "pfo_initial", "pfo_recovery")):
++                raise ValueError("Invalid reference_source")
++            if (not isinstance(recovery, (bool, np.bool_))
++                    or bool(recovery) != (reference == "pfo_recovery")):
++                raise ValueError("reference_recovery must agree with reference_source")
++            if not isinstance(row["guard_mode"], str) or row["guard_mode"] != "physical":
++                raise ValueError("guard_mode must be physical")
++        except (KeyError, IndexError, TypeError) as exc:
++            raise ValueError("Incomplete or malformed execution row") from exc
++        reasons = []
++        if selection == "reference_fallback":
++            reasons.append("reference_fallback")
++        if reference == "pfo_recovery":
++            reasons.append("pfo_recovery")
++        try:
++            with np.errstate(over="raise", invalid="raise"):
++                executed_offset = executed - self._base
++            base = executed.copy() if reasons else self._base.copy()
++            realized = np.zeros(2) if reasons else executed_offset.copy()
++        except FloatingPointError as exc:
++            raise ValueError("Executed offset must remain finite") from exc
++        audit.update(
++            committed=True, base_after=base.tolist(), realized_offset_after=realized.tolist(),
++            executed_budget=executed.tolist(), executed_offset=executed_offset.tolist(),
++            rebased=bool(reasons), rebase_reasons=reasons, selection_source=selection,
++            reference_source=reference, reference_recovery=bool(recovery), guard_mode="physical",
++        )
++        self._base, self._realized_offset, self._last_executed = base, realized, executed
++        self._pending = None
++        self._count += 1
++        return audit
++
++    def state_dict(self):
++        return copy.deepcopy({
++            "format": _FORMAT,
++            "spec": {"behavior": self.behavior, "seed": self.seed,
++                     "capacity": self.capacity, "formula": _FORMULA},
++            "base": None if self._base is None else self._base.tolist(),
++            "realized_offset": self._realized_offset.tolist(),
++            "last_executed": None if self._last_executed is None else self._last_executed.tolist(),
++            "pending": self._pending,
++            "rng": self._rng.bit_generator.state,
++            "count": self._count,
++        })
++
++    def load_state_dict(self, state):
++        """Validate in isolation, including seeded RNG replay, before replacing state."""
++        state = json.loads(_json(state))
++        current = self.state_dict()
++        if not isinstance(state, dict) or state.keys() != current.keys():
++            raise ValueError("Invalid checkpoint fields")
++        if state["format"] != _FORMAT or _json(state["spec"]) != _json(current["spec"]):
++            raise ValueError("Checkpoint format/spec does not match this policy")
++        count, pending = state["count"], state["pending"]
++        if type(count) is not int or count < 0:
++            raise ValueError("count must be a nonnegative integer")
++        candidate = LocalBudgetPolicy(self.behavior, self.seed, self.capacity)
++        candidate._count = count
++        candidate._realized_offset = _pair(state["realized_offset"], "realized_offset")
++        if state["base"] is None:
++            if count != 0 or pending is not None or state["last_executed"] is not None:
++                raise ValueError("Uninitialized state cannot contain execution or a choice")
++        else:
++            candidate._base = _pair(state["base"], "base")
++            if count == 0 and pending is None:
++                raise ValueError("Initial base requires a pending first choice")
++        if count == 0:
++            if state["last_executed"] is not None or np.any(candidate._realized_offset != 0):
++                raise ValueError("Initial realized offset must be zero with no execution")
++        else:
++            executed = _pair(state["last_executed"], "last_executed")
++            try:
++                with np.errstate(over="raise", invalid="raise"):
++                    realized = executed - candidate._base
++            except FloatingPointError as exc:
++                raise ValueError("Checkpoint offset must remain finite") from exc
++            if not np.array_equal(realized, candidate._realized_offset):
++                raise ValueError("Realized offset does not match last execution and base")
++            candidate._last_executed = executed
++        # Collection checkpoints are short (75 commits); replay also binds RNG to count/seed.
++        if self.behavior == "local":
++            for _ in range(count):
++                candidate._rng.normal(size=2)
++        if pending is not None:
++            if not isinstance(pending, dict) or "action_anchor" not in pending:
++                raise ValueError("Invalid pending choice")
++            anchor = _pair(pending["action_anchor"], "pending action_anchor")
++            if count == 0 and not np.array_equal(anchor, candidate._base):
++                raise ValueError("Initial base must equal the actual first anchor")
++            _, expected = candidate.choose(anchor)
++            if _json(pending) != _json(expected):
++                raise ValueError("Pending choice does not match checkpoint state/formula")
++        if _json(state["rng"]) != _json(candidate._rng.bit_generator.state):
++            raise ValueError("RNG state does not match seed/count/pending choice")
++        self._base = candidate._base
++        self._realized_offset = candidate._realized_offset
++        self._last_executed = candidate._last_executed
++        self._pending = candidate._pending
++        self._rng = candidate._rng
++        self._count = candidate._count
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\local_runtime.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\local_runtime.py"
+new file mode 100644
+index 0000000..ad8f8ae
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\local_runtime.py"
+@@ -0,0 +1,108 @@
++"""Versioned collection helpers; frozen physical runtime stays read-only."""
++import importlib.util
++import json
++import os
++from pathlib import Path
++import sys
++
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++OLD = REPO / "work/sdmpc_rl_multi_20260929"
++GOAL = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++GATE = GOAL / "value_audit_v1/projection/completion.json"
++GATE_HASH = "b6fabf1ccaa095fed6b5bcb33dea88cf7f39de4a419ed41b2459a940db6857d3"
++for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
++    os.environ[key] = "1"
++sys.dont_write_bytecode = True
++sys.path[:0] = [str(REPO / ".deps-budget"), str(OLD)]
++from budget_runtime import boot, DEFAULT_SNAPSHOT, read, plain, digest, save as atomic_save
++from run_budget import exclusive_run, file_hash, runtime_versions, verify_pins, checkpoint_save, observation_schema
++import numpy as np
++import torch
++from td3 import SCENARIOS
++
++BEHAVIORS = ("carry", "local")
++MASKS = (1, 4, 16, 64, 256)
++FORMAT = "sdmpc-local-training-v1"
++
++
++def save(path, value):
++    json.dumps(plain(value), allow_nan=False)
++    atomic_save(path, value)
++
++
++class Stopped(RuntimeError):
++    pass
++
++
++def stop_paths(output, abort=None):
++    output = Path(output)
++    paths = {p / "STOP" for p in (REPO, GOAL, output, output.parent, output.parent.parent)}
++    if abort is not None:
++        paths.add(Path(abort))
++    return paths
++
++
++def check_stop(output, abort=None):
++    if any(p.exists() for p in stop_paths(output, abort)):
++        raise Stopped("STOP or current coordinator abort requested")
++
++
++def contract():
++    if file_hash(GATE) != GATE_HASH:
++        raise ValueError("Authenticated physical/schema contract gate changed")
++    gate = read(GATE)
++    if gate["status"] != "completed":
++        raise ValueError("Gate not complete")
++    return gate["settings"]["contract"]
++
++
++def identity():
++    expected = contract()
++    for name, sha in read(GATE)["settings"]["source_sha256"].items():
++        if file_hash(REPO / name) != sha:
++            raise ValueError("Admitted validator source changed")
++    verify_pins(DEFAULT_SNAPSHOT, expected["source_pins"])
++    versions = runtime_versions()
++    if versions != expected["runtime_versions"]:
++        raise ValueError("Runtime version drift")
++    extras = [REPO / "work/sdmpc_rl_value_audit_20260930/projection_audit.py",
++              REPO / "work/sdmpc_rl_recovery_20260929/common.py"]
++    paths = [p for p in HERE.glob("*.py") if not p.name.startswith("test_")] + extras
++    return dict(physical=expected["source_pins"], runtime=versions,
++                gate_sha256=GATE_HASH, contract_sha256=digest(expected),
++                local_sources={str(p.relative_to(REPO)): file_hash(p) for p in sorted(paths)})
++
++
++def verify_identity(expected):
++    if identity() != expected:
++        raise ValueError("Collection source/runtime/contract changed; preserve this version")
++
++
++def seeds(scenario):
++    index = SCENARIOS.index(scenario)
++    return 6801 + index, 6901 + index
++
++
++def verify_environment(env, rt, expected, schema=False):
++    physical = expected["environment_contract"]
++    if (digest(rt["rc"].to_plain_dict(rt["cfg"])) != physical["config_sha256"] or
++            digest(rt["rc"].to_plain_dict(rt["options"])) != physical["options_sha256"]):
++        raise ValueError("Physical configuration/options differ")
++    actual = {k: v for k, v in env.contract().items()
++              if k not in ("cfg", "options", "observation", "source_snapshot")}
++    if actual != physical["coordinator"]:
++        raise ValueError("Coordinator/reward/guard changed")
++    canonical = next(r for r in physical["scenarios"] if r["scenario"] == env.protocol["scenario"])
++    if env.profile_hash == canonical["profile_sha256"]:
++        raise ValueError("Training profile equals canonical evaluation profile")
++    if schema and observation_schema(env) != expected["observation_schema"]:
++        raise ValueError("Observation schema drift")
++
++
++def sequence_validator():
++    path = REPO / "work/sdmpc_rl_value_audit_20260930/projection_audit.py"
++    spec = importlib.util.spec_from_file_location("local_sequence_validator", path)
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module.validate_sequence
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\run_wave.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\run_wave.py"
+new file mode 100644
+index 0000000..0b8b75b
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\run_wave.py"
+@@ -0,0 +1,161 @@
++"""Two finite five-worker training waves; no actor training or evaluation."""
++import argparse
++from contextlib import ExitStack
++import os
++from pathlib import Path
++import subprocess
++import sys
++import time
++import uuid
++from local_runtime import (HERE, REPO, GOAL, SCENARIOS, BEHAVIORS, MASKS, FORMAT,
++    identity, verify_identity, seeds, read, save, file_hash, exclusive_run,
++    check_stop, Stopped)
++from validate import load_completed, compare_pairs
++
++
++def jobs_for(output):
++    return [dict(key=f"{behavior}/{scenario}", behavior=behavior, scenario=scenario,
++                 training_seed=seeds(scenario)[0], exploration_seed=seeds(scenario)[1], cpu_mask=MASKS[i])
++            for behavior in BEHAVIORS for i, scenario in enumerate(SCENARIOS)]
++
++
++def command_for(output, job, abort):
++    folder = output / job["key"]
++    command = [sys.executable, "-B", "-u", str(HERE / "collect.py"), "--output", str(folder),
++               "--scenario", job["scenario"], "--behavior", job["behavior"],
++               "--cpu-mask", str(job["cpu_mask"]), "--abort-file", str(abort)]
++    if (folder / "checkpoint.pt").exists():
++        command.append("--resume")
++    return command
++
++
++def validate_job(output, job, expected):
++    result, settings, _ = load_completed(output / job["key"], expected)
++    for key in ("behavior", "scenario", "training_seed", "exploration_seed", "cpu_mask"):
++        if settings[key] != job[key]:
++            raise ValueError("Child differs from wave: " + key)
++    return result
++
++
++def check_all_stops(output, jobs):
++    check_stop(output)
++    for job in jobs:
++        check_stop(output / job["key"])
++
++
++def run_stage(output, jobs, expected, abort, all_jobs):
++    active = {}
++    try:
++        for job in jobs:
++            check_all_stops(output, all_jobs)
++            verify_identity(expected)
++            folder = output / job["key"]
++            if (folder / "completion.json").exists():
++                validate_job(output, job, expected)
++                continue
++            command = command_for(output, job, abort)
++            out = (folder / "stdout.log").open("a", encoding="utf-8")
++            err = (folder / "stderr.log").open("a", encoding="utf-8")
++            env = os.environ.copy()
++            env.update(PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
++                       OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
++            try:
++                child = subprocess.Popen(command, cwd=REPO, env=env, stdout=out, stderr=err,
++                                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
++            except BaseException:
++                out.close()
++                err.close()
++                raise
++            active[job["key"]] = child, out, err, job
++            save(folder / "launcher.json", dict(pid=child.pid, command=command, started=time.time(),
++                                                attempt=str(abort.parent)))
++        while active:
++            check_all_stops(output, all_jobs)
++            for key, (child, out, err, job) in list(active.items()):
++                code = child.poll()
++                if code is None:
++                    continue
++                out.close()
++                err.close()
++                del active[key]
++                if code != 0:
++                    raise RuntimeError(f"Child failed/stopped: {key}, exit={code}")
++                validate_job(output, job, expected)
++                print("COLLECTION_COMPLETED", key, flush=True)
++            save(output / "status.json", dict(status="running", behavior=jobs[0]["behavior"],
++                                              children={k: v[0].pid for k, v in active.items()}))
++            if active:
++                time.sleep(5)
++    finally:
++        if active:
++            # A per-attempt abort is distinct from persistent user STOP markers.
++            save(abort, dict(reason="coordinator_draining", created=time.time()))
++            for child, out, err, _ in active.values():
++                child.wait()
++                out.close()
++                err.close()
++
++
++def run(output, resume=False):
++    output = Path(output).resolve()
++    check_stop(output)
++    if output.exists() and not resume:
++        raise FileExistsError("Use --resume for existing wave/checkpoint")
++    with exclusive_run(output):
++        check_stop(output)
++        if (output / "completion.json").exists():
++            raise ValueError("Wave already completed")
++        jobs = jobs_for(output)
++        check_all_stops(output, jobs)
++        source = identity()
++        plan = dict(format=FORMAT, jobs=jobs, identity=source, maximum_workers=5,
++                    threads_per_worker=1, episodes=10, transitions=750, training_only=True)
++        if (output / "plan.json").exists() and read(output / "plan.json") != plan:
++            raise ValueError("Wave plan/source changed")
++        # Detect orphaned live workers after coordinator loss before dispatching any.
++        with ExitStack() as locks:
++            for job in jobs:
++                locks.enter_context(exclusive_run(output / job["key"]))
++        for job in jobs:
++            if (output / job["key"] / "completion.json").exists():
++                validate_job(output, job, source)
++        save(output / "plan.json", plan)
++        attempt = output / "attempts" / uuid.uuid4().hex
++        abort = attempt / "ABORT.json"
++        process = dict(pid=os.getpid(), command=sys.argv, started=time.time(), attempt=str(attempt))
++        save(attempt / "process.json", process)
++        save(output / "process.json", process)
++        try:
++            for behavior in BEHAVIORS:
++                run_stage(output, [j for j in jobs if j["behavior"] == behavior], source, abort, jobs)
++            check_all_stops(output, jobs)
++            verify_identity(source)
++            comparison = compare_pairs(output, source)
++            save(output / "comparison.json", comparison)
++            check_all_stops(output, jobs)
++            save(output / "status.json", dict(status="completed"))
++            save(output / "completion.json", dict(format=FORMAT, status="completed", plan=plan,
++                comparison_sha256=file_hash(output / "comparison.json"),
++                child_completion_sha256={j["key"]: file_hash(output / j["key"] / "completion.json") for j in jobs},
++                coverage_screen_pass=comparison["coverage_screen_pass"], goal_claim=False))
++            print("LOCAL_TRAINING_WAVE_COMPLETE", comparison["coverage_screen_pass"], flush=True)
++            return "completed"
++        except Stopped:
++            save(output / "status.json", dict(status="stopped"))
++            return "stopped"
++        except BaseException as exc:
++            save(output / "status.json", dict(status="failed", error=f"{type(exc).__name__}: {exc}"))
++            save(attempt / "failure.json", dict(error=f"{type(exc).__name__}: {exc}"))
++            raise
++
++
++def main(argv=None):
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument("--output", type=Path, default=GOAL / "local_budget_v1")
++    p.add_argument("--resume", action="store_true")
++    args = p.parse_args(argv)
++    return 2 if run(args.output, args.resume) == "stopped" else 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\test_collection.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\test_collection.py"
+new file mode 100644
+index 0000000..2f22d30
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\test_collection.py"
+@@ -0,0 +1,270 @@
++"""Synthetic orchestration tests; no physical simulator or historical data loaded."""
++import copy
++import json
++from pathlib import Path
++from types import SimpleNamespace as NS
++import sys
++import pytest
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++import local_runtime as lr
++import collect
++import validate
++import run_wave
++from exploration import LocalBudgetPolicy
++
++SCHEMA = {"names": ["x", "y"]}
++CONTRACT = {"observation_schema": SCHEMA}
++IDENTITY = {"fixture": "immutable"}
++
++
++class FakeEnv:
++    def __init__(self, rt, **kwargs):
++        self.profile_hash = "training-profile"
++        self.observer = NS(names=SCHEMA["names"])
++        self.close_count = 0
++
++    def observe(self):
++        return lr.np.zeros(2, dtype=lr.np.float32) if self.k == 80 else lr.np.array([self.k, .5], dtype=lr.np.float32)
++
++    def reset(self):
++        self.k, self.warmup_ttt = 5, 5.
++        self.sim = NS(total_ttt=5., state=NS(time_sec=900.))
++        self.controller = NS(action_anchor=lr.np.array([-10., 6000.]))
++        return self.observe()
++
++    def step(self, action, mode, actor_wall, actor_cpu_seconds):
++        anchor = self.controller.action_anchor.copy()
++        request = anchor + lr.np.array([50., 1000.])*action
++        request[1] = lr.np.clip(request[1], 0., 6000.)
++        i = self.k-5
++        self.k += 1
++        self.sim.total_ttt += 1.
++        self.sim.state.time_sec += 180.
++        self.controller.action_anchor = request.copy()
++        row = dict(action_anchor=anchor, action_requested=action, B_requested=[request], B_executed=request,
++                   B_raw=request, selection_source="lower_solution", reference_source="pfo_initial" if i == 0 else "previous",
++                   reference_recovery=False, guard_mode="physical", h3_guard_enabled=False,
++                   execution_check=dict(physical_control_valid=True, budget_feasible=True),
++                   lower_candidate_count=1, pfo_calls=int(i == 0),
++                   step=i+5, control_step=i, time_sec=self.sim.state.time_sec, terminated=self.k == 80,
++                   truncated=False, interval_ttt=1., total_ttt=self.sim.total_ttt,
++                   freeway_ttt=self.sim.total_ttt, urban_ttt=0., inventory=100.,
++                   control={k: {"a": 1.} for k in validate.CONTROL_FIELDS})
++        for p in ("forecast", "observation", "pfo", "reference", "lower", "guard"):
++            row[p+"_wall_seconds"] = row[p+"_cpu_seconds"] = .1
++        row.update(actor_wall_seconds=actor_wall, actor_cpu_seconds=actor_cpu_seconds,
++                   decision_wall_seconds=.6+actor_wall, decision_cpu_seconds=.6+actor_cpu_seconds)
++        return self.observe(), -.01, self.k == 80, row
++
++    def checkpoint(self):
++        return dict(k=self.k, profile_hash=self.profile_hash, sim=copy.deepcopy(self.sim),
++                    anchor=self.controller.action_anchor.copy(), warmup_ttt=self.warmup_ttt)
++
++    def restore(self, ck):
++        self.k, self.sim, self.warmup_ttt = ck["k"], copy.deepcopy(ck["sim"]), ck["warmup_ttt"]
++        self.controller = NS(action_anchor=ck["anchor"].copy())
++        return self.observe()
++
++    def close(self):
++        self.close_count += 1
++
++
++@pytest.fixture
++def synthetic(monkeypatch):
++    lr.torch.set_num_threads(1)
++    for module in (collect, validate, run_wave):
++        monkeypatch.setattr(module, "verify_identity", lambda x: None)
++    monkeypatch.setattr(collect, "identity", lambda: copy.deepcopy(IDENTITY))
++    monkeypatch.setattr(run_wave, "identity", lambda: copy.deepcopy(IDENTITY))
++    monkeypatch.setattr(collect, "contract", lambda: copy.deepcopy(CONTRACT))
++    monkeypatch.setattr(validate, "contract", lambda: copy.deepcopy(CONTRACT))
++    monkeypatch.setattr(collect, "boot", lambda *x: dict(cfg=NS(network=NS(total_ramp_capacity=6000.))))
++    monkeypatch.setattr(collect, "verify_environment", lambda *a, **k: None)
++    monkeypatch.setattr(collect, "BudgetEnv", FakeEnv)
++    monkeypatch.setattr(collect, "observation_schema", lambda env: copy.deepcopy(SCHEMA))
++    monkeypatch.setattr(validate, "sequence_validator", lambda: lambda *x: None)
++    monkeypatch.setattr(validate, "queue_exposure", lambda x: None)
++    return monkeypatch
++
++
++def args(folder, behavior="local", resume=False, limit=None, scenario=None):
++    scenario = scenario or lr.SCENARIOS[0]
++    return NS(output=folder, behavior=behavior, scenario=scenario,
++              cpu_mask=lr.MASKS[lr.SCENARIOS.index(scenario)], resume=resume, abort_file=None,
++              max_new_steps=limit)
++
++
++@pytest.mark.parametrize("behavior", lr.BEHAVIORS)
++def test_actual_collector_checkpoint_resume_and_completed_loader(tmp_path, synthetic, behavior):
++    folder = tmp_path / behavior
++    assert collect.run(args(folder, behavior, limit=2)) == "checkpointed"
++    assert not (folder / "completion.json").exists()
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    assert len(ck["transitions"]) == 2
++    assert collect.run(args(folder, behavior, resume=True)) == "completed"
++    result, settings, summary = validate.load_completed(folder, IDENTITY)
++    assert summary["ttt"] == 80. and summary["control_steps"] == 75
++    assert settings["evaluation"] is False and settings["model_sha256"] is None
++    assert summary["pfo_calls"] == 1 and summary["lower_candidate_solves"] == 75
++    assert summary["physical_control_unique"] == 1
++    with pytest.raises(ValueError, match="Already completed"):
++        collect.run(args(folder, behavior, resume=True))
++    uninterrupted = tmp_path / (behavior+"_full")
++    collect.run(args(uninterrupted, behavior))
++    saved = lr.read(folder / "trace.json")
++    direct = lr.read(uninterrupted / "trace.json")
++    assert [r["exploration_audit"] for r in saved] == [r["exploration_audit"] for r in direct]
++
++
++def test_resume_rejects_behavior_source_and_state_changes(tmp_path, synthetic):
++    collect.run(args(tmp_path / "run", limit=1))
++    with pytest.raises(ValueError, match="settings"):
++        collect.run(args(tmp_path / "run", behavior="carry", resume=True))
++    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    ck["environment"]["sim"].total_ttt += 1
++    with pytest.raises(ValueError, match="boundary"):
++        collect.validate_checkpoint(ck, ck["settings"])
++
++
++def test_stop_before_boot_and_checkpoint_boundary(tmp_path, synthetic):
++    folder = tmp_path / "stopped"
++    folder.mkdir()
++    (folder / "STOP").touch()
++    with pytest.raises(lr.Stopped):
++        collect.run(args(folder))
++    assert set(p.name for p in folder.iterdir()) == {"STOP"}
++    folder = tmp_path / "mid"
++    original = FakeEnv.step
++    def stop_after_step(self, *a, **k):
++        result = original(self, *a, **k)
++        (folder / "STOP").touch()
++        return result
++    synthetic.setattr(FakeEnv, "step", stop_after_step)
++    assert collect.run(args(folder)) == "stopped"
++    ck = lr.torch.load(folder / "checkpoint.pt", weights_only=False)
++    assert len(ck["trace"]) == 1
++    assert not (folder / "completion.json").exists()
++
++
++def test_aborted_attempt_and_source_drift_never_complete(tmp_path, synthetic):
++    folder = tmp_path / "run"
++    def reject(_):
++        raise ValueError("source drift")
++    synthetic.setattr(collect, "verify_identity", reject)
++    with pytest.raises(ValueError, match="source drift"):
++        collect.run(args(folder))
++    assert lr.read(folder / "status.json")["status"] == "failed"
++    assert not (folder / "completion.json").exists()
++    assert (folder / "checkpoint.pt").exists()
++
++
++@pytest.mark.parametrize("field,value", [("terminated", True), ("lower_candidate_count", 2),
++    ("h3_guard_enabled", True), ("pfo_calls", 2), ("reward", -4.), ("total_ttt", 6.1),
++    ("profile_sha256", "wrong"), ("policy_q", [1., 2.]), ("decision_wall_seconds", 100.)])
++def test_trace_contract_rejection(tmp_path, synthetic, field, value):
++    collect.run(args(tmp_path / "run", limit=1))
++    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    ck["trace"][0][field] = value
++    with pytest.raises((ValueError, AssertionError)):
++        validate.validate_rows(ck["trace"], ck["transitions"], ck["settings"], SCHEMA, 6000., False)
++
++
++def test_summary_excludes_nonphysical_budget_and_metadata_from_diversity(tmp_path, synthetic):
++    collect.run(args(tmp_path / "run", limit=2))
++    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    for i, row in enumerate(ck["trace"]):
++        row["control"].update(N_P_star=i, diagnostics={"iteration": i}, infeasibility={"gap": i})
++    assert validate.summarize(ck["trace"], ck["settings"], 1.)["physical_control_unique"] == 1
++
++
++def test_exact_exploration_replay_mismatch(tmp_path, synthetic):
++    collect.run(args(tmp_path / "run", limit=1))
++    ck = lr.torch.load(tmp_path / "run/checkpoint.pt", weights_only=False)
++    ck["trace"][0]["exploration_audit"]["fabricated"] = True
++    with pytest.raises(ValueError, match="audit"):
++        validate.replay_policy(ck["trace"], ck["settings"])
++
++
++def test_manifest_detects_changed_output(tmp_path, synthetic):
++    folder = tmp_path / "run"
++    collect.run(args(folder))
++    lr.save(folder / "summary.json", {"tampered": True})
++    with pytest.raises(ValueError, match="Output changed"):
++        validate.load_completed(folder, IDENTITY)
++
++
++def test_paired_comparison_and_admission_screen(tmp_path, synthetic):
++    for behavior in lr.BEHAVIORS:
++        for scenario in lr.SCENARIOS:
++            collect.run(args(tmp_path / behavior / scenario, behavior, scenario=scenario))
++    comparison = validate.compare_pairs(tmp_path, IDENTITY)
++    assert comparison["coverage_screen_pass"] and not comparison["goal_claim"]
++    assert len(comparison["rows"]) == 5 and comparison["transitions_per_scenario"] == 150
++    assert all(r["training_ttt_delta"] == 0 for r in comparison["rows"])
++
++
++def test_wave_jobs_and_resume_command(tmp_path):
++    jobs = run_wave.jobs_for(tmp_path)
++    assert len(jobs) == 10
++    assert [j["behavior"] for j in jobs] == ["carry"]*5+["local"]*5
++    for i, (a, b) in enumerate(zip(jobs[:5], jobs[5:])):
++        assert a["training_seed"] == b["training_seed"] == 6801+i
++        assert a["exploration_seed"] == b["exploration_seed"] == 6901+i
++        assert a["cpu_mask"] == b["cpu_mask"] == lr.MASKS[i]
++    job = jobs[0]
++    folder = tmp_path / job["key"]
++    folder.mkdir(parents=True)
++    assert "--resume" not in run_wave.command_for(tmp_path, job, tmp_path / "ABORT.json")
++    (folder / "checkpoint.pt").touch()
++    assert "--resume" in run_wave.command_for(tmp_path, job, tmp_path / "ABORT.json")
++
++
++def test_existing_live_lock_prevents_any_dispatch(tmp_path, synthetic):
++    output = tmp_path / "wave"
++    child = output / run_wave.jobs_for(output)[0]["key"]
++    synthetic.setattr(run_wave.subprocess, "Popen", lambda *a, **k: pytest.fail("must not dispatch"))
++    with lr.exclusive_run(child):
++        with pytest.raises(OSError):
++            run_wave.run(output, resume=True)
++
++
++def test_wave_worker_failure_drains_other_children(tmp_path, synthetic):
++    jobs = run_wave.jobs_for(tmp_path)[:2]
++    for job in jobs:
++        (tmp_path / job["key"]).mkdir(parents=True)
++    children = []
++    class Child:
++        def __init__(self):
++            self.pid = len(children)+100
++            self.waited = False
++        def poll(self):
++            return 1 if self.pid == 100 else None
++        def wait(self):
++            self.waited = True
++            return 2
++    def launch(*a, **k):
++        value = Child()
++        children.append(value)
++        return value
++    synthetic.setattr(run_wave.subprocess, "Popen", launch)
++    abort = tmp_path / "attempt/ABORT.json"
++    with pytest.raises(RuntimeError, match="Child failed"):
++        run_wave.run_stage(tmp_path, jobs, IDENTITY, abort, jobs)
++    assert abort.exists() and children[1].waited
++    assert not (tmp_path / "STOP").exists()
++
++
++def test_wave_all_completed_skip_and_plan_changes(tmp_path, synthetic):
++    output = tmp_path / "wave"
++    for j in run_wave.jobs_for(output):
++        folder = output / j["key"]
++        folder.mkdir(parents=True)
++        lr.save(folder / "completion.json", {"done": True})
++    synthetic.setattr(run_wave, "validate_job", lambda *x: {})
++    synthetic.setattr(run_wave, "compare_pairs", lambda *x: {"coverage_screen_pass": False})
++    synthetic.setattr(run_wave.subprocess, "Popen", lambda *a, **k: pytest.fail("duplicate"))
++    assert run_wave.run(output, resume=True) == "completed"
++    assert lr.read(output / "completion.json")["coverage_screen_pass"] is False
++    with pytest.raises(ValueError, match="already completed"):
++        run_wave.run(output, resume=True)
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\test_exploration.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\test_exploration.py"
+new file mode 100644
+index 0000000..fa49132
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\test_exploration.py"
+@@ -0,0 +1,386 @@
++"""Synthetic tests only: no environments, models, or production trajectories."""
++
++import copy
++import json
++
++import numpy as np
++import pytest
++
++from exploration import LocalBudgetPolicy
++
++
++def row_for(action, audit, executed=None, selection="lower_solution", reference="previous"):
++    return {
++        "action_anchor": audit["action_anchor"],
++        "action_requested": action,
++        "B_requested": [audit["projected_request"]],
++        "B_executed": audit["projected_request"] if executed is None else executed,
++        "selection_source": selection,
++        "reference_source": reference,
++        "reference_recovery": reference == "pfo_recovery",
++        "guard_mode": "physical",
++    }
++
++
++def roundtrip(value):
++    return json.loads(json.dumps(value, allow_nan=False))
++
++
++class FixedNoise:
++    def __init__(self, noise):
++        self.noise = np.asarray(noise, dtype=float)
++
++    def normal(self, size):
++        assert size == 2
++        return self.noise.copy()
++
++
++def test_exact_formula_from_actual_anchor_and_final_float32():
++    policy = LocalBudgetPolicy("local", 6901, 6000)
++    rng = np.random.default_rng(6901)
++    anchor = np.array([-123.456, 3456.789])
++    action, audit = policy.choose(anchor)
++    offset = np.clip([10, 100] * rng.normal(size=2), [-50, -500], [50, 500])
++    desired = anchor + offset
++    expected_action = ((desired - anchor) / [50, 1000]).astype(np.float32)
++    request = anchor + [50, 1000] * expected_action.astype(np.float64)
++    np.testing.assert_array_equal(action, expected_action)
++    assert action.dtype == np.float32
++    assert audit["base_before"] == anchor.tolist()
++    assert audit["realized_offset_before"] == [0, 0]
++    np.testing.assert_array_equal(audit["desired_offset"], offset)
++    np.testing.assert_array_equal(audit["desired_budget"], desired)
++    np.testing.assert_array_equal(audit["projected_request"], request)
++    assert audit["desired_budget"] != audit["projected_request"]
++    committed = policy.commit(row_for(action, audit, anchor + [30, -80]))
++    assert committed["realized_offset_after"] == [30, -80]
++    assert committed["committed"] is True
++    next_anchor = anchor + [30, -80]
++    action2, audit2 = policy.choose(next_anchor)
++    offset2 = np.clip(0.8 * np.array([30, -80]) + [10, 100] * rng.normal(size=2),
++                      [-50, -500], [50, 500])
++    np.testing.assert_array_equal(audit2["desired_offset"], offset2)
++    np.testing.assert_array_equal(action2, ((anchor + offset2 - next_anchor) / [50, 1000])
++                                  .astype(np.float32))
++    assert roundtrip(committed) == committed
++
++
++def test_zero_noise_mean_reversion_uses_executed_offset():
++    policy = LocalBudgetPolicy("local", 0, 6000)
++    action, audit = policy.choose([100, 3000])
++    policy.commit(row_for(action, audit, [130, 2800]))
++    policy._rng = FixedNoise([0, 0])
++    action, audit = policy.choose([130, 2800])
++    assert audit["desired_offset"] == [24, -160]
++    assert audit["desired_budget"] == [124, 2840]
++    np.testing.assert_array_equal(action, np.array([-0.12, 0.04], dtype=np.float32))
++
++
++@pytest.mark.parametrize("anchor", [[-20, -50], [-20, 6050], [25, 2400]])
++def test_carry_projects_anchor_with_zero_action_and_no_rng_draws(anchor):
++    policy = LocalBudgetPolicy("carry", 6901, 6000)
++    initial_rng = policy.state_dict()["rng"]
++    expected = [anchor[0], float(np.clip(anchor[1], 0, 6000))]
++    for _ in range(3):
++        action, audit = policy.choose(anchor)
++        np.testing.assert_array_equal(action, np.zeros(2, dtype=np.float32))
++        assert audit["desired_budget"] == expected
++        assert audit["projected_request"] == expected
++        assert audit["rate_limited"] == [False, False]
++        assert policy.state_dict()["rng"] == initial_rng
++        committed = policy.commit(row_for(action, audit, [anchor[0] + 1, expected[1]]))
++        assert committed["realized_offset_after"] == [1, expected[1] - anchor[1]]
++        assert policy.state_dict()["rng"] == initial_rng
++
++
++@pytest.mark.parametrize("anchor,noise", [([-10, 6000], [1, 2]), ([-10, 0], [-1, -2])])
++def test_nuf_boundaries_do_not_accumulate_fictitious_offsets(anchor, noise):
++    policy = LocalBudgetPolicy("local", 6901, 6000)
++    policy._rng = FixedNoise(noise)
++    action, audit = policy.choose(anchor)
++    assert audit["desired_nuf_projected"] is True
++    assert audit["desired_offset"][1] == noise[1] * 100
++    assert action[1] == 0
++    assert audit["projected_request"][1] == anchor[1]
++    assert audit["requested_offset"][1] == 0
++    committed = policy.commit(row_for(action, audit))
++    assert committed["realized_offset_after"][1] == 0
++    policy._rng = FixedNoise([0, 0])
++    _, next_audit = policy.choose(committed["executed_budget"])
++    assert next_audit["desired_offset"][1] == 0
++
++
++@pytest.mark.parametrize("drift,expected", [([1000, 3000], [-1, -1]),
++                                          ([-1000, -3000], [1, 1])])
++def test_rate_limits_and_signed_np(drift, expected):
++    policy = LocalBudgetPolicy("local", 0, 6000)
++    base = np.array([-100, 3000])
++    action, audit = policy.choose(base)
++    anchor = base + drift
++    policy.commit(row_for(action, audit, anchor))
++    policy._rng = FixedNoise([0, 0])
++    action, audit = policy.choose(anchor)
++    np.testing.assert_array_equal(action, np.array(expected, dtype=np.float32))
++    assert audit["rate_limited"] == [True, True]
++    assert audit["offset_limited"] == [True, True]
++    assert audit["desired_budget"][0] < 0
++    assert audit["desired_budget"] != audit["projected_request"]
++    np.testing.assert_array_equal(audit["projected_request"], anchor + [50, 1000] * action)
++
++
++@pytest.mark.parametrize("anchor,noise,expected", [(0, 1, 1), (1, -1, 0)])
++def test_final_float32_rounding_is_projected_again(anchor, noise, expected):
++    policy = LocalBudgetPolicy("local", 0, 1)
++    policy._rng = FixedNoise([0, noise])
++    action, audit = policy.choose([0, anchor])
++    assert audit["raw_request"][1] != expected
++    assert audit["request_nuf_projected"] is True
++    assert audit["projected_request"][1] == expected
++    policy.commit(row_for(action, audit))
++
++
++@pytest.mark.parametrize("behavior", ["carry", "local"])
++@pytest.mark.parametrize("selection,reference,reasons", [
++    ("lower_solution", "previous", []),
++    ("lower_solution", "pfo_initial", []),
++    ("reference_fallback", "pfo_initial", ["reference_fallback"]),
++    ("reference_fallback", "previous", ["reference_fallback"]),
++    ("lower_solution", "pfo_recovery", ["pfo_recovery"]),
++    ("reference_fallback", "pfo_recovery", ["reference_fallback", "pfo_recovery"]),
++])
++def test_only_explicit_physical_flags_rebase_after_execution(behavior, selection, reference, reasons):
++    policy = LocalBudgetPolicy(behavior, 4, 6000)
++    action, audit = policy.choose([-100, 3000])
++    row = row_for(action, audit, [-125, 3300], selection, reference)
++
++    class RelevantFieldsOnly(dict):
++        def __getitem__(self, key):
++            assert key in {"action_anchor", "action_requested", "B_requested", "B_executed",
++                           "selection_source", "reference_source", "reference_recovery", "guard_mode"}
++            return super().__getitem__(key)
++
++    row.update(selected_TTT=float("inf"), reference_TTT=-1e99, interval_ttt=float("nan"),
++               Q=object(), price=object(), h3_guard_would_reject=True)
++    committed = policy.commit(RelevantFieldsOnly(row))
++    assert committed["base_before"] == [-100, 3000]
++    assert committed["executed_offset"] == [-25, 300]
++    assert committed["base_after"] == ([-125, 3300] if reasons else [-100, 3000])
++    assert committed["realized_offset_after"] == ([0, 0] if reasons else [-25, 300])
++    assert committed["rebase_reasons"] == reasons
++    assert committed["rebased"] == bool(reasons)
++    assert policy.state_dict()["count"] == 1
++    assert roundtrip(committed) == committed
++
++
++@pytest.mark.parametrize("behavior", ["carry", "local"])
++def test_lifecycle_and_independent_action_audit_and_state_copies(behavior):
++    policy = LocalBudgetPolicy(behavior, 0, 6000)
++    with pytest.raises(RuntimeError):
++        policy.commit({})
++    action, audit = policy.choose([10, 3000])
++    expected = policy.state_dict()
++    row = row_for(action.copy(), copy.deepcopy(audit))
++    action[:] = 99
++    audit["base_before"][0] = 99
++    state = policy.state_dict()
++    state["base"][0] = 999
++    state["pending"]["action"][0] = 999
++    state["rng"]["state"]["state"] = 999
++    state["spec"]["formula"]["noise_scales"][0] = 999
++    assert policy.state_dict() == expected
++    with pytest.raises(RuntimeError):
++        policy.choose([10, 3000])
++    assert policy.state_dict() == expected
++    committed = policy.commit(row)
++    expected = policy.state_dict()
++    committed["base_after"][0] = 999
++    committed["realized_offset_after"][0] = 999
++    assert policy.state_dict() == expected
++    with pytest.raises(RuntimeError):
++        policy.commit(row)
++
++
++@pytest.mark.parametrize("behavior", ["carry", "local"])
++@pytest.mark.parametrize("pending", [False, True])
++def test_json_resume_deterministic_continuation_and_pending_commit(behavior, pending):
++    policy = LocalBudgetPolicy(behavior, 6903, 6000)
++    anchor = np.array([-55, 2500.0])
++    for step in range(6):
++        action, audit = policy.choose(anchor)
++        anchor = np.asarray(audit["projected_request"]) + [1, -3]
++        policy.commit(row_for(action, audit, anchor,
++                              reference="pfo_recovery" if step == 3 else "previous"))
++    if pending:
++        action, audit = policy.choose(anchor)
++    state = roundtrip(policy.state_dict())
++    restored = LocalBudgetPolicy(behavior, 6903, 6000)
++    restored.load_state_dict(state)
++    assert restored.state_dict() == policy.state_dict()
++    state["base"][0] = 999
++    state["rng"]["state"]["state"] = 999
++    if pending:
++        row = row_for(action, audit, anchor + [10, 20], selection="reference_fallback")
++        assert restored.commit(row) == policy.commit(row)
++        anchor = np.asarray(row["B_executed"])
++    for _ in range(8):
++        action, audit = policy.choose(anchor)
++        restored_action, restored_audit = restored.choose(anchor)
++        np.testing.assert_array_equal(restored_action, action)
++        assert restored_audit == audit
++        row = row_for(action, audit)
++        assert restored.commit(row) == policy.commit(row)
++        anchor = np.asarray(row["B_executed"])
++    assert restored.state_dict() == policy.state_dict()
++
++
++@pytest.mark.parametrize("behavior", ["carry", "local"])
++@pytest.mark.parametrize("pending", [False, True])
++def test_initial_checkpoint_restore(behavior, pending):
++    policy = LocalBudgetPolicy(behavior, 6901, 6000)
++    if pending:
++        action, audit = policy.choose([-123, 3000])
++    restored = LocalBudgetPolicy(behavior, 6901, 6000)
++    restored.load_state_dict(roundtrip(policy.state_dict()))
++    assert restored.state_dict() == policy.state_dict()
++    if pending:
++        assert restored.commit(row_for(action, audit)) == policy.commit(row_for(action, audit))
++
++
++@pytest.mark.parametrize("kwargs", [
++    {"behavior": "other"}, {"behavior": None}, {"seed": -1}, {"seed": 1.5},
++    {"seed": True}, {"seed": "1"}, {"capacity": 0}, {"capacity": -1},
++    {"capacity": float("inf")}, {"capacity": float("nan")}, {"capacity": True},
++    {"capacity": "6000"}, {"capacity": [6000]},
++])
++def test_invalid_constructor(kwargs):
++    spec = dict(behavior="local", seed=0, capacity=6000)
++    spec.update(kwargs)
++    with pytest.raises(ValueError):
++        LocalBudgetPolicy(**spec)
++
++
++@pytest.mark.parametrize("anchor", [None, [1], [1, 2, 3], [[1, 2]], [1, float("nan")],
++                                    [float("inf"), 1], ["1", "2"], [True, False]])
++def test_invalid_anchor_is_atomic(anchor):
++    policy = LocalBudgetPolicy("local", 0, 6000)
++    before = policy.state_dict()
++    with pytest.raises(ValueError):
++        policy.choose(anchor)
++    assert policy.state_dict() == before
++
++
++@pytest.mark.parametrize("key,value", [
++    ("action_anchor", [100, 3001]), ("action_requested", [0, 0]),
++    ("B_requested", [[100, 3000]]), ("B_requested", []), ("B_requested", [1, 2]),
++    ("B_executed", [1, float("nan")]), ("B_executed", [1]),
++    ("selection_source", "unknown"), ("reference_source", "unknown"),
++    ("reference_source", "pfo_recovery"), ("reference_recovery", True),
++    ("reference_recovery", "false"), ("reference_recovery", 0), ("guard_mode", "h3"),
++    ("selection_source", np.array(["lower_solution"])),
++    ("reference_source", np.array(["previous"])), ("guard_mode", np.array(["physical"])),
++])
++def test_bad_commit_preserves_pending_rng_and_state(key, value):
++    policy = LocalBudgetPolicy("local", 6901, 6000)
++    action, audit = policy.choose([100, 3000])
++    row = row_for(action, audit)
++    before = policy.state_dict()
++    bad = copy.deepcopy(row)
++    bad[key] = value
++    with pytest.raises(ValueError):
++        policy.commit(bad)
++    assert policy.state_dict() == before
++    assert policy.commit(row)["committed"] is True
++
++
++@pytest.mark.parametrize("field", ["action_anchor", "action_requested", "B_requested", "B_executed",
++                                   "selection_source", "reference_source", "reference_recovery", "guard_mode"])
++def test_missing_commit_field_is_rejected(field):
++    policy = LocalBudgetPolicy("carry", 1, 6000)
++    action, audit = policy.choose([100, 3000])
++    row = row_for(action, audit)
++    del row[field]
++    before = policy.state_dict()
++    with pytest.raises(ValueError):
++        policy.commit(row)
++    assert policy.state_dict() == before
++
++
++@pytest.mark.parametrize("path,value", [
++    (("format",), "other"), (("spec", "behavior"), "carry"), (("spec", "seed"), 6902),
++    (("spec", "capacity"), 5000), (("spec", "formula", "mean_reversion"), 0.9),
++    (("spec", "formula", "action_scales"), [50, 100]),
++    (("count",), -1), (("count",), True), (("count",), 1.5), (("count",), 4),
++    (("base",), None), (("base",), [1]), (("base",), [float("nan"), 0]),
++    (("realized_offset",), [0, 0]), (("realized_offset",), [0, float("inf")]),
++    (("last_executed",), None), (("last_executed",), [99, 99]),
++    (("rng", "bit_generator"), "MT19937"), (("rng", "state", "state"), 42),
++    (("rng", "state", "inc"), 0), (("rng", "has_uint32"), 1),
++    (("pending", "step"), 99), (("pending", "action"), [0, 0]),
++    (("pending", "raw_action"), [0, 0]), (("pending", "projected_request"), [1, 2]),
++    (("pending", "desired_offset"), [0, 0]), (("pending", "base_before"), [0, 0]),
++    (("pending", "realized_offset_before"), [0, 0]), (("pending", "noise"), [0, 0]),
++    (("pending", "rate_limited"), [True, True]), (("pending", "committed"), True),
++    (("pending", "action_anchor"), [1]), (("pending",), []), (("pending",), None),
++])
++def test_corrupt_checkpoint_rejected_without_mutation(path, value):
++    policy = LocalBudgetPolicy("local", 6901, 6000)
++    action, audit = policy.choose([-100, 3000])
++    policy.commit(row_for(action, audit, [-95, 3100]))
++    policy.choose([-95, 3100])
++    before = policy.state_dict()
++    bad = copy.deepcopy(before)
++    target = bad
++    for key in path[:-1]:
++        target = target[key]
++    target[path[-1]] = value
++    with pytest.raises(ValueError):
++        policy.load_state_dict(bad)
++    assert policy.state_dict() == before
++
++
++@pytest.mark.parametrize("change", ["missing", "extra", "base", "offset", "execution", "rng"])
++def test_invalid_initial_state_and_no_partial_load(change):
++    policy = LocalBudgetPolicy("local", 0, 6000)
++    before = policy.state_dict()
++    bad = copy.deepcopy(before)
++    if change == "missing":
++        del bad["rng"]
++    elif change == "extra":
++        bad["extra"] = 1
++    elif change == "base":
++        bad["base"] = [0, 0]
++    elif change == "offset":
++        bad["realized_offset"] = [0, 1]
++    elif change == "execution":
++        bad["last_executed"] = [0, 0]
++    else:
++        bad["rng"]["state"]["state"] += 1
++    with pytest.raises(ValueError):
++        policy.load_state_dict(bad)
++    assert policy.state_dict() == before
++
++
++def test_nonzero_realized_initial_pending_and_false_first_base_rejected():
++    policy = LocalBudgetPolicy("local", 0, 6000)
++    policy.choose([-10, 3000])
++    before = policy.state_dict()
++    for key in ("base", "realized_offset"):
++        bad = copy.deepcopy(before)
++        bad[key][0] += 1
++        with pytest.raises(ValueError):
++            policy.load_state_dict(bad)
++        assert policy.state_dict() == before
++
++
++def test_overflowing_choice_and_commit_are_atomic():
++    policy = LocalBudgetPolicy("local", 0, 6000)
++    action, audit = policy.choose([1e308, 3000])
++    before = policy.state_dict()
++    with pytest.raises(ValueError):
++        policy.commit(row_for(action, audit, [-1e308, 3000]))
++    assert policy.state_dict() == before
++    policy.commit(row_for(action, audit))
++    before = policy.state_dict()
++    with pytest.raises(ValueError):
++        policy.choose([-1e308, 3000])
++    assert policy.state_dict() == before
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\validate.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\validate.py"
+new file mode 100644
+index 0000000..61d9e91
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_local_20260930\\validate.py"
+@@ -0,0 +1,156 @@
++"""Authenticate training-only collections and report paired coverage, not wins."""
++from pathlib import Path
++from local_runtime import (np, torch, read, file_hash, digest, SCENARIOS, BEHAVIORS,
++                           FORMAT, seeds, sequence_validator, verify_identity, contract)
++from compare_runs import finite, same_cost, queue_exposure
++
++CONTROL_FIELDS = ("ramp_metering", "vsl", "green_times", "offsets", "inflow_outflow_allocation")
++
++
++def validate_rows(trace, experience, settings, schema, capacity, complete=True):
++    n = len(trace)
++    if n != len(experience) or not 0 <= n <= 75 or (complete and n != 75):
++        raise ValueError("Collection length differs")
++    total = settings["warmup_ttt"]
++    for i, (row, transition) in enumerate(zip(trace, experience)):
++        obs, action, reward, nxt, done = transition
++        if (row["scenario"] != settings["scenario"] or row["behavior"] != settings["behavior"] or
++                row["profile_sha256"] != settings["profile_sha256"] or row["control_step"] != i or
++                row["step"] != i+5 or row["time_sec"] != (i+6)*180 or
++                done is not (i == 74) or row["terminated"] is not done or row["truncated"] is not False):
++            raise ValueError("Sequential identity/terminal mismatch")
++        for array in (obs, nxt):
++            if np.asarray(array).shape != (len(schema["names"]),) or not np.isfinite(array).all():
++                raise ValueError("Observation shape/finite mismatch")
++        if i and not np.array_equal(obs, experience[i-1][3]):
++            raise ValueError("Observation chain mismatch")
++        np.testing.assert_array_equal(action, np.asarray(row["action_requested"], dtype=np.float32))
++        same_cost(reward, -row["interval_ttt"]/100., "interval reward")
++        same_cost(row["reward"], reward, "trace reward")
++        total += finite(row["interval_ttt"], "interval TTT")
++        same_cost(row["total_ttt"], total, "cumulative TTT")
++        same_cost(row["freeway_ttt"]+row["urban_ttt"], total, "area TTT")
++        if (row["guard_mode"] != "physical" or row["h3_guard_enabled"] is not False or
++                row["execution_check"]["physical_control_valid"] is not True or
++                row["execution_check"]["budget_feasible"] is not True or
++                row["lower_candidate_count"] != 1 or row["policy_q"] is not None or
++                row["learning"] != [] or row["learning_wall_seconds"] != 0):
++            raise ValueError("Execution/one-solve/no-learning contract mismatch")
++        source = row["reference_source"]
++        if (source not in ("previous", "pfo_initial", "pfo_recovery") or
++                row["pfo_calls"] != int(source != "previous") or
++                row["reference_recovery"] is not (source == "pfo_recovery") or
++                (i == 0) != (source == "pfo_initial")):
++            raise ValueError("PFO reference contract mismatch")
++        for kind in ("wall", "cpu"):
++            same_cost(row[f"decision_{kind}_seconds"], sum(finite(row[f"{p}_{kind}_seconds"], p)
++                for p in ("forecast", "observation", "pfo", "reference", "lower", "guard", "actor")),
++                "decision timing components")
++    if complete:
++        sequence_validator()(experience, trace, schema["names"], capacity)
++        queue_exposure(trace)
++    return total
++
++
++def summarize(trace, settings, elapsed):
++    requests = np.array([r["B_requested"][0] for r in trace])
++    executed = np.array([r["B_executed"] for r in trace])
++    anchor0 = np.array(trace[0]["action_anchor"])
++    times = np.array([r["decision_wall_seconds"] for r in trace])
++    return dict(scenario=settings["scenario"], behavior=settings["behavior"],
++        training_seed=settings["training_seed"], profile_sha256=settings["profile_sha256"],
++        evaluation=False, policy_improvement_claim=False, control_steps=len(trace),
++        simulation_seconds=trace[-1]["time_sec"], warmup_ttt=settings["warmup_ttt"],
++        ttt=trace[-1]["total_ttt"], terminal_inventory=trace[-1]["inventory"],
++        interval_ttt=[r["interval_ttt"] for r in trace],
++        zero_nuf_requests=int((requests[:, 1] == 0).sum()),
++        requested_drift_max_abs=np.abs(requests-anchor0).max(axis=0).tolist(),
++        executed_drift_max_abs=np.abs(executed-anchor0).max(axis=0).tolist(),
++        projected_request_unique=len({tuple(r) for r in requests}),
++        executed_budget_unique=len({tuple(r) for r in executed}),
++        physical_control_unique=len({digest({k: r["control"][k] for k in CONTROL_FIELDS}) for r in trace}),
++        fallback_count=sum(r["selection_source"] == "reference_fallback" for r in trace),
++        pfo_calls=sum(r["pfo_calls"] for r in trace),
++        pfo_recovery_count=sum(r["reference_recovery"] for r in trace),
++        lower_candidate_solves=sum(r["lower_candidate_count"] for r in trace),
++        decision_wall_seconds=float(times.sum()), decision_p50=float(np.median(times)),
++        decision_p95=float(np.quantile(times, .95)),
++        decision_cpu_seconds=sum(r["decision_cpu_seconds"] for r in trace),
++        elapsed_wall_seconds=elapsed,
++        timing_scope="aggregate worker sessions includes boot/reset/resume/steps/checkpoints until completion assembly; excludes offline analysis and final file publication")
++
++
++def load_completed(folder, expected_identity=None):
++    folder = Path(folder)
++    result = read(folder / "completion.json")
++    settings = read(folder / "settings.json")
++    if (result["status"] != "completed" or result["format"] != FORMAT or
++            result["settings"] != settings or settings["format"] != FORMAT or
++            settings["behavior"] not in BEHAVIORS or settings["scenario"] not in SCENARIOS or
++            (settings["training_seed"], settings["exploration_seed"]) != seeds(settings["scenario"]) or
++            settings["evaluation"] is not False or settings["model_sha256"] is not None or
++            settings["capacity"] != 6000. or settings["contract"] != contract()):
++        raise ValueError("Training run identity mismatch")
++    if expected_identity is not None and settings["identity"] != expected_identity:
++        raise ValueError("Wave/child source identity mismatch")
++    verify_identity(settings["identity"])
++    for name, expected in result["outputs_sha256"].items():
++        if name not in {"experience.pt", "trace.json", "summary.json", "observation_schema.json"}:
++            raise ValueError("Unknown output manifest entry")
++        if file_hash(folder / name) != expected:
++            raise ValueError("Output changed: " + name)
++    required = {"experience.pt", "trace.json", "summary.json", "observation_schema.json"}
++    if set(result["outputs_sha256"]) != required:
++        raise ValueError("Incomplete output manifest")
++    schema, trace = read(folder / "observation_schema.json"), read(folder / "trace.json")
++    if schema != settings["contract"]["observation_schema"]:
++        raise ValueError("Schema mismatch")
++    payload = torch.load(folder / "experience.pt", map_location="cpu", weights_only=False)
++    if payload["format"] != FORMAT or payload["settings"] != settings:
++        raise ValueError("Experience provenance mismatch")
++    experience = payload["transitions"]
++    validate_rows(trace, experience, settings, schema, settings["capacity"])
++    replay_policy(trace, settings)
++    summary = read(folder / "summary.json")
++    finite(summary["elapsed_wall_seconds"], "elapsed wall time")
++    finite(summary["terminal_inventory"], "terminal inventory")
++    if summary != summarize(trace, settings, summary["elapsed_wall_seconds"]):
++        raise ValueError("Summary reconciliation mismatch")
++    return result, settings, summary
++
++
++def replay_policy(trace, settings):
++    # Replaying the small generator authenticates behavior without a plant solve.
++    from exploration import LocalBudgetPolicy
++    policy = LocalBudgetPolicy(settings["behavior"], settings["exploration_seed"], settings["capacity"])
++    for row in trace:
++        action, _ = policy.choose(row["action_anchor"])
++        np.testing.assert_array_equal(action, np.asarray(row["action_requested"], dtype=np.float32))
++        if policy.commit(row) != row["exploration_audit"]:
++            raise ValueError("Exploration audit/RNG trajectory differs")
++    return policy
++
++
++def compare_pairs(output, expected_identity):
++    rows, ids = [], set()
++    for scenario in SCENARIOS:
++        paired = {b: load_completed(Path(output) / b / scenario, expected_identity) for b in BEHAVIORS}
++        for _, settings, _ in paired.values():
++            if not settings["run_id"] or settings["run_id"] in ids:
++                raise ValueError("Duplicate run ID")
++            ids.add(settings["run_id"])
++        a, b = [paired[name][1] for name in BEHAVIORS]
++        for key in ("profile_sha256", "training_seed", "contract", "identity", "warmup_ttt", "capacity"):
++            if a[key] != b[key]:
++                raise ValueError("Paired training contracts differ: " + key)
++        carry, local = [paired[name][2] for name in BEHAVIORS]
++        checks = dict(zero_request_extra_le5=local["zero_nuf_requests"] <= carry["zero_nuf_requests"]+5,
++                      inventory_ratio_le1_25=local["terminal_inventory"] <= 1.25*max(1., carry["terminal_inventory"]))
++        rows.append(dict(scenario=scenario, carry=carry, local=local, checks=checks,
++                         interval_ttt_delta=(np.array(local["interval_ttt"])-carry["interval_ttt"]).tolist(),
++                         training_ttt_delta=local["ttt"]-carry["ttt"],
++                         coverage_screen_pass=all(checks.values())))
++    return dict(status="reconciled", rows=rows, transitions_per_scenario=150,
++                coverage_screen_pass=all(r["coverage_screen_pass"] for r in rows),
++                canonical_evaluation=False, goal_claim=False,
++                caveat="Paired perturbed training profiles; collection-design screen only, not policy admission or optimal action labels.")

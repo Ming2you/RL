@@ -1,0 +1,1427 @@
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\baselines.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\baselines.py"
+new file mode 100644
+index 0000000..7059cdf
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\baselines.py"
+@@ -0,0 +1,69 @@
++"""Isolated read-only legacy center authentication; never boot or unpickle physics."""
++import json
++import support as s
++import checks
++from compare_runs import load_completed_run
++
++
++def validate_center(result, settings, traces, schema, scenario, contract, physical):
++    if (settings["scenario"] != scenario or settings["mode"] != "center" or settings["seeds"] != [None] or
++            settings["source_pins"] != contract["source_pins"] or
++            settings["runtime_versions"] != contract["runtime_versions"] or
++            settings["environment_contract"] != contract["environment_contract"] or
++            schema != contract["observation_schema"] or settings["model_sha256"] is not None):
++        raise ValueError("Matched center source/runtime/environment identity differs")
++    episode, trace = result["episodes"][0], traces[0]
++    s.same_cost(episode["ttt"], s.BASE_TTT[scenario], "canonical baseline TTT")
++    canonical = next(r for r in contract["environment_contract"]["scenarios"] if r["scenario"] == scenario)
++    if episode["profile_sha256"] != canonical["profile_sha256"]:
++        raise ValueError("Matched center canonical profile differs")
++    settings = dict(settings, contract=contract, capacity=6000., warmup_ttt=episode["warmup_ttt"],
++                    profile_sha256=episode["profile_sha256"], **physical)
++    checks.physical_rows(trace, settings)
++    for i, row in enumerate(trace):
++        s.np.testing.assert_array_equal(row["action_requested"], [0., 0.])
++        if i:
++            s.np.testing.assert_array_equal(row["action_anchor"], trace[i-1]["B_executed"])
++        raw, request = s.old.residual_budget(s.np.zeros(2, dtype=s.np.float32), row["action_anchor"], 6000.)
++        s.np.testing.assert_array_equal(raw, row["B_raw"])
++        s.np.testing.assert_array_equal(request, row["B_requested"][0])
++    summary = checks.summarize(trace, settings, dict(elapsed_wall_seconds=result["elapsed_wall_seconds"],
++        scope="legacy center completion elapsed, includes reset/recovery/PFO/reference/actor/lower/guard"))
++    summary.update(model_sha256=None, behavior="carry_center")
++    return summary
++
++
++def main():
++    import budget_runtime
++    import budget_env
++    import run_budget
++
++    def forbidden(*args, **kwargs):
++        raise AssertionError("Read-only center authentication forbids physical calls and tensor loads")
++
++    s.old.boot = budget_runtime.boot = run_budget.boot = forbidden
++    s.torch.load = forbidden
++    for name in ("__init__", "reset", "step", "restore"):
++        setattr(budget_env.BudgetEnv, name, forbidden)
++    s.torch.optim.Adam.__init__ = forbidden
++    contract = s.read(s.GATE)["settings"]["contract"]
++    if s.digest(contract) != s.CONTRACT_SHA:
++        raise ValueError("Physical contract changed")
++    previous = s.read(s.WAVE / s.SCENARIOS[0] / "settings.json")
++    physical = {k: previous[k] for k in ("physical_config", "physical_options")}
++    checks.helpers()  # Initialize inference-safe primitives before legacy td3 import.
++    rows, files = [], {}
++    for scenario in s.SCENARIOS:
++        folder = s.CENTER / scenario
++        before = {p.relative_to(s.REPO).as_posix(): s.file_hash(p) for p in folder.iterdir() if p.is_file()}
++        values = load_completed_run(folder, "center", [None])
++        rows.append(validate_center(*values, scenario, contract, physical))
++        s.verify_files(before)
++        files.update(before)
++    print(json.dumps(dict(rows=rows, files=files, environment_calls=0, optimizer_updates=0,
++                         physical_checkpoint_loads=0), allow_nan=False))
++
++
++if __name__ == "__main__":
++    main()
++
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\checks.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\checks.py"
+new file mode 100644
+index 0000000..34167ee
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\checks.py"
+@@ -0,0 +1,144 @@
++"""Canonical metadata adapters around the unchanged physical validator primitives."""
++import hashlib
++import json
++import support as s
++
++legacy = s.old.module("canonical_legacy_checks", s.WAVE_SOURCE / "checks.py",
++    s.DEPENDENCIES[(s.WAVE_SOURCE / "checks.py").relative_to(s.REPO).as_posix()])
++helpers, tag, raw_trace = legacy.helpers, legacy.tag, legacy.raw_trace
++CONTROL_FIELDS = legacy.CONTROL_FIELDS
++validate_controls, control_context = legacy.validate_controls, legacy.control_context
++
++
++def verify_environment(env, rt, expected, schema=False):
++    physical = expected["environment_contract"]
++    if (s.digest(rt["rc"].to_plain_dict(rt["cfg"])) != physical["config_sha256"] or
++            s.digest(rt["rc"].to_plain_dict(rt["options"])) != physical["options_sha256"]):
++        raise ValueError("Physical configuration/options differ")
++    actual = {k: v for k, v in env.contract().items()
++              if k not in ("cfg", "options", "observation", "source_snapshot")}
++    canonical = next(r for r in physical["scenarios"] if r["scenario"] == env.protocol["scenario"])
++    if actual != physical["coordinator"] or env.training_seed is not None or env.profile_hash != canonical["profile_sha256"]:
++        raise ValueError("Canonical environment/profile/seed differs")
++    if schema and s.observation_schema(env) != expected["observation_schema"]:
++        raise ValueError("Observation schema drift")
++
++
++def metadata(scenario, auth, source):
++    return dict(format=s.FORMAT, scenario=scenario, behavior="frozen_shared_actor",
++        mode="canonical_evaluation", training_seed=None, profile_sha256=auth["profiles"][scenario],
++        evaluation=True, eval_only=True, exploration=False, policy_q=None, policy_improvement_claim=False,
++        model_sha256=s.MODEL_SHA, authentication=auth, sources=source, contract=auth["contract"],
++        spec=s.SPEC, spec_sha256=s.SPEC_SHA, capacity=6000., cpu_mask=s.MASKS[s.SCENARIOS.index(scenario)],
++        reward_divisor=100., gamma=1., warmup_steps=5, controlled_steps=75, total_seconds=14400,
++        critic_continuation=s.CONTINUATION, updates_per_interval=0, threads=1)
++
++
++def validate_settings(settings, auth, source, scenario):
++    expected = metadata(scenario, auth, source)
++    if any(settings.get(k) != v for k, v in expected.items()):
++        raise ValueError("Canonical settings/profile/model/contract mismatch")
++    rid = settings["run_id"]
++    if len(rid) != 32 or any(c not in "0123456789abcdef" for c in rid):
++        raise ValueError("Invalid run identity")
++    s.finite(settings["warmup_ttt"], "warmup TTT")
++    helpers().physical_config(settings)
++    control_context(settings)
++    canonical = next(r for r in settings["contract"]["environment_contract"]["scenarios"] if r["scenario"] == scenario)
++    if settings["profile_sha256"] != canonical["profile_sha256"]:
++        raise ValueError("Evaluation requires canonical profile")
++
++
++def physical_rows(trace, settings):
++    tag(trace)
++    validate_controls(trace, settings)
++    cfg = helpers().physical_config(settings)
++    for row in trace:
++        if (row["selection_source"] not in ("lower_solution", "reference_fallback") or
++                len(row["B_requested"]) != 1 or len(row["candidates"]) != 1 or
++                "H3_TTT_guard" in row["fallback_reasons"] or row["guard_mode"] != "physical" or
++                row["h3_guard_enabled"] is not False or row.get("policy_q") is not None or
++                row["learning"] != [] or row["learning_wall_seconds"] != 0):
++            raise ValueError("Physical one-candidate/no-Q/no-learning contract differs")
++        check = row["execution_check"]
++        if check["physical_control_valid"] is not True or check["budget_feasible"] is not True:
++            raise ValueError("Physical execution/fallback invalid")
++        for left, right in ((row["B_executed"], check["budget"]), (row["G_achieved"], check["achieved"]),
++                            (row["selected_identity"]["point"], check["point"])):
++            s.np.testing.assert_array_equal(left, right)
++        s.same_cost(row["selected_TTT"], check["ttt"], "selected prediction")
++        if s.np.any(s.np.asarray(check["achieved"]) > s.np.asarray(check["budget"])):
++            raise ValueError("Executed upper budget violated")
++        s.np.testing.assert_array_equal(check["band_excess"], [0., 0.])
++        if not 0 <= row["B_executed"][1] <= settings["capacity"]:
++            raise ValueError("Executed NUF outside capacity")
++        control = row["control"]
++        for key in CONTROL_FIELDS:
++            s.finite_tree(control[key])
++        s.np.testing.assert_array_equal([control["N_P_star"], control["N_UF_star"]], row["B_executed"])
++        for key, values in row["queue_state"].items():
++            if values != row["plant_state"][key]:
++                raise ValueError("Queue/physical state differs")
++        s.same_cost(helpers().inventory(row["plant_state"], cfg), row["inventory"], "physical inventory")
++        for part in ("forecast", "observation", "pfo", "reference", "lower", "guard", "actor", "decision", "plant"):
++            for kind in ("wall", "cpu"):
++                s.finite(row[f"{part}_{kind}_seconds"], "timing")
++    if trace:
++        s.old.queue_exposure(trace)
++
++
++def validate_rows(trace, transitions, settings, schema, actor, complete=True):
++    s.finite_tree(transitions)
++    total = helpers().validate_rows(trace, transitions, settings, schema, settings["capacity"], complete)
++    physical_rows(trace, settings)
++    for row, (obs, action, _, nxt, _) in zip(trace, transitions):
++        if any(not isinstance(a, s.np.ndarray) or a.dtype != s.np.float32 for a in (obs, action, nxt)):
++            raise ValueError("Native float32 arrays required")
++        if actor.act(obs).tobytes() != action.tobytes():
++            raise ValueError("Actor action not bitexact")
++        if (row["model_sha256"] != s.MODEL_SHA or row["mode"] != "canonical_evaluation" or
++                row["evaluation"] is not True or row["eval_only"] is not True or row["exploration"] is not False):
++            raise ValueError("Canonical trace metadata differs")
++    return total
++
++
++# Reuse raw checkpoint and diagnostic verification without changing their bodies.
++_ck = dict(w=s, helpers=helpers, validate_rows=validate_rows)
++s.reuse("checks.py", ("validate_checkpoint",), _ck)
++validate_checkpoint = _ck["validate_checkpoint"]
++s.TAG_SHA = s.old.TAG_SHA
++s.reuse("checks.py", ("audit_receipt",), _audit := dict(w=s, tag=tag, hashlib=hashlib, json=json))
++audit_receipt = _audit["audit_receipt"]
++
++
++def summarize(trace, settings, timing):
++    requests = s.np.array([r["B_requested"][0] for r in trace])
++    executed = s.np.array([r["B_executed"] for r in trace])
++    actions = s.np.array([r["action_requested"] for r in trace], dtype=s.np.float32)
++    inventories = [r["inventory"] for r in trace]
++    times = {}
++    for part in ("forecast", "observation", "pfo", "reference", "lower", "guard", "actor", "decision", "plant"):
++        for kind in ("wall", "cpu"):
++            values = s.np.array([r[f"{part}_{kind}_seconds"] for r in trace])
++            times[f"{part}_{kind}"] = dict(sum_seconds=float(values.sum()), p50_seconds=float(s.np.median(values)),
++                p95_seconds=float(s.np.quantile(values, .95)), max_seconds=float(values.max()))
++    return dict(format=s.FORMAT, run_id=settings["run_id"], scenario=settings["scenario"],
++        model_sha256=s.MODEL_SHA, profile_sha256=settings["profile_sha256"], evaluation=True, eval_only=True,
++        training_seed=None, exploration=False, policy_q=None, training_performed=False,
++        control_steps=len(trace), simulation_seconds=trace[-1]["time_sec"], warmup_ttt=settings["warmup_ttt"],
++        ttt=trace[-1]["total_ttt"], freeway_ttt=trace[-1]["freeway_ttt"], urban_ttt=trace[-1]["urban_ttt"],
++        interval_ttt=[r["interval_ttt"] for r in trace], inventories=inventories,
++        terminal_inventory=inventories[-1], peak_inventory=max(inventories),
++        requested_min=requests.min(axis=0).tolist(), requested_max=requests.max(axis=0).tolist(),
++        executed_min=executed.min(axis=0).tolist(), executed_max=executed.max(axis=0).tolist(),
++        projected_request_unique=len({tuple(r) for r in requests}), executed_budget_unique=len({tuple(r) for r in executed}),
++        physical_control_unique=len({s.digest({k: r["control"][k] for k in CONTROL_FIELDS}) for r in trace}),
++        zero_nuf_requests=int((requests[:, 1] == 0).sum()), nuf_cap_requests=int((requests[:, 1] == 6000.).sum()),
++        action_exact_saturation_count=(abs(actions) == s.np.array([.2, .1], dtype=s.np.float32)).sum(axis=0).tolist(),
++        fallback_steps=[i+1 for i, r in enumerate(trace) if r["selection_source"] == "reference_fallback"],
++        fallback_count=sum(r["selection_source"] == "reference_fallback" for r in trace),
++        pfo_calls=sum(r["pfo_calls"] for r in trace), pfo_recovery_count=sum(r["reference_recovery"] for r in trace),
++        lower_candidate_solves=sum(r["lower_candidate_count"] for r in trace),
++        queue_exposure=s.old.queue_exposure(trace), timing=times, worker_sessions=timing,
++        timing_note="Actor time is only a decision component; restore is already inside session time once. Parallel sums are not wall elapsed.")
++
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\conftest.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\conftest.py"
+new file mode 100644
+index 0000000..4af5917
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\conftest.py"
+@@ -0,0 +1,106 @@
++"""Synthetic ledger fixtures; no canonical profile ever enters a physical env."""
++import ast
++import copy
++import uuid
++from dataclasses import dataclass, field, asdict
++from types import SimpleNamespace as NS
++import pytest
++import support as s
++import checks
++import worker
++import readout
++import preflight
++from policy import authenticate
++
++ACTOR, AUTH = authenticate()
++SCHEMA = AUTH["contract"]["observation_schema"]
++HELPERS = checks.helpers()
++
++# Reuse just the proven synthetic ledger definitions, never its old fixtures or
++# module-level authentication. This namespace is private to the new test module.
++path = s.WAVE_SOURCE / "conftest.py"
++s.check_hash(path, "bb93f70e1843438526fcb5a48c6b2bcefd908b41e01bd30dce672681a0507c47")
++tree = ast.parse(path.read_text(encoding="utf-8-sig"))
++assignments = [n for n in tree.body if isinstance(n, ast.Assign) and
++               isinstance(n.targets[0], ast.Name) and n.targets[0].id in ("CONFIG", "OPTIONS")]
++exec(compile(ast.Module(body=assignments, type_ignores=[]), str(path), "exec"), globals())
++w = s.old
++s.reuse("conftest.py", ("State", "FakeEnv"), globals())
++WaveFakeEnv = FakeEnv
++
++
++class FakeEnv(WaveFakeEnv):
++    def __init__(self, rt, scenario, training_seed, guard_mode):
++        assert training_seed is None and guard_mode == "physical"
++        self.training_seed = training_seed
++        self.profile_hash = AUTH["profiles"][scenario]
++        self.protocol = dict(scenario=scenario)
++
++    def contract(self):
++        return copy.deepcopy(self.contract_value)
++
++
++@pytest.fixture(autouse=True)
++def forbid_real(monkeypatch):
++    import budget_runtime
++    import budget_env
++    import run_budget
++
++    def forbidden(*args, **kwargs):
++        pytest.fail("Actual simulation or optimizer construction is forbidden")
++
++    for mod, name in ((s, "boot"), (s.old, "boot"), (budget_runtime, "boot"), (run_budget, "boot")):
++        monkeypatch.setattr(mod, name, forbidden)
++    for name in ("__init__", "reset", "step", "restore"):
++        monkeypatch.setattr(budget_env.BudgetEnv, name, forbidden)
++    monkeypatch.setattr(s.torch.optim.Adam, "__init__", forbidden)
++    monkeypatch.setattr(s.torch.optim.Adam, "step", forbidden)
++
++
++@pytest.fixture
++def synthetic(monkeypatch, tmp_path):
++    auth = copy.deepcopy(AUTH)
++    auth["contract"]["environment_contract"]["config_sha256"] = s.digest(CONFIG)
++    auth["contract"]["environment_contract"]["options_sha256"] = s.digest(OPTIONS)
++    root = s.HERE / "_t" / uuid.uuid4().hex[:8]
++    root.mkdir(parents=True)
++    monkeypatch.setattr(s, "REPO", root)
++    monkeypatch.setattr(s, "GOAL", root / "goal")
++    monkeypatch.setattr(s, "ROOT", root / "goal/canonical")
++    source = {"synthetic": "unchanged"}
++    monkeypatch.setattr(s, "sources", lambda: source.copy())
++    monkeypatch.setattr(s, "import_boundary", lambda **kwargs: None)
++    monkeypatch.setattr(s, "process_identity", lambda: dict(pid=123, created=456, parent_pid=12,
++        command=["synthetic"], executable="synthetic"))
++    for mod in (worker, readout):
++        monkeypatch.setattr(mod, "authenticate", lambda: (ACTOR, copy.deepcopy(auth)))
++    cfg = NS(network=NS(total_ramp_capacity=6000.))
++    monkeypatch.setattr(s, "boot", lambda *args: dict(cfg=cfg, options=OPTIONS,
++        rc=NS(to_plain_dict=lambda value: copy.deepcopy(CONFIG if value is cfg else OPTIONS))))
++    monkeypatch.setattr(s, "observation_schema", lambda env: copy.deepcopy(SCHEMA))
++    monkeypatch.setattr(worker, "BudgetEnv", FakeEnv)
++    FakeEnv.contract_value = dict(auth["contract"]["environment_contract"]["coordinator"],
++        cfg=CONFIG, options=OPTIONS, observation=SCHEMA["normalization"], source_snapshot=auth["physical_snapshot"])
++    FakeEnv.resets = FakeEnv.steps = FakeEnv.restores = 0
++    baseline = [dict(scenario=scenario, ttt=s.BASE_TTT[scenario], warmup_ttt=5.,
++        interval_ttt=[(s.BASE_TTT[scenario]-5.)/75]*75, profile_sha256=auth["profiles"][scenario])
++        for scenario in s.SCENARIOS]
++    admitted = dict(format=s.FORMAT+"-preflight", status="authenticated", spec=s.SPEC, spec_sha256=s.SPEC_SHA,
++        sources=source, sources_sha256=s.digest(source), authentication=auth,
++        centers=dict(rows=baseline, files={}), input_sha256={}, parity=dict(observations=375, bitexact=True))
++    def live(value):
++        if value != admitted or s.sources() != source:
++            raise ValueError("Synthetic preflight changed")
++    monkeypatch.setattr(preflight, "live", live)
++    preflight_path, receipt_path = root / "preflight.json", root / "synthetic-review.json"
++    s.save(preflight_path, admitted)
++    s.save(receipt_path, dict(format=s.FORMAT+"-parent-review", decision="approved_for_physical_evaluation",
++        source_sha256=s.digest(source), spec_sha256=s.SPEC_SHA, preflight_sha256=s.file_hash(preflight_path),
++        model_sha256=s.MODEL_SHA, physical_contract_sha256=s.CONTRACT_SHA,
++        reviewer="synthetic test only", parent_admission="synthetic test only"))
++    def request(scenario=None, resume=False, limit=None):
++        return NS(scenario=scenario or s.SCENARIOS[0], resume=resume, max_new_steps=limit,
++                  preflight=preflight_path, review_receipt=receipt_path)
++    return NS(auth=auth, actor=ACTOR, source=source, patch=monkeypatch, request=request,
++              preflight=preflight_path, receipt=receipt_path, admitted=admitted, env=FakeEnv)
++
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\policy.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\policy.py"
+new file mode 100644
+index 0000000..9dbe3c4
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\policy.py"
+@@ -0,0 +1,96 @@
++"""Authenticate the MC archive; construct only the strict meta-loaded actor."""
++import support as s
++
++s.reuse("actor.py", ("FrozenActor",), dict_out := dict(w=s.old))
++FrozenActor = dict_out["FrozenActor"]
++COUNTS = dict(mc_critic=250)
++ANCESTOR = dict(phi=1000, critic=250, actor=10, polyak=125)
++
++
++def tensor_hash(state):
++    h = s.hashlib.sha256()
++    for name, item in sorted(state.items()):
++        array = item.detach().cpu().contiguous().numpy()
++        h.update(name.encode())
++        h.update(str((array.dtype.str, array.shape)).encode())
++        h.update(array.tobytes())
++    return h.hexdigest()
++
++
++def validate_model(payload, settings, done):
++    s.finite_tree(payload)
++    learner = payload["learner"]
++    if (payload["format"] != "sdmpc-on-policy-return-mc-v1" or
++            learner["format"] != payload["format"] or settings["format"] != payload["format"] or
++            done["format"] != payload["format"] or payload["settings"] != settings or
++            done["settings"] != settings or learner["spec"] != settings["spec"] or
++            s.digest(settings["spec"]) != s.MODEL_SPEC_SHA or settings["spec_sha256"] != s.MODEL_SPEC_SHA or
++            learner["phase"] != "done" or learner["counts"] != COUNTS or done["counters"] != COUNTS or
++            learner["ancestor_counts"] != ANCESTOR or done["ancestor_counts"] != ANCESTOR or
++            done["status"] != "completed" or len(learner["losses"]) != 250 or
++            any(x["critic_continuation"] != s.CONTINUATION for x in (learner, settings, done)) or
++            any(done[k] is not False for k in ("actor_changed", "phi_changed", "physical_policy_changed",
++                                               "traffic_improvement_claim", "canonical_evaluation")) or
++            done["training_fit_only"] is not True or
++            learner["target_policy_actor_sha256"] != s.ACTOR_SHA or
++            done["target_policy_actor_sha256"] != s.ACTOR_SHA or
++            tensor_hash(learner["models"]["actor"]) != s.ACTOR_SHA):
++        raise ValueError("MC format/specification/phase/continuation/actor identity differs")
++    return FrozenActor(learner["models"]["actor"])
++
++
++def authenticate():
++    s.import_boundary()
++    s.check_hash(s.MODEL / "completion.json", s.COMPLETION_SHA)
++    done, settings = s.read(s.MODEL / "completion.json"), s.read(s.MODEL / "settings.json")
++    s.verify_files(settings["sources"])
++    s.verify_files(settings["data"]["files"])
++    for name, expected in done["outputs_sha256"].items():
++        path = (s.MODEL / name).resolve()
++        if not path.is_relative_to(s.MODEL.resolve()):
++            raise ValueError("Model output path escaped")
++        s.check_hash(path, expected)
++    s.check_hash(s.MODEL / "model_final.pt", s.MODEL_SHA)
++    s.check_hash(s.GATE, s.GATE_SHA)
++    gate = s.read(s.GATE)
++    contract = gate["settings"]["contract"]
++    if gate["status"] != "completed" or s.digest(contract) != s.CONTRACT_SHA:
++        raise ValueError("Frozen physical contract differs")
++    s.verify_files(gate["settings"]["source_sha256"])
++    s.old.verify_pins(s.DEFAULT_SNAPSHOT, contract["source_pins"])
++    if s.old.runtime_versions() != contract["runtime_versions"]:
++        raise ValueError("Runtime contract differs")
++    payload = s.torch.load(s.MODEL / "model_final.pt", map_location="cpu", weights_only=False)
++    actor = validate_model(payload, settings, done)
++    profiles = {r["scenario"]: r["profile_sha256"] for r in contract["environment_contract"]["scenarios"]}
++    for scenario in s.SCENARIOS:
++        path = s.DEFAULT_SNAPSHOT / "outputs/sdmpc_budget_exception_all_20260922/protocols_0" / scenario / "forecast.json"
++        if s.digest(s.read(path)) != profiles[scenario]:
++            raise ValueError("Canonical profile changed")
++    snapshot = s.read(s.DEFAULT_SNAPSHOT.parent / "manifest.json")
++    auth = dict(model_sha256=s.MODEL_SHA, actor_sha256=s.ACTOR_SHA, model_spec_sha256=s.MODEL_SPEC_SHA,
++        model_completion_sha256=s.COMPLETION_SHA, model_settings_digest=s.digest(settings),
++        contract=contract, profiles=profiles, critic_continuation=s.CONTINUATION,
++        physical_snapshot=dict(manifest_sha256=contract["source_pins"]["snapshot_manifest_sha256"],
++            file_count=snapshot["file_count"], total_bytes=snapshot["total_bytes"]))
++    s.import_boundary()
++    return actor, auth
++
++
++def parity(actor):
++    rows = []
++    for scenario in s.SCENARIOS:
++        path = s.WAVE / scenario / "experience.pt"
++        expected = s.MODEL_DONE["settings"]["data"]["files"][path.relative_to(s.REPO).as_posix()]
++        s.check_hash(path, expected)
++        payload = s.torch.load(path, map_location="cpu", weights_only=False)
++        if len(payload["transitions"]) != 75 or payload["settings"]["scenario"] != scenario:
++            raise ValueError("Retained Task 2 trajectory differs")
++        for obs, action, _, _, _ in payload["transitions"]:
++            actual = actor.act(obs)
++            if action.dtype != s.np.float32 or actual.tobytes() != action.tobytes():
++                raise ValueError("Recorded action is not bitexact")
++        rows.append(dict(scenario=scenario, observations=75, bitexact=True, experience_sha256=expected))
++    s.import_boundary()
++    return dict(observations=375, bitexact=True, scenarios=rows, actor_sha256=s.ACTOR_SHA)
++
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\preflight.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\preflight.py"
+new file mode 100644
+index 0000000..b93e439
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\preflight.py"
+@@ -0,0 +1,83 @@
++"""Read-only admission evidence and exact parent review binding."""
++import argparse
++import json
++import subprocess
++import support as s
++from policy import authenticate, parity
++
++
++def centers():
++    result = subprocess.run([s.sys.executable, "-B", str(s.HERE / "baselines.py")],
++        cwd=s.REPO, env=dict(s.os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1"),
++        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), capture_output=True, text=True,
++        encoding="utf-8")
++    if result.returncode:
++        raise ValueError("Isolated center authentication failed:\n" + result.stderr)
++    return json.loads(result.stdout)
++
++
++def build():
++    before = s.preservation()
++    source = s.sources()
++    actor, auth = authenticate()
++    parity_result = parity(actor)
++    baseline = centers()
++    s.import_boundary()
++    after = s.preservation()
++    if after != before or source != s.sources():
++        raise ValueError("Authentication changed preserved inputs or source")
++    return dict(format=s.FORMAT+"-preflight", status="authenticated", spec=s.SPEC, spec_sha256=s.SPEC_SHA,
++        sources=source, sources_sha256=s.digest(source), authentication=auth, parity=parity_result,
++        centers=baseline, input_sha256=before, input_count=len(before), before_after_equal=True,
++        actual_physical_steps=0, optimizer_updates=0, actual_evaluation_outputs_absent=not s.ROOT.exists())
++
++
++def live(preflight):
++    s.import_boundary()
++    if (preflight["format"] != s.FORMAT+"-preflight" or preflight["status"] != "authenticated" or
++            preflight["spec"] != s.SPEC or preflight["spec_sha256"] != s.SPEC_SHA or
++            preflight["sources"] != s.sources() or preflight["sources_sha256"] != s.digest(s.sources()) or
++            preflight["parity"]["observations"] != 375 or preflight["parity"]["bitexact"] is not True):
++        raise ValueError("Preflight source/spec/parity identity differs")
++    s.check_hash(s.MODEL / "completion.json", s.COMPLETION_SHA)
++    s.check_hash(s.MODEL / "model_final.pt", s.MODEL_SHA)
++    s.check_hash(s.GATE, s.GATE_SHA)
++    s.check_hash(s.MODEL / "settings.json", s.MODEL_DONE["outputs_sha256"]["settings.json"])
++    s.verify_files({name: sha for name, sha in s.DEPENDENCIES.items() if name.endswith(".py")})
++    s.verify_files(preflight["centers"]["files"])
++    s.old.verify_pins(s.DEFAULT_SNAPSHOT, preflight["authentication"]["contract"]["source_pins"])
++    if s.old.runtime_versions() != preflight["authentication"]["contract"]["runtime_versions"]:
++        raise ValueError("Runtime changed")
++
++
++def admission(path, receipt_path):
++    preflight, receipt = s.read(path), s.read(receipt_path)
++    live(preflight)
++    s.verify_files(preflight["input_sha256"])
++    required = dict(format=s.FORMAT+"-parent-review", decision="approved_for_physical_evaluation",
++        source_sha256=s.digest(s.sources()), spec_sha256=s.SPEC_SHA, preflight_sha256=s.file_hash(path),
++        model_sha256=s.MODEL_SHA, physical_contract_sha256=s.CONTRACT_SHA)
++    if (any(receipt.get(k) != v for k, v in required.items()) or
++            not isinstance(receipt.get("reviewer"), str) or not receipt["reviewer"].strip() or
++            not isinstance(receipt.get("parent_admission"), str) or not receipt["parent_admission"].strip()):
++        raise ValueError("Exact source/spec/preflight parent review receipt required")
++    return preflight, dict(path=str(s.Path(receipt_path).resolve()), sha256=s.file_hash(receipt_path), value=receipt)
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--output", type=s.Path)
++    args = parser.parse_args()
++    result = build()
++    if args.output:
++        s.save_once(args.output, result)
++        print(json.dumps(dict(status=result["status"], input_count=result["input_count"],
++            observations=result["parity"]["observations"], source_sha256=result["sources_sha256"],
++            spec_sha256=s.SPEC_SHA, output=str(args.output), output_sha256=s.file_hash(args.output))))
++    else:
++        print(json.dumps(result, indent=2, allow_nan=False))
++
++
++if __name__ == "__main__":
++    main()
++
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\readout.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\readout.py"
+new file mode 100644
+index 0000000..498809c
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\readout.py"
+@@ -0,0 +1,131 @@
++"""Read-only partial/full all-five acceptance; never dispatches reproduction."""
++import argparse
++import json
++import support as s
++import checks
++import preflight
++from policy import authenticate
++from worker import check_operations, OUTPUTS
++
++
++def load_completed(folder, scenario, actor, auth, source):
++    if folder.resolve() != (s.ROOT / scenario).resolve():
++        raise ValueError("Wrong canonical slot")
++    done, settings = s.read(folder / "completion.json"), s.read(folder / "settings.json")
++    checks.validate_settings(settings, auth, source, scenario)
++    if (done["format"] != s.FORMAT or done["status"] != "completed" or done["settings"] != settings or
++            done["model_sha256"] != s.MODEL_SHA or set(done["outputs_sha256"]) != set(OUTPUTS)):
++        raise ValueError("Completion identity/output manifest differs")
++    for name, expected in done["outputs_sha256"].items():
++        s.check_hash(folder / name, expected)
++    record, _ = s.checkpoint_record(folder)
++    if (record != done["checkpoint"] or record["control_steps"] != 75 or record["settings_digest"] != s.digest(settings)):
++        raise ValueError("Completed checkpoint binding differs")
++    check_operations(folder, 75)
++    schema = s.read(folder / "observation_schema.json")
++    if schema != settings["contract"]["observation_schema"]:
++        raise ValueError("Observation schema differs")
++    payload = s.torch.load(folder / "experience.pt", map_location="cpu", weights_only=False)
++    if payload["format"] != s.FORMAT or payload["settings"] != settings or payload["eval_only"] is not True:
++        raise ValueError("Evaluation-only evidence identity differs")
++    tagged = s.read(folder / "trace.json")
++    trace = checks.raw_trace(tagged)
++    if checks.tag(trace)[0] != tagged or checks.audit_receipt(folder, trace, payload) != s.read(folder / "diagnostic-audit.json"):
++        raise ValueError("Diagnostic/experience binding differs")
++    checks.validate_rows(trace, payload["transitions"], settings, schema, actor)
++    timing = s.session_timing(folder, settings, record["session_ids"])
++    marker = s.read(folder / "finalization.json")
++    if (not timing["session_ids"] or timing != s.read(folder / "timing.json") or marker["timing"] != timing or
++            marker["settings_digest"] != s.digest(settings) or marker["checkpoint"] != record):
++        raise ValueError("Finalization/timing identity differs")
++    for name, expected in marker["retained_outputs"].items():
++        if name not in OUTPUTS:
++            raise ValueError("Finalization output path differs")
++        s.check_hash(folder / name, expected)
++    summary = checks.summarize(trace, settings, timing)
++    if summary != s.read(folder / "summary.json"):
++        raise ValueError("Summary reconciliation differs")
++    return summary
++
++
++def matched(candidate, baseline):
++    if (candidate["scenario"] != baseline["scenario"] or candidate["profile_sha256"] != baseline["profile_sha256"] or
++            candidate["model_sha256"] != s.MODEL_SHA or candidate["control_steps"] != 75 or
++            candidate["simulation_seconds"] != 14400 or len(candidate["interval_ttt"]) != 75):
++        raise ValueError("Matched canonical comparison identity differs")
++    s.same_cost(candidate["warmup_ttt"], baseline["warmup_ttt"], "matched warmup")
++    base = s.finite(baseline["ttt"], "baseline TTT")
++    value = s.finite(candidate["ttt"], "candidate TTT")
++    s.same_cost(base, s.BASE_TTT[candidate["scenario"]], "baseline TTT")
++    delta = base-value
++    differences = [a-b for a, b in zip(baseline["interval_ttt"], candidate["interval_ttt"])]
++    s.same_cost(sum(differences), delta, "matched interval delta")
++    threshold = max(1e-6, 1e-8*base)
++    return dict(scenario=candidate["scenario"], status="completed", baseline=baseline, candidate=candidate,
++        improvement_ttt=delta, improvement_percent=100*delta/base, required_improvement_ttt=threshold,
++        improved=delta > threshold, interval_improvement=differences,
++        windows={f"{lo+1}..{hi}": dict(baseline_ttt=sum(baseline["interval_ttt"][lo:hi]),
++            candidate_ttt=sum(candidate["interval_ttt"][lo:hi]), improvement_ttt=sum(differences[lo:hi]))
++            for lo, hi in ((0, 25), (25, 50), (50, 75))})
++
++
++def acceptance(rows, extras=()):
++    complete = len(rows) == 5 and [r["scenario"] for r in rows] == list(s.SCENARIOS) and not extras
++    complete = complete and all(r["status"] == "completed" for r in rows)
++    if complete:
++        ids = [r["candidate"]["run_id"] for r in rows]
++        complete = len(set(ids)) == 5 and all(r["candidate"]["model_sha256"] == s.MODEL_SHA for r in rows)
++    passed = complete and all(r["improved"] for r in rows)
++    return dict(format=s.FORMAT, status="eligible_for_separate_reproduction" if passed else
++        "failed_acceptance" if complete else "incomplete_or_invalid", integrity_pass=bool(complete),
++        all_five_improved=bool(passed), goal_achieved=False, scenarios=rows, extra_completions=list(extras),
++        evaluation=True, eval_only=True, model_sha256=s.MODEL_SHA, automatic_reproduction_dispatch=False,
++        parallel_elapsed_wall_seconds=None,
++        limitations="Queue exposure is an endpoint estimate. Actor time is not total computation; restore is inside session time. Parallel sums are not wall elapsed. No preview-free or nonlinear-price causation claim. Deterministic repeats alone do not establish stochastic generalization.")
++
++
++def evaluate(path, partial=False):
++    admitted = s.read(path)
++    preflight.live(admitted)
++    actor, auth = authenticate()
++    if auth != admitted["authentication"]:
++        raise ValueError("Readout authentication differs")
++    expected = {(s.ROOT / scenario / "completion.json").resolve() for scenario in s.SCENARIOS}
++    extras = sorted(str(p) for p in s.ROOT.rglob("completion.json") if p.resolve() not in expected)
++    rows = []
++    for scenario, baseline in zip(s.SCENARIOS, admitted["centers"]["rows"]):
++        folder = s.ROOT / scenario
++        try:
++            if not (folder / "completion.json").exists():
++                progress = None
++                if (folder / "latest.json").exists():
++                    progress, _ = s.checkpoint_record(folder)
++                    check_operations(folder, progress["control_steps"])
++                rows.append(dict(scenario=scenario, status="partial" if folder.exists() else "absent",
++                                 checkpoint_progress=progress, baseline=baseline))
++                continue
++            candidate = load_completed(folder, scenario, actor, auth, s.sources())
++            if s.read(folder / "settings.json")["preflight_sha256"] != s.file_hash(path):
++                raise ValueError("Readout preflight differs")
++            rows.append(matched(candidate, baseline))
++        except (ValueError, KeyError, TypeError, OSError, AssertionError) as exc:
++            rows.append(dict(scenario=scenario, status="invalid", error=f"{type(exc).__name__}: {exc}", baseline=baseline))
++    result = acceptance(rows, extras)
++    result["partial_requested"] = partial
++    preflight.live(admitted)
++    s.import_boundary()
++    return result
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--preflight", type=s.Path, required=True)
++    parser.add_argument("--partial", action="store_true")
++    args = parser.parse_args()
++    result = evaluate(args.preflight, args.partial)
++    print(json.dumps(result, indent=2, allow_nan=False))
++    return 0 if args.partial or result["integrity_pass"] else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\run_tests.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\run_tests.py"
+new file mode 100644
+index 0000000..2b86664
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\run_tests.py"
+@@ -0,0 +1,61 @@
++"""Scoped synthetic tests and actual read-only authentication; preserve all inputs."""
++import os
++import sys
++import uuid
++import xml.etree.ElementTree as ET
++import support as s
++import preflight
++
++
++def main():
++    os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
++    os.environ["PYTHONUTF8"] = "1"
++    import budget_env
++    import budget_runtime
++    import run_budget
++
++    def forbidden(*args, **kwargs):
++        raise AssertionError("Actual physical execution and optimizer construction forbidden")
++
++    s.boot = s.old.boot = budget_runtime.boot = run_budget.boot = forbidden
++    for name in ("__init__", "reset", "step", "restore"):
++        setattr(budget_env.BudgetEnv, name, forbidden)
++    s.torch.optim.Adam.__init__ = s.torch.optim.Adam.step = forbidden
++    original_load = s.torch.load
++    permitted = {(s.MODEL / "model_final.pt").resolve()} | {
++        (s.WAVE / scenario / "experience.pt").resolve() for scenario in s.SCENARIOS}
++
++    def guarded_load(path, *args, **kwargs):
++        resolved = s.Path(path).resolve()
++        if resolved not in permitted and not resolved.is_relative_to(s.HERE):
++            raise AssertionError("Actual physical checkpoint deserialization forbidden")
++        return original_load(path, *args, **kwargs)
++
++    s.torch.load = guarded_load
++    before, source = s.preservation(), s.sources()
++    output = s.HERE / "evidence" / uuid.uuid4().hex[:8]
++    output.mkdir(parents=True)
++    admitted = preflight.build()
++    s.save_once(output / "preflight.json", admitted)
++    import pytest
++    code = pytest.main(["-q", "--tb=short", "-p", "no:cacheprovider", "--confcutdir="+str(s.HERE),
++        "--basetemp="+str(output / "synthetic"), "--junitxml="+str(output / "tests.xml"),
++        str(s.HERE / "test_eval.py"), *sys.argv[1:]])
++    after = s.preservation()
++    if before != after or s.sources() != source:
++        raise ValueError("Actual preserved input or tested source changed")
++    suite = ET.parse(output / "tests.xml").getroot().find("testsuite")
++    s.save_once(output / "evidence.json", dict(exit_code=code, source_sha256=source,
++        source_digest=s.digest(source), spec_sha256=s.SPEC_SHA, spec=s.SPEC,
++        command=[sys.executable, "-B", str(s.HERE / "run_tests.py"), *sys.argv[1:]],
++        test_summary=suite.attrib, tests_sha256=s.file_hash(output / "tests.xml"),
++        preflight_sha256=s.file_hash(output / "preflight.json"),
++        preserved_before_sha256=before, preserved_after_sha256=after, preserved_file_count=len(before),
++        actual_physical_steps=0, actual_optimizer_constructions=0, actual_optimizer_updates=0,
++        actual_evaluation_outputs_absent=not s.ROOT.exists(), runtime_versions=s.old.runtime_versions()))
++    print("EVIDENCE", output, flush=True)
++    return code
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\support.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\support.py"
+new file mode 100644
+index 0000000..47d3867
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\support.py"
+@@ -0,0 +1,143 @@
++"""Canonical-only constants and explicitly bound reuse of frozen Task 2 helpers."""
++import hashlib
++import json
++import os
++from pathlib import Path
++import sys
++
++sys.dont_write_bytecode = True
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++GOAL = REPO / "results/sdmpc_rl_balanced_goal_20260930"
++ROOT = GOAL / "return_canonical_v1"
++MODEL = GOAL / "return_mc_v1"
++WAVE = GOAL / "return_policy_wave_v1"
++WAVE_SOURCE = REPO / "work/sdmpc_rl_return_wave_20260930"
++CENTER = REPO / "results/sdmpc_rl_multi_20260929/pilot_v1/center"
++MODEL_SHA = "820f62dd337bb40c6ac634e0e2bdb564d111a6e138a59872dc1d42fa376fbfa6"
++COMPLETION_SHA = "a815f65f315ce1a73cce8a3754b9edb3fac9dbed6a8fd0aece9b9238ea532675"
++MODEL_SPEC_SHA = "3610bb43c22430a3fb9ba95f7f14175b2b29b68a2000d6bfe1af04ec4c8ff811"
++ACTOR_SHA = "9956ba4f6f5d64c7a65bf05bdab47984efe041e15358dafebbb9bfd731d44877"
++CONTRACT_SHA = "d6d14c4c18a7f8cfc88969bf0e9b8231ba5c452600593db49b125c1e5730eb70"
++FORMAT = "sdmpc-fixed-policy-canonical-v1"
++CONTINUATION = "pi1_recorded_on_policy_MC"
++
++
++def file_hash(path):
++    with Path(path).open("rb") as stream:
++        return hashlib.file_digest(stream, "sha256").hexdigest()
++
++
++def check_hash(path, expected):
++    if file_hash(path) != expected:
++        raise ValueError("Frozen input changed: " + str(path))
++
++
++def json_read(path):
++    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
++
++
++# Authenticate transitive code before importing any reused helper.
++check_hash(MODEL / "completion.json", COMPLETION_SHA)
++MODEL_DONE = json_read(MODEL / "completion.json")
++DEPENDENCIES = dict(MODEL_DONE["settings"]["sources"], **MODEL_DONE["settings"]["data"]["files"])
++for _name, _sha in DEPENDENCIES.items():
++    _path = (REPO / _name).resolve()
++    if not _path.is_relative_to(REPO.resolve()):
++        raise ValueError("Dependency escaped repository")
++    if _path.suffix == ".py":
++        check_hash(_path, _sha)
++check_hash(WAVE_SOURCE / "wave_support.py",
++           "b9af68ebbe4e0b8992bd1ee672b01b0b87b1829d29635cd487f58e3d44e21418")
++sys.path.insert(0, str(WAVE_SOURCE))
++import wave_support as old
++sys.path.insert(0, str(HERE))
++
++np, torch = old.np, old.torch
++SCENARIOS, MASKS = old.SCENARIOS, old.MASKS
++BASE_TTT = dict(zip(SCENARIOS, (3103.0110715680044, 3935.903236508048,
++    5546.224352256691, 4250.876599300032, 6604.2970168093225)))
++SPEC = dict(format=FORMAT, model_sha256=MODEL_SHA, model_spec_sha256=MODEL_SPEC_SHA,
++    model_completion_sha256=COMPLETION_SHA, actor_sha256=ACTOR_SHA,
++    physical_contract_sha256=CONTRACT_SHA, scenarios=list(SCENARIOS), baseline_ttt=BASE_TTT,
++    training_seed=None, evaluation=True, eval_only=True, exploration=False, policy_q=None,
++    learning=False, guard_mode="physical", gamma=1., reward_divisor=100.,
++    warmup_steps=5, controlled_steps=75, total_seconds=14400, control_seconds=180,
++    observations=2367, width=64, hidden_layers=2, activation="ReLU", output="tanh",
++    action_bounds=[.2, .1], action_dtype="float32", projection_dtype="float64",
++    delta_scale=[50., 1000.], capacity=6000., anchor="previous_executed",
++    initial_recovery_pfo=True, lower_candidates=1, threads=1,
++    critic_continuation=CONTINUATION, acceptance="each delta > max(1e-6,1e-8*baseline)",
++    passing_status="eligible_for_separate_reproduction", goal_achieved=False)
++read, plain, digest = old.read, old.plain, old.digest
++finite, same_cost, finite_tree = old.finite, old.same_cost, old.finite_tree
++save, save_once, save_tensor = old.save, old.save_once, old.save_tensor
++persist_checkpoint, checkpoint_record = old.persist_checkpoint, old.checkpoint_record
++exclusive_run, process_identity, session_ids = old.exclusive_run, old.process_identity, old.session_ids
++boot, observation_schema = old.boot, old.observation_schema
++DEFAULT_SNAPSHOT, OLD, GATE, GATE_SHA = old.DEFAULT_SNAPSHOT, old.OLD, old.GATE, old.GATE_SHA
++TIMING_SCOPE = ("Locked worker wall/process-CPU sessions include authentication, boot, reset/restore, actor, "
++    "forecast/observation/PFO/reference/lower/guard/plant work, validation, checkpoints, export and close. "
++    "Exclude pre-lock review/input admission, final end/timing/summary/completion publication, lock release, "
++    "interpreter and parent overhead, and readout. Finalization-only resumes do no physical work and are "
++    "publication overhead outside the frozen session ledger. Interrupted ends are UNKNOWN; known seconds "
++    "are a lower bound. Whole restore is already inside session totals once. Parallel sums are not wall elapsed.")
++Stopped = old.Stopped
++SPEC_SHA = digest(SPEC)
++
++
++def reuse(filename, names, namespace):
++    path = WAVE_SOURCE / filename
++    expected = DEPENDENCIES[path.relative_to(REPO).as_posix()]
++    return old.definitions(path, names, namespace, expected)
++
++
++def sources():
++    return {p.relative_to(REPO).as_posix(): file_hash(p) for p in sorted(HERE.glob("*.py"))}
++
++
++def check_stop(output):
++    if any((p / "STOP").exists() for p in (REPO, GOAL, ROOT, output)):
++        raise Stopped("STOP requested; marker retained")
++
++
++def import_boundary(physical=False):
++    old.import_boundary(physical)
++    if any(name in sys.modules for name in ("mc_common", "mc_data", "mc_learner", "mc_parent_offline_runtime")):
++        raise ValueError("Offline learner imported into canonical process")
++
++
++def preservation():
++    paths = {REPO / name for name in DEPENDENCIES}
++    for folder in (MODEL, CENTER, WAVE):
++        paths.update(p for p in folder.rglob("*") if p.is_file())
++    paths.update(WAVE_SOURCE.glob("*.py"))
++    paths.update(OLD.glob("*.py"))
++    manifest = DEFAULT_SNAPSHOT.parent / "manifest.json"
++    paths.update((manifest, GATE))
++    paths.update((REPO / "docs/rl_budget_return_mc_results_20260930.md",
++                  REPO / ".superpowers/sdd/rl_budget_return_initialized_policy_20260930/task-4-brief.md",
++                  WAVE_SOURCE / "test-evidence/d45d6eca/evidence.json"))
++    paths.update(DEFAULT_SNAPSHOT.parent / row["snapshot_relative"] for row in read(manifest)["files"])
++    return {p.relative_to(REPO).as_posix(): file_hash(p) for p in sorted(paths)}
++
++
++def verify_files(files):
++    old.verify_files(files)
++
++
++# The original function uses a module-level model constant. Bind its unchanged
++# definition to this contract in a private namespace, without patching that module.
++_timing = dict(vars(old), MODEL_SHA=MODEL_SHA, TIMING_SCOPE=TIMING_SCOPE)
++reuse("wave_support.py", ("session_timing",), _timing)
++import restore_accounting
++
++
++def session_timing(output, settings, required=()):
++    result = _timing["session_timing"](output, settings, required)
++    known = sum(finite(read(output / "sessions" / f"{sid}.end.json")["elapsed_cpu_seconds"], "session CPU")
++                for sid in result["session_ids"] if sid not in result["unknown_sessions"])
++    result.update(known_elapsed_cpu_seconds=known,
++                  elapsed_cpu_seconds=None if result["unknown_sessions"] else known)
++    return result
++
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\test_eval.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\test_eval.py"
+new file mode 100644
+index 0000000..da4f280
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\test_eval.py"
+@@ -0,0 +1,311 @@
++"""Focused new-contract tests, with physical execution guarded by conftest."""
++import copy
++import json
++from types import SimpleNamespace as NS
++import pytest
++import support as s
++import policy
++import checks
++import worker
++import preflight
++import readout
++import baselines
++from conftest import ACTOR, AUTH, SCHEMA, CONFIG, OPTIONS
++
++
++def test_actor_inference_boundary_and_no_rng():
++    state = s.torch.random.get_rng_state().clone()
++    actor = policy.FrozenActor(ACTOR.state_dict())
++    assert s.torch.equal(state, s.torch.random.get_rng_state())
++    assert not actor.training and all(not p.requires_grad for p in actor.parameters())
++    assert not hasattr(actor, "critics") and not hasattr(actor, "optimizer")
++    assert actor.act(s.np.zeros(2367, dtype=s.np.float32)).dtype == s.np.float32
++    with pytest.raises(ValueError):
++        actor.act(s.np.zeros(2367, dtype=s.np.float64))
++    s.import_boundary()
++
++
++@pytest.mark.parametrize("change", ("format", "phase", "counts", "ancestor_counts", "continuation", "actor", "settings"))
++def test_model_mismatch(change):
++    payload = s.torch.load(s.MODEL / "model_final.pt", map_location="cpu", weights_only=False)
++    settings, done = copy.deepcopy(payload["settings"]), copy.deepcopy(s.MODEL_DONE)
++    if change == "format":
++        payload["format"] = "generic"
++    elif change == "phase":
++        payload["learner"]["phase"] = "mc_fit"
++    elif change == "counts":
++        payload["learner"]["counts"]["mc_critic"] = 249
++    elif change == "ancestor_counts":
++        payload["learner"]["ancestor_counts"]["actor"] = 11
++    elif change == "continuation":
++        payload["learner"]["critic_continuation"] = "carry"
++    elif change == "actor":
++        payload["learner"]["models"]["actor"]["net.0.bias"][0] += 1
++    else:
++        settings["spec"]["gamma"] = .99
++    with pytest.raises(ValueError):
++        policy.validate_model(payload, settings, done)
++
++
++def test_canonical_admitted_by_new_rejected_by_old(synthetic):
++    f = synthetic
++    assert worker.run(f.request(limit=1)) == "checkpointed"
++    settings = s.read(s.ROOT / s.SCENARIOS[0] / "settings.json")
++    checks.validate_settings(settings, f.auth, f.source, s.SCENARIOS[0])
++    with pytest.raises(ValueError, match="Wave settings"):
++        checks.legacy.validate_settings(settings, f.auth, f.source, s.SCENARIOS[0])
++    env = worker.BudgetEnv(None, s.SCENARIOS[0], None, "physical")
++    cfg = NS()
++    rt = dict(cfg=cfg, options=OPTIONS, rc=NS(to_plain_dict=lambda v: CONFIG if v is cfg else OPTIONS))
++    checks.verify_environment(env, rt, f.auth["contract"])
++    with pytest.raises(ValueError, match="Training profile equals canonical"):
++        checks.helpers().verify_environment(env, rt, f.auth["contract"])
++
++
++@pytest.mark.parametrize("field,value", (("evaluation", False), ("eval_only", False), ("training_seed", 7301),
++    ("policy_q", [0., 0.]), ("updates_per_interval", 1), ("profile_sha256", "other"), ("model_sha256", "other")))
++def test_settings_reject_wrong_contract(synthetic, field, value):
++    f = synthetic
++    worker.run(f.request(limit=1))
++    settings = s.read(s.ROOT / s.SCENARIOS[0] / "settings.json")
++    settings[field] = value
++    with pytest.raises(ValueError):
++        checks.validate_settings(settings, f.auth, f.source, s.SCENARIOS[0])
++
++
++@pytest.mark.parametrize("field,value", (("evaluation", False), ("eval_only", False), ("policy_q", [1, 2]),
++    ("learning", ["update"]), ("lower_candidate_count", 2), ("guard_mode", "h3"), ("total_ttt", 999.)))
++def test_trace_rejects_metadata_accounting_and_q(synthetic, field, value):
++    f = synthetic
++    worker.run(f.request(limit=1))
++    _, path = s.checkpoint_record(s.ROOT / s.SCENARIOS[0])
++    ck = s.torch.load(path, map_location="cpu", weights_only=False)
++    ck["trace"][0][field] = value
++    with pytest.raises((ValueError, AssertionError)):
++        checks.validate_checkpoint(ck, ck["settings"], f.actor)
++
++
++def test_parent_gate_precedes_physical_start(synthetic):
++    f = synthetic
++    receipt = s.read(f.receipt)
++    receipt["source_sha256"] = "wrong"
++    s.save(f.receipt, receipt)
++    with pytest.raises(ValueError, match="parent review"):
++        worker.run(f.request())
++    assert f.env.steps == f.env.resets == 0 and not s.ROOT.exists()
++
++
++@pytest.mark.parametrize("scope", ("REPO", "GOAL", "ROOT", "scenario"))
++def test_stop_scopes(synthetic, scope):
++    folder = s.ROOT / s.SCENARIOS[0] if scope == "scenario" else getattr(s, scope)
++    folder.mkdir(parents=True, exist_ok=True)
++    (folder / "STOP").touch()
++    with pytest.raises(s.Stopped):
++        worker.run(synthetic.request())
++    assert synthetic.env.resets == synthetic.env.steps == 0 and (folder / "STOP").exists()
++
++
++def test_kernel_lock(tmp_path):
++    with s.exclusive_run(tmp_path):
++        with pytest.raises(OSError):
++            with s.exclusive_run(tmp_path):
++                pytest.fail("Duplicate writer acquired lock")
++    with s.exclusive_run(tmp_path):
++        pass
++
++
++def test_resume_and_completed_duplicate(synthetic):
++    f = synthetic
++    worker.run(f.request(limit=2))
++    folder = s.ROOT / s.SCENARIOS[0]
++    _, path = s.checkpoint_record(folder)
++    before_hash = s.file_hash(path)
++    assert worker.run(f.request(resume=True)) == "completed"
++    assert (f.env.resets, f.env.steps, f.env.restores) == (1, 75, 1)
++    assert before_hash == s.file_hash(path)
++    summary = readout.load_completed(folder, s.SCENARIOS[0], f.actor, f.auth, f.source)
++    restore = summary["worker_sessions"]["restoration"]
++    assert restore["returned_branch_reference_reconstructions"] == 1
++    assert restore["elapsed_wall_seconds"] <= summary["worker_sessions"]["elapsed_wall_seconds"]
++    assert summary["policy_q"] is None and summary["eval_only"] is True
++    with pytest.raises(FileExistsError):
++        worker.run(f.request(resume=True))
++
++
++def test_orphan_operation_refused(synthetic):
++    f = synthetic
++    worker.run(f.request(limit=1))
++    folder = s.ROOT / s.SCENARIOS[0]
++    worker.operation(folder, 2, "orphan", None)
++    before = s.file_hash(folder / "operations/step_02.json")
++    with pytest.raises(ValueError, match="Uncheckpointed"):
++        worker.run(f.request(resume=True))
++    assert f.env.steps == 1 and before == s.file_hash(folder / "operations/step_02.json")
++
++
++def test_finalization_stop_resume_no_more_environment(synthetic):
++    f = synthetic
++    original = worker.finalize
++    def stop(output, settings, actor):
++        (output / "STOP").touch()
++        original(output, settings, actor)
++    f.patch.setattr(worker, "finalize", stop)
++    with pytest.raises(s.Stopped):
++        worker.run(f.request())
++    folder = s.ROOT / s.SCENARIOS[0]
++    stable = {n: s.file_hash(folder / n) for n in ("finalization.json", "experience.pt", "trace.json", "timing.json", "summary.json")}
++    (folder / "STOP").unlink()
++    f.patch.setattr(worker, "finalize", original)
++    assert worker.run(f.request(resume=True)) == "completed"
++    assert (f.env.resets, f.env.steps, f.env.restores) == (1, 75, 0)
++    assert stable == {n: s.file_hash(folder / n) for n in stable}
++
++
++def test_stop_at_step75_before_exports_does_not_repeat_physics(synthetic):
++    f = synthetic
++    original = s.persist_checkpoint
++    def stop(output, payload, validate=None):
++        record = original(output, payload, validate)
++        if len(payload["trace"]) == 75:
++            (output / "STOP").touch()
++        return record
++    f.patch.setattr(s, "persist_checkpoint", stop)
++    assert worker.run(f.request()) == "stopped"
++    folder = s.ROOT / s.SCENARIOS[0]
++    (folder / "STOP").unlink()
++    assert worker.run(f.request(resume=True)) == "completed"
++    assert (f.env.resets, f.env.steps, f.env.restores) == (1, 75, 1)
++    assert s.read(folder / "timing.json")["restoration"]["returned_branch_reference_reconstructions"] == 0
++
++
++def test_retained_export_mismatch_is_not_overwritten(synthetic):
++    f = synthetic
++    worker.run(f.request(limit=1))
++    folder = s.ROOT / s.SCENARIOS[0]
++    s.save(folder / "trace.json", ["wrong retained evidence"])
++    before = s.file_hash(folder / "trace.json")
++    with pytest.raises(FileExistsError):
++        worker.run(f.request(resume=True))
++    assert before == s.file_hash(folder / "trace.json")
++    assert f.env.steps == 1
++
++
++def test_partial_full_and_all_five(synthetic):
++    f = synthetic
++    empty = readout.evaluate(f.preflight, partial=True)
++    assert len(empty["scenarios"]) == 5 and not empty["all_five_improved"]
++    assert all(r["status"] == "absent" for r in empty["scenarios"])
++    for scenario in s.SCENARIOS:
++        worker.run(f.request(scenario))
++    result = readout.evaluate(f.preflight)
++    assert result["status"] == "eligible_for_separate_reproduction"
++    assert result["integrity_pass"] and not result["goal_achieved"]
++    assert not result["automatic_reproduction_dispatch"]
++    rows = copy.deepcopy(result["scenarios"])
++    rows[-1]["improved"] = False
++    assert readout.acceptance(rows)["status"] == "failed_acceptance"
++    assert not readout.acceptance(rows[:-1])["integrity_pass"]
++    assert not readout.acceptance(result["scenarios"], ["extra"])["integrity_pass"]
++    rows[-1]["candidate"]["run_id"] = rows[0]["candidate"]["run_id"]
++    assert not readout.acceptance(rows)["integrity_pass"]
++
++
++@pytest.mark.parametrize("direction,passes", ((float("inf"), False), (-float("inf"), True)))
++def test_strict_threshold(direction, passes):
++    scenario = s.SCENARIOS[0]
++    base = s.BASE_TTT[scenario]
++    value = float(s.np.nextafter(base-max(1e-6, 1e-8*base), direction))
++    delta = base-value
++    baseline = dict(scenario=scenario, profile_sha256="test", warmup_ttt=5., ttt=base,
++                    interval_ttt=[(base-5.)/75]*75)
++    candidate = dict(baseline, model_sha256=s.MODEL_SHA, control_steps=75, simulation_seconds=14400,
++                     ttt=value, interval_ttt=[(base-5.-delta)/75]*75)
++    result = readout.matched(candidate, baseline)
++    assert result["improved"] is passes
++    assert set(result["windows"]) == {"1..25", "26..50", "51..75"}
++
++
++def test_physical_import_collision(monkeypatch):
++    monkeypatch.setitem(s.sys.modules, "learner", NS())
++    with pytest.raises(ValueError, match="Learner module"):
++        s.import_boundary()
++
++
++def test_preflight_source_and_profile_mismatch(monkeypatch):
++    malformed = dict(format="wrong")
++    with pytest.raises(ValueError):
++        preflight.live(malformed)
++    cfg = NS()
++    env = NS(training_seed=None, profile_hash="wrong", protocol=dict(scenario=s.SCENARIOS[0]),
++             contract=lambda: AUTH["contract"]["environment_contract"]["coordinator"])
++    rt = dict(cfg=cfg, options=OPTIONS, rc=NS(to_plain_dict=lambda v: CONFIG if v is cfg else OPTIONS))
++    auth = copy.deepcopy(AUTH)
++    auth["contract"]["environment_contract"].update(config_sha256=s.digest(CONFIG), options_sha256=s.digest(OPTIONS))
++    with pytest.raises(ValueError, match="Canonical environment"):
++        checks.verify_environment(env, rt, auth["contract"])
++
++
++@pytest.mark.parametrize("field", ("source_pins", "runtime_versions", "environment_contract", "profile", "ttt", "seed", "schema"))
++def test_center_mismatch_rejected_before_physical_helpers(field, monkeypatch):
++    scenario, contract = s.SCENARIOS[0], copy.deepcopy(AUTH["contract"])
++    settings = dict(scenario=scenario, mode="center", seeds=[None], model_sha256=None,
++        source_pins=contract["source_pins"], runtime_versions=contract["runtime_versions"],
++        environment_contract=contract["environment_contract"])
++    settings = copy.deepcopy(settings)
++    episode = dict(ttt=s.BASE_TTT[scenario], profile_sha256=AUTH["profiles"][scenario], warmup_ttt=5.)
++    schema = copy.deepcopy(SCHEMA)
++    if field in settings:
++        settings[field] = {}
++    elif field == "profile":
++        episode["profile_sha256"] = "wrong"
++    elif field == "ttt":
++        episode["ttt"] += 1.
++    elif field == "seed":
++        settings["seeds"] = [7301]
++    else:
++        schema = {}
++    def forbidden(*args, **kwargs):
++        pytest.fail("Incompatible baseline reached physical validation")
++    monkeypatch.setattr(checks, "physical_rows", forbidden)
++    with pytest.raises(ValueError):
++        baselines.validate_center(dict(episodes=[episode]), settings, [[]], schema, scenario, contract, {})
++
++
++def test_partial_readout_hashes_without_loading_checkpoint(synthetic):
++    f = synthetic
++    worker.run(f.request(limit=2))
++    original = s.torch.load
++    def guarded(path, *args, **kwargs):
++        if "checkpoints" in s.Path(path).parts:
++            pytest.fail("Readout unpickled physical state")
++        return original(path, *args, **kwargs)
++    f.patch.setattr(s.torch, "load", guarded)
++    result = readout.evaluate(f.preflight, partial=True)
++    assert result["scenarios"][0]["checkpoint_progress"]["control_steps"] == 2
++    assert len(result["scenarios"]) == 5 and not result["all_five_improved"]
++
++
++def test_atomic_pointer_does_not_publish_failed_checkpoint(tmp_path):
++    payload = dict(trace=[], settings={}, session_ids=[])
++    first = s.persist_checkpoint(tmp_path, payload)
++    def rejected(value):
++        raise ValueError("synthetic validator failure")
++    with pytest.raises(ValueError):
++        s.persist_checkpoint(tmp_path, payload, rejected)
++    assert s.read(tmp_path / "latest.json") == first
++    assert len(list((tmp_path / "checkpoints").glob("*.pt"))) == 2
++
++
++def test_source_receipt_and_input_hash_changes(synthetic):
++    f = synthetic
++    receipt = s.read(f.receipt)
++    receipt["spec_sha256"] = "different"
++    s.save(f.receipt, receipt)
++    with pytest.raises(ValueError):
++        preflight.admission(f.preflight, f.receipt)
++    before = s.file_hash(f.preflight)
++    s.save(f.preflight, dict(f.admitted, changed=True))
++    with pytest.raises(ValueError):
++        s.check_hash(f.preflight, before)
++
++
+diff --git "a/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\worker.py" "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\worker.py"
+new file mode 100644
+index 0000000..532afae
+--- /dev/null
++++ "b/C:\\Users\\alsrj\\Desktop\\\355\225\231\354\210\240\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_return_eval_20260930\\worker.py"
+@@ -0,0 +1,223 @@
++"""One parent-admitted canonical scenario; no dispatch, optimization or policy Q."""
++import argparse
++import time
++import uuid
++import support as s
++import checks
++import preflight
++from policy import authenticate
++from budget_env import BudgetEnv
++
++_ops = dict(w=s)
++s.reuse("worker.py", ("check_output", "operation", "check_operations"), _ops)
++check_output, operation, check_operations = (_ops[n] for n in ("check_output", "operation", "check_operations"))
++OUTPUTS = ("settings.json", "latest.json", "trace.json", "experience.pt", "observation_schema.json",
++           "diagnostic-audit.json", "timing.json", "summary.json", "finalization.json")
++
++
++def tensor_once(path, payload):
++    if path.exists():
++        retained = s.torch.load(path, map_location="cpu", weights_only=False)
++        if s.digest(retained) != s.digest(payload):
++            raise FileExistsError("Retained evaluation evidence differs")
++    else:
++        s.save_tensor(path, payload)
++
++
++def finalize(output, settings, actor):
++    """Publication-only resume from a stable intent; never loads simulator state."""
++    marker = s.read(output / "finalization.json")
++    record, _ = s.checkpoint_record(output)
++    check_operations(output, 75)
++    if marker["settings_digest"] != s.digest(settings) or marker["checkpoint"] != record:
++        raise ValueError("Finalization identity differs")
++    for name, expected in marker["retained_outputs"].items():
++        s.check_hash(output / name, expected)
++    payload = s.torch.load(output / "experience.pt", map_location="cpu", weights_only=False)
++    if payload["settings"] != settings or payload["format"] != s.FORMAT or payload["eval_only"] is not True:
++        raise ValueError("Evaluation evidence identity differs")
++    trace = checks.raw_trace(s.read(output / "trace.json"))
++    schema = s.read(output / "observation_schema.json")
++    checks.validate_rows(trace, payload["transitions"], settings, schema, actor)
++    if checks.audit_receipt(output, trace, payload) != s.read(output / "diagnostic-audit.json"):
++        raise ValueError("Diagnostic binding differs")
++    timing = s.session_timing(output, settings, record["session_ids"])
++    if timing != marker["timing"]:
++        raise ValueError("Finalization sessions changed")
++    s.save_once(output / "timing.json", timing)
++    s.save_once(output / "summary.json", checks.summarize(trace, settings, timing))
++    s.check_stop(output)
++    s.save_once(output / "completion.json", dict(format=s.FORMAT, status="completed", settings=settings,
++        model_sha256=s.MODEL_SHA, checkpoint=record, outputs_sha256={n: s.file_hash(output / n) for n in OUTPUTS}))
++
++
++def run(args):
++    if args.scenario not in s.SCENARIOS or (args.max_new_steps is not None and
++            (type(args.max_new_steps) is not int or not 1 <= args.max_new_steps <= 75)):
++        raise ValueError("Invalid scenario or step limit")
++    output = s.ROOT / args.scenario
++    s.check_stop(output)
++    admitted, review = preflight.admission(args.preflight, args.review_receipt)
++    check_output(output, args.resume)
++    with s.exclusive_run(output):
++        started, cpu_started = time.perf_counter(), time.process_time()
++        s.check_stop(output)
++        check_output(output, args.resume)
++        if args.resume:
++            retained, _ = s.checkpoint_record(output)
++            check_operations(output, retained["control_steps"])
++            final_names = ("experience.pt", "trace.json", "diagnostic-audit.json", "finalization.json", "completion.json")
++            if retained["control_steps"] < 75 and any((output / name).exists() for name in final_names):
++                raise FileExistsError("Final exports contradict partial checkpoint; preserve retained evidence")
++        actor, auth = authenticate()
++        if auth != admitted["authentication"]:
++            raise ValueError("Preflight model authentication differs")
++        source = s.sources()
++        previous = s.read(output / "settings.json") if args.resume else None
++        if previous:
++            checks.validate_settings(previous, auth, source, args.scenario)
++            if previous["review"] != review or previous["preflight_sha256"] != s.file_hash(args.preflight):
++                raise ValueError("Resume admission differs")
++        if (output / "finalization.json").exists():
++            finalize(output, previous, actor)
++            return "completed"
++        session, process = uuid.uuid4().hex, s.process_identity()
++        run_id = previous["run_id"] if previous else uuid.uuid4().hex
++        start_path = output / "sessions" / f"{session}.start.json"
++        s.save_once(start_path, dict(session_id=session, process=process, started_unix=time.time(),
++            run_id=run_id, scenario=args.scenario, model_sha256=s.MODEL_SHA, sources=source,
++            settings_digest=s.digest(previous) if previous else None, lock_held=True,
++            resume_requested=bool(args.resume), scope=s.TIMING_SCOPE))
++        s.save(output / "process.json", dict(**process, session_id=session, run_id=run_id, lock_held=True))
++        env, ready, steps, outcome = None, False, 0, "failed"
++        try:
++            preflight.live(admitted)
++            s.check_stop(output)
++            rt = s.boot(s.DEFAULT_SNAPSHOT, s.MASKS[s.SCENARIOS.index(args.scenario)])
++            s.import_boundary(physical=True)
++            env = BudgetEnv(rt, scenario=args.scenario, training_seed=None, guard_mode="physical")
++            checks.verify_environment(env, rt, auth["contract"])
++            settings = dict(checks.metadata(args.scenario, auth, source), run_id=run_id,
++                review=review, preflight_sha256=s.file_hash(args.preflight),
++                physical_config=s.plain(rt["rc"].to_plain_dict(rt["cfg"])),
++                physical_options=s.plain(rt["rc"].to_plain_dict(rt["options"])),
++                warmup_ttt=previous["warmup_ttt"] if previous else None)
++            s.check_stop(output)
++            if args.resume:
++                if settings != previous:
++                    raise ValueError("Resume settings changed")
++                record, path = s.checkpoint_record(output)
++                check_operations(output, record["control_steps"])
++                ck = s.torch.load(path, map_location="cpu", weights_only=False)
++                checks.validate_checkpoint(ck, settings, actor)
++                if (record["settings_digest"] != s.digest(settings) or record["control_steps"] != len(ck["trace"]) or
++                        record["session_ids"] != ck["session_ids"]):
++                    raise ValueError("Checkpoint pointer/progress differs")
++                s.session_timing(output, settings, ck["session_ids"])
++                obs = s.restore_accounting.restore_environment(env, ck["environment"], output, session, settings, record)
++                s.np.testing.assert_array_equal(obs, ck["observation"])
++                trace, transitions = ck["trace"], ck["transitions"]
++            else:
++                operation(output, 0, session, None)
++                obs = env.reset()
++                settings["warmup_ttt"] = env.warmup_ttt
++                trace, transitions = [], []
++            checks.verify_environment(env, rt, auth["contract"], schema=True)
++            schema = s.observation_schema(env)
++            checks.validate_settings(settings, auth, source, args.scenario)
++            baseline = next(r for r in admitted["centers"]["rows"] if r["scenario"] == args.scenario)
++            s.same_cost(settings["warmup_ttt"], baseline["warmup_ttt"], "matched warmup")
++            s.save_once(output / "settings.json", settings)
++            s.save_once(output / "observation_schema.json", schema)
++
++            def checkpoint():
++                ck = dict(format=s.FORMAT, settings=settings, model_sha256=s.MODEL_SHA, schema=schema,
++                    environment=env.checkpoint(), observation=obs.copy(), trace=trace, transitions=transitions,
++                    session_ids=s.session_ids(output), process=process)
++                return s.persist_checkpoint(output, ck, lambda value: checks.validate_checkpoint(value, settings, actor))
++
++            if not args.resume:
++                record = checkpoint()
++            steps, new_steps = len(trace), 0
++            while env.k < 80:
++                s.check_stop(output)
++                preflight.live(admitted)
++                if s.read(output / "settings.json") != settings:
++                    raise ValueError("Persisted settings mutated")
++                checks.helpers().validate_observation(obs, env.k, schema, env.controller.action_anchor,
++                                                      env.last_requested, env.last_executed)
++                tick, cpu = time.perf_counter(), time.process_time()
++                action = actor.act(obs)
++                actor_wall, actor_cpu = time.perf_counter()-tick, time.process_time()-cpu
++                s.check_stop(output)
++                operation(output, steps+1, session, record)
++                nxt, reward, terminal, row = env.step(action, "rl", actor_wall, actor_cpu_seconds=actor_cpu)
++                row.update(reward=reward, scenario=args.scenario, behavior="frozen_shared_actor",
++                    mode="canonical_evaluation", evaluation=True, eval_only=True, exploration=False,
++                    model_sha256=s.MODEL_SHA, profile_sha256=env.profile_hash,
++                    policy_q=None, learning=[], learning_wall_seconds=0.)
++                trace.append(s.plain(row))
++                transitions.append((obs.copy(), action.copy(), reward, nxt.copy(), bool(terminal)))
++                obs = nxt
++                record = checkpoint()
++                steps, new_steps = len(trace), new_steps+1
++                s.save(output / "status.json", dict(status="checkpointed", control_steps=steps, latest=record))
++                print(args.scenario, f"{steps}/75", f"TTT={env.sim.total_ttt:.6f}", flush=True)
++                if args.max_new_steps is not None and new_steps >= args.max_new_steps and not terminal:
++                    outcome = "checkpointed"
++                    return outcome
++            s.check_stop(output)
++            preflight.live(admitted)
++            checks.validate_rows(trace, transitions, settings, schema, actor)
++            payload = dict(format=s.FORMAT, settings=settings, eval_only=True, transitions=transitions)
++            tensor_once(output / "experience.pt", payload)
++            s.save_once(output / "trace.json", checks.tag(trace)[0])
++            s.save_once(output / "diagnostic-audit.json", checks.audit_receipt(output, trace, payload))
++            ready, outcome = True, "completed"
++        except s.Stopped:
++            outcome = "stopped"
++            return outcome
++        except BaseException as exc:
++            s.save_once(output / "failures" / f"{session}.json", dict(error=f"{type(exc).__name__}: {exc}",
++                session_id=session, control_steps=steps, preserve_all_orphans=True))
++            raise
++        finally:
++            try:
++                if env is not None:
++                    env.close()
++            except BaseException:
++                outcome, ready = "failed", False
++                raise
++            finally:
++                s.save_once(output / "sessions" / f"{session}.end.json", dict(session_id=session,
++                    process=process, start_sha256=s.file_hash(start_path), outcome=outcome,
++                    restoration_sha256=s.restore_accounting.files(output, session), control_steps=steps,
++                    elapsed_wall_seconds=time.perf_counter()-started, elapsed_cpu_seconds=time.process_time()-cpu_started))
++                s.save(output / "status.json", dict(status=outcome, session_id=session, control_steps=steps))
++        if ready:
++            timing = s.session_timing(output, settings, record["session_ids"])
++            s.save_once(output / "finalization.json", dict(settings_digest=s.digest(settings), checkpoint=record,
++                timing=timing, retained_outputs={n: s.file_hash(output / n) for n in
++                    ("settings.json", "latest.json", "experience.pt", "trace.json", "diagnostic-audit.json", "observation_schema.json")}))
++            s.check_stop(output)
++            preflight.live(admitted)
++            finalize(output, settings, actor)
++        return outcome
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--scenario", choices=s.SCENARIOS, required=True)
++    parser.add_argument("--preflight", type=s.Path, required=True)
++    parser.add_argument("--review-receipt", type=s.Path, required=True)
++    parser.add_argument("--resume", action="store_true")
++    parser.add_argument("--max-new-steps", type=int)
++    args = parser.parse_args()
++    try:
++        return 2 if run(args) == "stopped" else 0
++    except s.Stopped:
++        return 2
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

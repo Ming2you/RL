@@ -47,10 +47,13 @@ def safe_target(repo, name):
     return target
 
 
-def build(repo, output):
+def build(repo, output, *, selected=None, status='USER_PAUSED', note=None):
     if output.exists():
         raise ValueError('snapshot output already exists; do not overwrite')
-    files = sorted(p for root in ROOTS for p in (repo / root).rglob('*') if p.is_file())
+    files = (sorted(p for root in ROOTS for p in (repo / root).rglob('*') if p.is_file())
+             if selected is None else sorted({safe_target(repo, name) for name in selected}))
+    if any(not p.is_file() for p in files):
+        raise ValueError('selected snapshot input is not a regular file')
     output.mkdir(parents=True)
     inventory, totals = [], defaultdict(lambda: {'files': 0, 'bytes': 0})
     with tempfile.TemporaryDirectory(prefix='rl-snapshot-') as tmp:
@@ -91,12 +94,12 @@ def build(repo, output):
         write_json(output / 'inventory.json', inventory)
         write_json(output / 'manifest.json', {
             'format': 'rl_research_split_zip_v1', 'created_utc': datetime.now(timezone.utc).isoformat(),
-            'status': 'USER_PAUSED', 'roots': list(ROOTS), 'file_count': len(inventory),
+            'status': status, 'roots': list(ROOTS), 'file_count': len(inventory),
             'uncompressed_bytes': sum(x['bytes'] for x in inventory), 'archive_bytes': archive.stat().st_size,
             'archive_sha256': sha256(archive), 'parts': parts, 'inventory_sha256': sha256(output / 'inventory.json'),
             'families': dict(sorted(totals.items())),
             'excluded': ['.venv-torch', 'paper', 'personal app memory/settings/credentials', 'Git internals'],
-            'note': 'All regular files under roots, including historical diagnostics and logs. No RL execution is authorized by build/verify/restore.',
+            'note': note or 'All regular files under roots, including historical diagnostics and logs. No RL execution is authorized by build/verify/restore.',
         })
     print(json.dumps({'snapshot': str(output), 'files': len(inventory), 'parts': len(parts)}), flush=True)
 

@@ -1,0 +1,17 @@
+{
+  "launcher_pid": 33304,
+  "created_filetime": 134352041372095602,
+  "started": "2026-09-30T10:08:57.2095602+09:00",
+  "command": [
+    "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.venv-torch\\Scripts\\python.exe",
+    "-B",
+    "-u",
+    "work/sdmpc_rl_return_init_20260930/run.py",
+    "--review",
+    ".superpowers/sdd/rl_budget_return_initialized_policy_20260930/task-1-review.json",
+    "--output",
+    "results/sdmpc_rl_balanced_goal_20260930/return_init_v1"
+  ],
+  "stdout": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\train-parent-20260930_100857.stdout.log",
+  "stderr": "C:\\Users\\alsrj\\Desktop\\학술\\2026_EAST\\Codex\\RL\\.superpowers\\sdd\\rl_budget_return_initialized_policy_20260930\\train-parent-20260930_100857.stderr.log"
+}

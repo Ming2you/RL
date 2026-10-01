@@ -1,0 +1,15 @@
+{
+  "exit_code": 0,
+  "source_sha256": {
+    "conftest.py": "d74672c124a38d2f935cdcc8c6b238576ff8c629e0307c933b177ec3473c94e2",
+    "export_recovery.py": "9e8a50a6afdd9aab960c87f31bb441ccb5559555876a7e49373cd31e5f9c5355",
+    "run_tests.py": "973acd6f048281c48fd0eacc3a0a9d39bd29ce80cfe82d7591572002b8267790",
+    "supervise.py": "51d889872e10e6d5bd2203fb1eb987e1c32aaa7bb183e07a0fad4af6b2e7e895",
+    "test_diagnostics.py": "02781d642b9106ad23a583bd6d655555a4d28fc4e8ca42bc362d100ce821c0a7",
+    "test_export.py": "c498697bc733596f8f4a96ab067b82bdede4ebbc53f5694cbc31f708d70c7f1b",
+    "test_supervisor.py": "c3213da7ec4c7231e612c2572d76a5e2af6825efa0623ac2643a34e8616434b8"
+  },
+  "xml_sha256": "b67a07c99a0dfd089b404ccd7bdd8a97e959491c0f6c2620394b5bc2429e5ecc",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "isolated_fixtures": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\_t\\ecb45969"
+}

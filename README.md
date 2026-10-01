@@ -2,10 +2,11 @@
 
 계층적 Stackelberg MPC(P-Stack)의 leader를 강화학습으로 대체하는 연구.
 
-> **최신 인수인계: [RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)**
-> 사용자 요청으로 실행과 예약은 일시 중지 중입니다. 현재 ungated full-run 최적은 P-Stack 대비 0.6415% 개선이며 5% 목표는 미달입니다.
-> 1-step / 5-step 비교는 학습 완료, 평가 각각 48/75단계에서 checkpoint를 보존했습니다.
-> [데이터·모델·로그 전체 스냅샷](artifacts/research_snapshot_20260910)과 [상세 audit](RL_LOGIC_AUDIT_20260907.md)을 함께 참고하세요.
+> **최신 인수인계: [RL_HANDOFF_20260930.md](RL_HANDOFF_20260930.md)**
+> 현재는 155·170·170-incident·170-skew·190을 균등 학습하는 공유 budget 정책/가치함수 작업입니다.
+> 최신 정책의 학습용 full-run과 Q 보정은 완료했지만, canonical 기준 대비 TTT 개선은 아직 미검증입니다.
+> [현재 데이터 묶음](artifacts/sdmpc_research_handoff_20260930)과 [활성 목표](docs/rl_budget_balanced_goal_20260930.md)를 먼저 읽으세요.
+> 이전 DDQN/P-Stack 5% 작업은 계속 별도로 중지되어 있으며 [2026-09-10 기록](RL_HANDOFF_20260910.md)은 역사 자료입니다.
 
 > **새 구현 기준:** 논문 초안의 비선형·follower-response-aware 방향은
 > **[RESPONSE_AWARE_DQN_IMPLEMENTATION.md](RESPONSE_AWARE_DQN_IMPLEMENTATION.md)** 를 따릅니다.
@@ -31,7 +32,8 @@ vs P-Stack **−88.0 / −125.8**(둘 다 승) · vs PFO 승 · **vs P-CENT는 �
 ⚠️ **이겼다는 측정됐지만 왜 이겼는지는 아직 미규명**입니다(HANDOFF §5).
 
 ## 문서
-- **[RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)** — 최신 상태·데이터·실패 이력·재개·다음 작업
+- **[RL_HANDOFF_20260930.md](RL_HANDOFF_20260930.md)** — 최신 공유 정책·데이터·성공 기준·다음 작업
+- [RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md) — 이전 중지된 DDQN 연구 기록
 - [RL_LOGIC_AUDIT_20260907.md](RL_LOGIC_AUDIT_20260907.md) — 계약·실험별 검증·중지 기록
 - [HANDOFF.md](HANDOFF.md) — 초기 IQL 역사 기록
 - [REPORT.md](REPORT.md) — 배경·데이터·초기 RL 설계

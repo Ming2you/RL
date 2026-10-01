@@ -1,0 +1,13 @@
+{
+ "format": "sdmpc-perimeter-feedback-actor-v1",
+ "params": {
+  "uq_on": -1000000000000.0,
+  "uq_off": -1000000000000.0,
+  "margin": 0.0,
+  "pre_mode": "hold",
+  "post_mode": "return",
+  "bind_start": 16,
+  "delta": 75.0,
+  "bind_end": 30
+ }
+}

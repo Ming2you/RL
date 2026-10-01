@@ -1,0 +1,17 @@
+{
+  "exit_code": 0,
+  "source_sha256": {
+    "conftest.py": "d74672c124a38d2f935cdcc8c6b238576ff8c629e0307c933b177ec3473c94e2",
+    "coordinator_bootstrap.py": "9aead7b555b2bb192932a718ac29c07c28b1a4c8aa3673b3bbd7466f871622e3",
+    "export_recovery.py": "f79513942cd892e346dd68a188ecd2221e862b55558170c3a35d90ed8f80a4b3",
+    "run_tests.py": "d157d4c35f988b69b685b1f5d57160fdb10c53e2c54c17994e66ef9feb1456e3",
+    "supervise.py": "7a8ef508805808fd987dbd4a76bd16e676f4854a75863a4f08da83e4a0f7cd49",
+    "test_diagnostics.py": "02781d642b9106ad23a583bd6d655555a4d28fc4e8ca42bc362d100ce821c0a7",
+    "test_export.py": "c498697bc733596f8f4a96ab067b82bdede4ebbc53f5694cbc31f708d70c7f1b",
+    "test_fix1.py": "34fe57c5efa4f4f6541bc8f1ca9659e45aaca3f474bf314593aa64c114f74b79",
+    "test_supervisor.py": "c3213da7ec4c7231e612c2572d76a5e2af6825efa0623ac2643a34e8616434b8"
+  },
+  "xml_sha256": "26fead46c3a3bfa86231deaa4fc4756e10b32984ef2a615eabea9491019007ad",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "isolated_fixtures": "C:\\Users\\alsrj\\Desktop\\\ud559\uc220\\2026_EAST\\Codex\\RL\\work\\sdmpc_rl_export_recovery_20260930\\_t\\2d883ab6"
+}

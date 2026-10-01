@@ -1,0 +1,108 @@
+"""Reconcile the five actor-repair ablations against preserved carry centers."""
+import argparse
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "work/sdmpc_rl_recovery_20260929"))
+from common import (torch, BASE, SCENARIOS, BASE_HASH, DEFAULT_SNAPSHOT, load_base,
+                    read, save, file_hash, sources, verify_pins, runtime_versions)
+from evaluate import FORMAT, EVAL_SOURCES, load_actor
+from compare_runs import load_completed_run, validate_episode, finite, same_cost
+from analyze_sdmpc_multi_20260929 import trajectory_diagnostics
+
+
+def validate_inventory(summary, trace):
+    finite(summary["terminal_inventory"], "terminal inventory")
+    for row in trace:
+        finite(row["inventory"], "trace inventory")
+    same_cost(summary["terminal_inventory"], trace[-1]["inventory"], "terminal inventory")
+
+
+def reference_run(scenario, mode, settings, schema, warmup):
+    result, reference_settings, traces, reference_schema = load_completed_run(BASE / mode / scenario, mode, [None],
+        settings["source_pins"], settings["runtime_versions"],
+        model_sha256=BASE_HASH if mode == "rl" else None, scenario=scenario)
+    summary = result["episodes"][0]
+    if finite(summary["ttt"], "reference TTT") <= 0:
+        raise ValueError("Reference TTT must be positive")
+    if (reference_settings["environment_contract"] != settings["environment_contract"] or
+            reference_settings["profile_sha256"] != settings["profile_sha256"] or
+            summary["warmup_ttt"] != warmup or reference_schema != schema):
+        raise ValueError("Reference physical/canonical comparison differs")
+    validate_inventory(summary, traces[0])
+    return summary
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--evaluations", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    if args.output.exists():
+        raise FileExistsError(args.output)
+    model, learner = load_base()
+    rows, diagnostics, actor_hash = [], [], None
+    for scenario in SCENARIOS:
+        folder = args.evaluations / scenario
+        result, settings = read(folder / "completion.json"), read(folder / "settings.json")
+        if (result["format"] != FORMAT or settings["format"] != FORMAT or result["status"] != "completed" or
+                settings != result["settings"] or settings["scenario"] != scenario or settings["seeds"] != [None] or
+                settings["base_model_sha256"] != BASE_HASH or settings["runtime_versions"] != runtime_versions() or
+                settings["eval_source_sha256"] != sources(*EVAL_SOURCES)):
+            raise ValueError("Evaluation identity differs")
+        verify_pins(DEFAULT_SNAPSHOT, settings["source_pins"])
+        path = Path(settings["actor_path"])
+        if (file_hash(path) != settings["model_sha256"] or
+                file_hash(path.parent / "completion.json") != settings["actor_fit_completion_sha256"]):
+            raise ValueError("Actor fit changed")
+        load_actor(path, model, learner)
+        actor_hash = settings["model_sha256"] if actor_hash is None else actor_hash
+        if settings["model_sha256"] != actor_hash:
+            raise ValueError("Must use one shared actor for all scenarios")
+        summary = read(folder / "episode_00_summary.json")
+        trace = read(folder / "episode_00_trace.json")
+        if summary != result["summary"]:
+            raise ValueError("Summary changed")
+        validate_episode(summary, trace, settings, 0)
+        validate_inventory(summary, trace)
+        schema = read(folder / "observation_schema.json")
+        center = reference_run(scenario, "center", settings, schema, summary["warmup_ttt"])
+        if file_hash(folder / "evaluation_observations.pt") != result["observations_sha256"]:
+            raise ValueError("Observation archive changed")
+        archive = torch.load(folder / "evaluation_observations.pt", map_location="cpu", weights_only=False)
+        if archive["settings"] != settings or len(archive["observations"]) != 75:
+            raise ValueError("Evaluation observation provenance differs")
+        with torch.no_grad():
+            for obs, row in zip(archive["observations"], trace):
+                tensor = torch.from_numpy(obs)
+                if tensor.shape != (len(schema["names"]),) or not torch.isfinite(tensor).all():
+                    raise ValueError("Invalid evaluation observation")
+                action = learner.act(obs)
+                torch.testing.assert_close(torch.from_numpy(action), torch.tensor(row["action_requested"]), rtol=0, atol=0)
+                inputs = torch.cat((tensor, torch.from_numpy(action))).unsqueeze(0)
+                q = torch.tensor([float(c(inputs).item()) for c in learner.critics])
+                torch.testing.assert_close(q, torch.tensor(row["policy_q"]), rtol=0, atol=1e-6)
+        failed = reference_run(scenario, "rl", settings, schema, summary["warmup_ttt"])
+        rows.append(dict(scenario=scenario, center_ttt=center["ttt"], failed_rl_ttt=failed["ttt"],
+            repaired_ttt=summary["ttt"], improvement_vs_center_pct=100*(1-summary["ttt"]/center["ttt"]),
+            improvement_vs_failed_rl_pct=100*(1-summary["ttt"]/failed["ttt"]),
+            center_mean_decision_seconds=center["decision_wall_seconds"]/75,
+            repaired_mean_decision_seconds=summary["decision_wall_seconds"]/75,
+            terminal_inventory=summary["terminal_inventory"], fallback_count=summary["fallback_count"],
+            pfo_calls=summary["pfo_calls"], elapsed_wall_seconds=result["elapsed_wall_seconds"]))
+        diagnostic = trajectory_diagnostics(trace, "rl")
+        diagnostic["value_diagnostics"]["caveat"] = (
+            "Original critic, repaired actor continuation. Operational prediction error on the new policy; "
+            "not a separately fitted policy evaluation or evidence of optimal action ordering.")
+        diagnostics.append(dict(scenario=scenario, **diagnostic))
+    save(args.output, dict(status="reconciled", shared_actor_sha256=actor_hash, base_model_sha256=BASE_HASH,
+        analysis_sha256=file_hash(__file__), rows=rows, diagnostics=diagnostics,
+        all_scenarios_improve_vs_center=all(r["improvement_vs_center_pct"] > 0 for r in rows),
+        scope="five_canonical_development_scenarios_actor_only_repair_ablation",
+        generalization_claim=False, pstack_claim=False, controller_acceptance=False))
+    print("RECOVERY_ANALYSIS_PASS", actor_hash, flush=True)
+
+
+if __name__ == "__main__":
+    main()

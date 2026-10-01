@@ -1,0 +1,50 @@
+{
+  "players": 9,
+  "freeway_players": 4,
+  "urban_players": 5,
+  "outer_limit": 6,
+  "horizon_steps": 3,
+  "local_model": "own_and_externality_first_order_plus_proximal",
+  "sensitivity": "refresh_at_each_changed_anchor_exact_key_cache",
+  "upper": "current_interval_PFO_witness_then_reused_central_multiplier",
+  "upper_objective": "pure_TTT",
+  "budget": {
+    "variant": "upper",
+    "band_factor": 0.0,
+    "budget_active_mask": [
+      [
+        true,
+        true
+      ],
+      [
+        false,
+        false
+      ]
+    ],
+    "NP_halfwidth_veh": 0.0,
+    "NUF_halfwidth_fraction": 0.0,
+    "definition": "G <= B, no extra margin",
+    "budget_candidate_solves": 3
+  },
+  "NP_halfwidth_veh": 0.0,
+  "NUF_halfwidth_fraction": 0.0,
+  "NP": "horizon net service veh",
+  "NUF": "meter command sum veh/h",
+  "price_update": "k_to_k_plus_1",
+  "warmup_intervals": 5,
+  "seed": 42,
+  "target_seconds": 14400,
+  "concurrent_reference_runs": "see launch_process_inventory.json",
+  "timing_comparable": false,
+  "affinity": {
+    "pid": 24860,
+    "before_mask": 1048575,
+    "mask": 8,
+    "logical_cpu_index": 3,
+    "system_mask": 1048575
+  },
+  "execution_policy": "current_interval_discrete_PFO_budget_witness_and_H3_TTT_guard; original_gates_required",
+  "exception_norm": "Linf using unchanged budget scales; TTT tie break; prices held",
+  "architecture": "single_process_serial_players_central_prediction_and_resource_QP",
+  "controller_acceptance": false
+}

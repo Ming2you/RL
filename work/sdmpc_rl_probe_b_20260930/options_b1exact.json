@@ -1,0 +1,9 @@
+[
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/b1_exact_bind50_w16_25_return.json",
+  "spec_sha256": "8bb199ce6834cc319496f6d6e9515cb63308adc8313566fa496a219a0868deb8",
+  "tag": "b1_exact",
+  "at": 16
+ }
+]
