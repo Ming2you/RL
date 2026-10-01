@@ -1,0 +1,5 @@
+[
+  {"name": "np_relax", "np_shift": 5.0, "window": 14, "after": "hold", "at": 1},
+  {"name": "np_relax", "np_shift": 10.0, "window": 14, "after": "hold", "at": 1},
+  {"name": "np_margin", "np_margin": 30.0, "window": 20, "after": "hold", "at": 1}
+]

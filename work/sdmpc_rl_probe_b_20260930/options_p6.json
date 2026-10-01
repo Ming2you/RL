@@ -1,0 +1,30 @@
+[
+ {
+  "name": "np_bind",
+  "np_delta": 50.0,
+  "window": 10,
+  "after": "return",
+  "at": 16
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/v2_bind50_w16_25_post_margin200.json",
+  "spec_sha256": "37a45bf47185216122871468b088d5b79e12107c2e70bf4dc69fc492ed5518f5",
+  "tag": "v2_bind50_w16_25_post_margin200",
+  "at": 16
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/v3_bind50_w16_25_post_level_m40.json",
+  "spec_sha256": "074367afe2cf5eef8c9980dfa23c1cbc24f33a6d8803e96a16674cfd01fabe3d",
+  "tag": "v3_bind50_w16_25_post_level_m40",
+  "at": 16
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/v5_bind30_w16_25_post_margin200.json",
+  "spec_sha256": "a24f29ba888960cbc4bd9e82d83f83c74289bf996192d41571decfb37504d52c",
+  "tag": "v5_bind30_w16_25_post_margin200",
+  "at": 16
+ }
+]

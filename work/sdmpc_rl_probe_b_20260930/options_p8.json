@@ -1,0 +1,23 @@
+[
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/p8b_bind75_w16_30_return.json",
+  "spec_sha256": "5aeb2dbf579599439c0bd51cf2d9fafa12af59229563f8de67394afcaa90fa84",
+  "tag": "p8b_bind75_w16_30_return",
+  "at": 16
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/p8e_bind50_w18_32_return.json",
+  "spec_sha256": "56296341f80e723ba6b1d1eda09d6bf2daa981cc2121bb1a49977dcc9f67e5ee",
+  "tag": "p8e_bind50_w18_32_return",
+  "at": 16
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/p8f_bind50_w16_27_return.json",
+  "spec_sha256": "b2fc52050d174d5d5778aa64a761eb5ab28e8ebd862fdbe9c8d8eabc792ea613",
+  "tag": "p8f_bind50_w16_27_return",
+  "at": 16
+ }
+]

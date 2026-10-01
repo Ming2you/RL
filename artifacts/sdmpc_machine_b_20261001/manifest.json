@@ -1,0 +1,20 @@
+{
+ "zip_sha256": "9678a9dba870a9b81b284cd8652518a0a8d8d15e78703cd515e74e7d11ce90af",
+ "zip_bytes": 77766752,
+ "parts": [
+  {
+   "name": "research.zip.part001",
+   "bytes": 41943040,
+   "sha256": "aaf7ed425e66bba0af4fca8dec2f999de00e8ee5c07c69b3223dcae4339e2c54"
+  },
+  {
+   "name": "research.zip.part002",
+   "bytes": 35823712,
+   "sha256": "67c2808c3816daaf65c1a0438b494df7ed728b76448856dabd52cca2941708ba"
+  }
+ ],
+ "files": 1127,
+ "original_bytes": 734962906,
+ "inventory_sha256": "409ac6528d7f3c49a6598a531c8d0bac61eee6bf7b1a02c2afe7f2fddad57b9b",
+ "excluded": "per-interval evaluator checkpoints, runner locks, machine-B center checkpoint.pt"
+}

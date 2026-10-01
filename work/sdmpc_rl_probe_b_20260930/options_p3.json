@@ -1,0 +1,7 @@
+[
+  {"name": "np_bind", "np_delta": 50.0, "window": 10, "after": "return", "at": 16},
+  {"name": "np_bind", "np_delta": 50.0, "window": 15, "after": "return", "at": 16},
+  {"name": "np_bind", "np_delta": 30.0, "window": 10, "after": "return", "at": 16},
+  {"name": "np_bind", "np_delta": 50.0, "window": 10, "after": "return", "at": 14},
+  {"name": "np_bind", "np_delta": 50.0, "window": 10, "after": "return", "at": 18}
+]

@@ -1,0 +1,37 @@
+[
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/c0_null.json",
+  "spec_sha256": "8299b36bd526291fdd2b206fbbae703ff98e8cb04af0d302c5ffc966c48d3aad",
+  "tag": "c0_null",
+  "at": 1
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/c1_bind50_w16_25_relax30.json",
+  "spec_sha256": "5c3a0fc358a06aa83e4f76c70e1a05d2b98a52953430a89059063a83f7f2db7d",
+  "tag": "c1_bind50_w16_25_relax30",
+  "at": 1
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/c2_bind30_w16_25_relax30.json",
+  "spec_sha256": "aba5d908abd4a03f9872a75ea389af8dae8c0596e558f96b7da32ec29237f3ce",
+  "tag": "c2_bind30_w16_25_relax30",
+  "at": 1
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/c3_np400_300_d50_relax30.json",
+  "spec_sha256": "17a9f8db969333ef26e86a8c259e8102f0abe6bdfd30aad53802244b4f7f22c6",
+  "tag": "c3_np400_300_d50_relax30",
+  "at": 1
+ },
+ {
+  "name": "actor",
+  "spec_path": "work/sdmpc_rl_perimeter_b_20261001/specs/c4_relax30_only.json",
+  "spec_sha256": "10fe5819cf24ea3db68cf7b0f19e612670d21a209f9ee06391ad9e0366005bfe",
+  "tag": "c4_relax30_only",
+  "at": 1
+ }
+]
