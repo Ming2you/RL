@@ -9,3 +9,4 @@ models/** -text
 checkpoints/** -text
 .superpowers/** -text
 *.zip.part* binary
+docs/rl_results_20261003/*.json -text

@@ -1,0 +1,34 @@
+{
+ "format": "sdmpc-continuation-split-zip-v1",
+ "roots": [
+  "sdmpc_rl_p9_20261001",
+  "sdmpc_rl_p10_20261001",
+  "sdmpc_rl_p11_20261002",
+  "sdmpc_rl_p12_20261002",
+  "sdmpc_rl_p13_20261002",
+  "sdmpc_rl_p14_20261002",
+  "sdmpc_rl_p15_20261002",
+  "sdmpc_rl_p16_20261003",
+  "sdmpc_rl_p17_20261003",
+  "sdmpc_rl_p17_v2_20261003"
+ ],
+ "files": 1252,
+ "original_bytes": 90973992,
+ "zip_bytes": 47236151,
+ "zip_sha256": "383e3a4ceb78c0793207f40d371b2ca8352553bbcc669b232939c65afcb6587a",
+ "inventory_sha256": "72ffcc967dbe0fe8499125e329f699a6d2905d67e561f2c2cd9c7c7eb509df1b",
+ "parts": [
+  {
+   "name": "research.zip.part001",
+   "bytes": 41943040,
+   "sha256": "5176492c8b5cbe17389891562b074fa879581eed1c91cacba34951dc32cc9529"
+  },
+  {
+   "name": "research.zip.part002",
+   "bytes": 5293111,
+   "sha256": "7fe96efee5da637ae87379242a7f7f50ab8a1d7669de91aec43f41603bacda39"
+  }
+ ],
+ "excluded": "queue locks, temporary files and Python bytecode only",
+ "scope": "All local P9-P17 result roots, including models, experiences, caches and incomplete-wave evidence"
+}

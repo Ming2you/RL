@@ -1,0 +1,30 @@
+[
+  {
+    "name": "p9_actor",
+    "tag": "b1_np_only",
+    "at": 16,
+    "spec_path": "work\\sdmpc_rl_p9_20261001\\specs\\b1_np_only.json",
+    "spec_sha256": "72dd0655b395d522cf2d934743f94a5e8bc1ea64dfc61472396b56dc1a7e3ddc"
+  },
+  {
+    "name": "p9_actor",
+    "tag": "long_np_only",
+    "at": 16,
+    "spec_path": "work\\sdmpc_rl_p9_20261001\\specs\\long_np_only.json",
+    "spec_sha256": "045549b1ba34cc28e63ba5fb00c3083b52be85c45079f12aa08e28c7b3fafebc"
+  },
+  {
+    "name": "p9_actor",
+    "tag": "long_both_return",
+    "at": 16,
+    "spec_path": "work\\sdmpc_rl_p9_20261001\\specs\\long_both_return.json",
+    "spec_sha256": "6fcdbbea8dd78515a3e0d6d8703f235733c6bdf725b9a2e788aff3e4917519e6"
+  },
+  {
+    "name": "p9_actor",
+    "tag": "long_both_fallback_return",
+    "at": 16,
+    "spec_path": "work\\sdmpc_rl_p9_20261001\\specs\\long_both_fallback_return.json",
+    "spec_sha256": "4e5306f202a3592118809e9e46ca210e77b07888e68739c555326466606d81d1"
+  }
+]

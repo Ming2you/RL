@@ -1,0 +1,154 @@
+{
+  "snapshot_date": "2026-10-03",
+  "timezone": "Asia/Seoul",
+  "latest": "P17 v2",
+  "model_sha256": "b0381c55d999ec4c72512f91e7849cc79eb725baf085bf4242759e238a81eae8",
+  "latest_rows": [
+    {
+      "scenario": "sweet_155_w",
+      "seed": 9301,
+      "policy": "elite_v1",
+      "ttt": 3121.1116178361044,
+      "carry_ttt": 3193.8552371488404,
+      "delta_pct": -2.27761166087397,
+      "sha256": "0464532e4fd4a764c5bb07ff84cf2e2ef07776bd18446726e506c84d13bb1ec9",
+      "experience_sha256": "454b4c68584183cbb6151dcd93351606c8b3cdbe496aacd8189471765ade2a31",
+      "fallbacks": 9
+    },
+    {
+      "scenario": "sweet_170_w",
+      "seed": 9302,
+      "policy": "elite_v1",
+      "ttt": 4047.6278859900094,
+      "carry_ttt": 4258.070035142011,
+      "delta_pct": -4.94219558192361,
+      "sha256": "48e1cadb3851e1fc639547e06cd9d79952901f66b75cb7d55a3efa87cf2d885b",
+      "experience_sha256": "acf3213c0bc8aac4f29943012e34aabff8dad521dd4780b93cc5172080f3d5ba",
+      "fallbacks": 4
+    },
+    {
+      "scenario": "sweet_170_incident_w",
+      "seed": 9303,
+      "policy": "elite_v1",
+      "ttt": 5841.352526816832,
+      "carry_ttt": 6160.857920106354,
+      "delta_pct": -5.186053589172952,
+      "sha256": "96da7c6f188c2a54fcaa326cdb040d8d784a88416693fa0b9681d3e715ba0d5a",
+      "experience_sha256": "e8cbd78ff13c814cf28f649804052e98eda2c72a33af81fddb1e79d684617ced",
+      "fallbacks": 6
+    },
+    {
+      "scenario": "sweet_170_skew15_w",
+      "seed": 9304,
+      "policy": "elite_v1",
+      "ttt": 4233.7715294013915,
+      "carry_ttt": 4274.524334641925,
+      "delta_pct": -0.9533880743235278,
+      "sha256": "13670baded0ec3631702f24bd096c2f030120be278f7339400181046efe8b2a8",
+      "experience_sha256": "c5fb5c3a5d139be4648a4ae2f34ca1ed6788274e568bc320e12aea730e1b748c",
+      "fallbacks": 1
+    },
+    {
+      "scenario": "sweet_190_w",
+      "seed": 9305,
+      "policy": "elite_v1",
+      "ttt": 6881.517144379046,
+      "carry_ttt": 7065.447373879923,
+      "delta_pct": -2.6032354324914304,
+      "sha256": "a959807046c699d9c9f285e1c69ba8b197a2a5062dd76c8d9ebc916d692f2a48",
+      "experience_sha256": "0d8ae85c09eeb9c8fdaf035fa0032e622a9b6858d5298f910cc079fb6a3de181",
+      "fallbacks": 1
+    }
+  ],
+  "all_five_latest_training_profiles_improve": true,
+  "fresh_seeds_per_scenario": 1,
+  "canonical_eligible": false,
+  "goal_achieved": false,
+  "training_admission": {
+    "minimum_seeds_per_scenario": 5,
+    "maximum_degradation_pct_exclusive": 10,
+    "mean_delta_pct_max": {
+      "sweet_155_w": -2,
+      "sweet_170_w": -9,
+      "sweet_170_incident_w": -6,
+      "sweet_170_skew15_w": 1,
+      "sweet_190_w": -3
+    }
+  },
+  "reports": [
+    {
+      "phase": "p09",
+      "source": "results/sdmpc_rl_p9_20261001/wave2/analysis.json",
+      "file": "p09_analysis.json",
+      "sha256": "84f63010b1d33c1d3fb8b39fe3568b53956bcabd1d014fd193aa1bd430a04e5e",
+      "status": "authenticated_training_diagnostic",
+      "rows": 25
+    },
+    {
+      "phase": "p10",
+      "source": "results/sdmpc_rl_p10_20261001/wave2_recovery/analysis.json",
+      "file": "p10_analysis.json",
+      "sha256": "bf1fbdcf75bbd88f447ad7beb55a590e13440b87f4714b8ccd543916f5fe6a13",
+      "status": "authenticated_training_collection",
+      "rows": 60
+    },
+    {
+      "phase": "p11",
+      "source": "results/sdmpc_rl_p11_20261002/pilot1/analysis.json",
+      "file": "p11_analysis.json",
+      "sha256": "a4ce4bd1743bba17383f3165e8c067de7c6f4187eaae44ed673f1aab867cbd70",
+      "status": "authenticated_neural_training_pilot",
+      "rows": 10
+    },
+    {
+      "phase": "p12",
+      "source": "results/sdmpc_rl_p12_20261002/wave2_recovery/analysis.json",
+      "file": "p12_analysis.json",
+      "sha256": "21faef10b7b8d66e71dbb22b4463a4ca9b40734e290f6e44d41e19dcdc0cb212",
+      "status": "authenticated_paired_action_bound_diagnostic",
+      "rows": 15
+    },
+    {
+      "phase": "p13",
+      "source": "results/sdmpc_rl_p13_20261002/pilot1/analysis.json",
+      "file": "p13_analysis.json",
+      "sha256": "560f0520807e17b7567f57f8d47d9b5a7ed0188ca6e004386de815c37549adff",
+      "status": "authenticated_neural_training_pilot",
+      "rows": 10
+    },
+    {
+      "phase": "p14",
+      "source": "results/sdmpc_rl_p14_20261002/wave1/analysis.json",
+      "file": "p14_analysis.json",
+      "sha256": "10f26ae2c6836a0e72c06230aa7a9d74b5eddafef587baa34f773b3acbdd0bad",
+      "status": "authenticated_paired_late_window_diagnostic",
+      "rows": 15
+    },
+    {
+      "phase": "p15",
+      "source": "results/sdmpc_rl_p15_20261002/wave2_recovery/analysis.json",
+      "file": "p15_analysis.json",
+      "sha256": "638103f6a4593d591dc7d9def428820b766bd466592c31580e4934a531d38037",
+      "status": "authenticated_paired_strength_recovery_diagnostic",
+      "rows": 20
+    },
+    {
+      "phase": "p16",
+      "source": "results/sdmpc_rl_p16_20261003/wave1/analysis.json",
+      "file": "p16_analysis.json",
+      "sha256": "b9fa65185ff85fc0a8d2009e62a6898f04e465ad44fa3017ce2aa37faa8d3936",
+      "status": "authenticated_paired_np_direction_diagnostic",
+      "rows": 15
+    },
+    {
+      "phase": "p17_v2",
+      "source": "results/sdmpc_rl_p17_v2_20261003/pilot1/analysis.json",
+      "file": "p17_v2_analysis.json",
+      "sha256": "c1f383405dee2050cba79a9c0bd2b2c649df77d3afb9a27fbdee449fd59a02dd",
+      "status": "authenticated_neural_training_pilot",
+      "rows": 10
+    }
+  ],
+  "next_step": "Keep this model frozen; preregister four additional training seeds per scenario and authenticate all five-seed means before any canonical registration.",
+  "active_numerical_workers_at_audit": 0
+}

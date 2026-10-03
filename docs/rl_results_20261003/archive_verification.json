@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "verified_files": 1252,
+  "fresh_restore": true,
+  "idempotent_restore": true,
+  "conflict_refused": true,
+  "path_escape_refused": true,
+  "archive_manifest_sha256": "8e66870474de50e4d8f984d2e95c94f2a2b9be5c91530bdf755b3fe2686f41f3"
+}

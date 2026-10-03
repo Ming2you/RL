@@ -1,0 +1,23 @@
+[
+  {
+    "name": "p10_actor",
+    "tag": "b1_both_w25",
+    "at": 16,
+    "spec_path": "work/sdmpc_rl_p10_20261001/specs/b1_both_w25.json",
+    "spec_sha256": "3d6855c0b86c359e6220e9e350c32627624d9d489efd86e505136e47c5017762"
+  },
+  {
+    "name": "p10_actor",
+    "tag": "long_both_w30",
+    "at": 16,
+    "spec_path": "work/sdmpc_rl_p10_20261001/specs/long_both_w30.json",
+    "spec_sha256": "47bd0850ac48e3bfc8b90cde1b20859be34cb27203bac476a7e3f8a0026513a7"
+  },
+  {
+    "name": "p10_actor",
+    "tag": "retain_nuf_w30",
+    "at": 16,
+    "spec_path": "work/sdmpc_rl_p10_20261001/specs/retain_nuf_w30.json",
+    "spec_sha256": "8a480a3c4e035761b0aef1cdc5a3268d0c5cf2d884214994a0ba4b20d9f6c4b5"
+  }
+]

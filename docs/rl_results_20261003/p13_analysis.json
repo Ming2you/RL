@@ -1,0 +1,119 @@
+{
+  "status": "authenticated_neural_training_pilot",
+  "rows": [
+    {
+      "scenario": "sweet_170_w",
+      "seed": 9202,
+      "policy": "carry",
+      "ttt": 4205.595364059657,
+      "carry_ttt": 4205.595364059657,
+      "delta_pct": 0.0,
+      "sha256": "10f85c59a471f1cc4b57c3f2fe36b508314e94107968684656ba786801a38043",
+      "experience_sha256": "7cc2e2e768f2a34bb0382cb0882eb5b221edaa6f5cfc6e5a26da00b4898f911a",
+      "fallbacks": 0
+    },
+    {
+      "scenario": "sweet_170_w",
+      "seed": 9202,
+      "policy": "rwbc_v2",
+      "ttt": 4096.865851416178,
+      "carry_ttt": 4205.595364059657,
+      "delta_pct": -2.5853536356032767,
+      "sha256": "69a990045095279fd38897e6219aa8f08f0e11906190753f7bb29c35775cca8f",
+      "experience_sha256": "3dfacd0494dec7f2c763ca50d6d0d781943c105bca805f4e7a70a6091452f502",
+      "fallbacks": 6
+    },
+    {
+      "scenario": "sweet_170_incident_w",
+      "seed": 9203,
+      "policy": "carry",
+      "ttt": 5972.876810798534,
+      "carry_ttt": 5972.876810798534,
+      "delta_pct": 0.0,
+      "sha256": "f8a7c45e976d96a62f570c3cd92f73381f4be5415479115213cd1d96760a5f33",
+      "experience_sha256": "bf0a383fec5f103a47bbd44459ef5725b557a8d401a106e4ae009c415248d448",
+      "fallbacks": 0
+    },
+    {
+      "scenario": "sweet_170_incident_w",
+      "seed": 9203,
+      "policy": "rwbc_v2",
+      "ttt": 5866.883331375222,
+      "carry_ttt": 5972.876810798534,
+      "delta_pct": -1.7745800353974086,
+      "sha256": "45849f907aa83899bdb8d895c47d11e8b9e3adc1792bd7c31ee78ee443f50c98",
+      "experience_sha256": "fe05ebf8134ffffb1bed1620375f6aa81644db06b544c2b7e647ee8a65b4b8d0",
+      "fallbacks": 5
+    },
+    {
+      "scenario": "sweet_190_w",
+      "seed": 9205,
+      "policy": "carry",
+      "ttt": 6892.991420423768,
+      "carry_ttt": 6892.991420423768,
+      "delta_pct": 0.0,
+      "sha256": "ff3b3775cd5d28056d4edf903572b81eb872f77b64082508f499739ebd9b7344",
+      "experience_sha256": "a9bb7f9bbf8639a409b896f595623dda94576b71dc6ddc4862bed7aeaee1ee35",
+      "fallbacks": 0
+    },
+    {
+      "scenario": "sweet_190_w",
+      "seed": 9205,
+      "policy": "rwbc_v2",
+      "ttt": 7066.171151510987,
+      "carry_ttt": 6892.991420423768,
+      "delta_pct": 2.5124031138946656,
+      "sha256": "88196a978248ec4013ec3d6c3c947b68447f3da86b1959cdd3f7645c2bdc5d16",
+      "experience_sha256": "a7dbfaee7fa3c50ab2fb4383e5e25389b8574e345fabac90f2ef19fb56980ca5",
+      "fallbacks": 4
+    },
+    {
+      "scenario": "sweet_170_skew15_w",
+      "seed": 9204,
+      "policy": "carry",
+      "ttt": 4465.667037676163,
+      "carry_ttt": 4465.667037676163,
+      "delta_pct": 0.0,
+      "sha256": "ec9989d10401c9cf54752a37e1e4caf2f7ae7857a3df91ee768b1a324d0422d0",
+      "experience_sha256": "7601f93501b6d8be1a523fb9c375974f7325a7639beaa0ee6dacbf002981070e",
+      "fallbacks": 0
+    },
+    {
+      "scenario": "sweet_170_skew15_w",
+      "seed": 9204,
+      "policy": "rwbc_v2",
+      "ttt": 4116.347729845831,
+      "carry_ttt": 4465.667037676163,
+      "delta_pct": -7.822332137241255,
+      "sha256": "653a82c337745f37b29fb3353fe5265195b5cfe3d982e9d35e950dc68d555720",
+      "experience_sha256": "5e53b26754f53a784065b99b25cabc438a65aefedef5897fd9cade40e60b00f8",
+      "fallbacks": 2
+    },
+    {
+      "scenario": "sweet_155_w",
+      "seed": 9201,
+      "policy": "carry",
+      "ttt": 3011.598985305889,
+      "carry_ttt": 3011.598985305889,
+      "delta_pct": 0.0,
+      "sha256": "23c6cdaf584f680fa80d2669aacb247e7099a4bc05f1a555bc748d83fa246a34",
+      "experience_sha256": "10effa59873450d42ac1b4ff031d6b7c3690cca818e333493d6dd83cd81d7525",
+      "fallbacks": 1
+    },
+    {
+      "scenario": "sweet_155_w",
+      "seed": 9201,
+      "policy": "rwbc_v2",
+      "ttt": 3092.3000544652537,
+      "carry_ttt": 3011.598985305889,
+      "delta_pct": 2.679675134475706,
+      "sha256": "c428384f55150301db57deba648d94d26d15fb2b05cfc8d5f760edce0efbf350",
+      "experience_sha256": "41192769d424a7aad7fb93bee53809143539231613350c7c8eac849fbdafd5e1",
+      "fallbacks": 4
+    }
+  ],
+  "transitions": 600,
+  "model_sha256": "53ba39c306c2e830c3ab9a228cf0c8b95822b41abfc193d7c9c77d44214ca617",
+  "canonical_eligible": false,
+  "reason": "One fresh training seed per scenario; five-seed admission and gain gates unchanged"
+}

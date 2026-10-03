@@ -1,0 +1,6 @@
+{
+  "format": "sdmpc-strength-recovery-p15-v1",
+  "mode": "half_np_restore_nuf",
+  "base_spec_path": "results\\sdmpc_rl_p13_20261002\\fit_v1\\policy.json",
+  "base_spec_sha256": "8ce29ace7515cd8d70bad23005510bddcc45f40eeec92ccd4712c40894c27b2a"
+}

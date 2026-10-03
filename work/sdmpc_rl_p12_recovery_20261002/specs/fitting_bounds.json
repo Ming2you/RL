@@ -1,0 +1,6 @@
+{
+  "format": "sdmpc-p12-action-bounds-v1",
+  "mode": "fitting_bounds",
+  "base_spec_path": "results\\sdmpc_rl_p11_20261002\\fit_v1\\policy.json",
+  "base_spec_sha256": "288e37682720eea156694d60561d9a65f405670dd458bfa084fff2371d7efcd3"
+}
