@@ -2,6 +2,10 @@
 
 2026-10-06. 설계안이며 새 RL 학습·폐루프 성능 검증은 아직 수행하지 않았다. 현재 진행 중인 lower 6회·upper 10후보 실험과 기존 실행 코드는 변경하지 않는다.
 
+**연결할 실제 코드:** 같은 저장소 `main`의 [sdmpc_ttd/](../sdmpc_ttd/README.md).
+현재 TTD S-DMPC와 역사 물리 모델을 포함하고, 초기화·실행·하위 fixed-budget 진입점을 설명한다.
+기존 `rl_leader/env.py`의 P-Stack/Wu follower와 구분한다. 새 TD3 환경과 학습은 아직 남은 작업이다.
+
 한 개의 TD3 Actor가 180초마다 두 budget 상한을 조정한다. 기존 player별 S-DMPC가 그 budget 아래에서 RM, VSL, green, offset을 계산한다. Critic은 실행된 구간의 `−TTT + α·TTD`와 다음 상태로부터 이후 구간까지의 누적 성과를 학습한다. 학습 후 온라인에서는 Actor를 한 번 호출하고 하위 문제를 한 번 푸는 구조를 기본안으로 한다.
 
 ## PPT에서 계승할 부분과 정리할 부분

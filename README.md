@@ -6,7 +6,8 @@
 ## 최신 설계: TTT−αTTD Actor–Critic budget leader
 
 - [TD3 + player별 S-DMPC 설계](docs/rl_ttt_ttd_actor_critic_design_20261006.md): 이전 budget의 2차원 조정, 하위 최대 6회, 실행한 180초 TTT·TTD 기반 보상, PFO/원 제약 검사 및 fallback.
-- 이번 추가 범위는 설계 문서다. 원본 PPT, 비공개 구간 데이터, 검산 코드와 결과는 로컬에 보존한다.
+- **[현재 TTD S-DMPC 코드·실행법·RL 연결 API](sdmpc_ttd/README.md)**: `main` 브랜치의 `sdmpc_ttd/`에 역사 물리 모델과 현재 controller 의존 코드를 함께 포함했다. 기존 개인 PC 출력 폴더 없이 실행할 수 있다.
+- 하위 최대 6회·상위 최대 3후보가 비교 기본값이고, 상위 10후보는 선택 옵션이다. 원본 PPT와 기존 비공개 구간 데이터는 포함하지 않는다.
 - **설계 단계이며 새 TD3 학습, S-DMPC RL 환경 구현 또는 RL 성능 검증이 완료된 상태가 아니다.** 아래 기존 P-Stack/IQL/DDQN 결과는 별도 연구 이력이다.
 - [이전 순수 TTT·PFO residual budget 설계](docs/rl_budget_leader_design_20260929.md)는 비교를 위해 보존한다.
 

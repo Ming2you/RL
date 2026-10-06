@@ -1,0 +1,3 @@
+# 독립 runtime 검증 환경: Python 3.12.14 / Windows, 한 논리 CPU
+numpy==2.5.3
+scipy==1.18.1

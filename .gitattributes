@@ -8,3 +8,4 @@ results/** -text
 models/** -text
 checkpoints/** -text
 *.zip.part* binary
+sdmpc_ttd/** -text
