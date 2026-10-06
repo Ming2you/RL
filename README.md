@@ -2,12 +2,22 @@
 
 계층적 Stackelberg MPC(P-Stack)의 leader를 강화학습으로 대체하는 연구.
 
-> **최신 인수인계: [RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)**
+
+## 최신 설계: TTT−αTTD Actor–Critic budget leader
+
+- [TD3 + player별 S-DMPC 설계](docs/rl_ttt_ttd_actor_critic_design_20261006.md): 이전 budget의 2차원 조정, 하위 최대 6회, 실행한 180초 TTT·TTD 기반 보상, PFO/원 제약 검사 및 fallback.
+- 이번 추가 범위는 설계 문서다. 원본 PPT, 비공개 구간 데이터, 검산 코드와 결과는 로컬에 보존한다.
+- **설계 단계이며 새 TD3 학습, S-DMPC RL 환경 구현 또는 RL 성능 검증이 완료된 상태가 아니다.** 아래 기존 P-Stack/IQL/DDQN 결과는 별도 연구 이력이다.
+- [이전 순수 TTT·PFO residual budget 설계](docs/rl_budget_leader_design_20260929.md)는 비교를 위해 보존한다.
+
+## 기존 P-Stack RL 연구 이력
+
+> **기존 P-Stack 인수인계: [RL_HANDOFF_20260910.md](RL_HANDOFF_20260910.md)**
 > 사용자 요청으로 실행과 예약은 일시 중지 중입니다. 현재 ungated full-run 최적은 P-Stack 대비 0.6415% 개선이며 5% 목표는 미달입니다.
 > 1-step / 5-step 비교는 학습 완료, 평가 각각 48/75단계에서 checkpoint를 보존했습니다.
 > [데이터·모델·로그 전체 스냅샷](artifacts/research_snapshot_20260910)과 [상세 audit](RL_LOGIC_AUDIT_20260907.md)을 함께 참고하세요.
 
-> **새 구현 기준:** 논문 초안의 비선형·follower-response-aware 방향은
+> **기존 P-Stack 구현 기준:** 논문 초안의 비선형·follower-response-aware 방향은
 > **[RESPONSE_AWARE_DQN_IMPLEMENTATION.md](RESPONSE_AWARE_DQN_IMPLEMENTATION.md)** 를 따릅니다.
 > 이전 IQL 설계 판단은 [RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md](RESPONSE_AWARE_NONLINEAR_IQL_PLAN.md)에 보존되어 있습니다.
 > 아래 초기 held-out 결과는 연구 이력이며, 현재 방법의 최종 성능 주장으로 사용하지 않습니다.
